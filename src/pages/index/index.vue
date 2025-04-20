@@ -437,7 +437,7 @@
 	};
 	const handleTest = () => {
 		uni.navigateTo({
-			url: '/pages/test/test'
+			url: '/pages/collection/collection'
 		});
 	};
 
@@ -690,7 +690,7 @@
 			background-color: #fff;
 			border-radius: 20rpx;
 			padding: 30rpx;
-			margin-top: 10rpx;
+			margin-top: 15rpx;
 			margin-bottom: 20rpx;
 			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 
