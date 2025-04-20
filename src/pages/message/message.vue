@@ -203,6 +203,91 @@ const allMessages = reactive({
         }
       ]
     }
+	,
+    {
+      type: 'account',
+      messages: [
+        {
+          id: 7,
+          title: '订阅通知',
+          description: '用户"前端学习者"订阅了您',
+          time: '2025-4-18',
+          icon: 'bookmark-filled',
+          isRead: false
+        },
+        {
+          id: 8,
+          title: '订阅通知',
+          description: '用户"CSS大师"订阅了您',
+          time: '2025-4-16',
+          icon: 'bookmark-filled',
+          isRead: true
+        }
+      ]
+    },
+    {
+      type: 'account',
+      messages: [
+        {
+          id: 7,
+          title: '订阅通知',
+          description: '用户"前端学习者"订阅了您',
+          time: '2025-4-18',
+          icon: 'bookmark-filled',
+          isRead: false
+        },
+        {
+          id: 8,
+          title: '订阅通知',
+          description: '用户"CSS大师"订阅了您',
+          time: '2025-4-16',
+          icon: 'bookmark-filled',
+          isRead: true
+        }
+      ]
+    },
+    {
+      type: 'account',
+      messages: [
+        {
+          id: 7,
+          title: '订阅通知',
+          description: '用户"前端学习者"订阅了您',
+          time: '2025-4-18',
+          icon: 'bookmark-filled',
+          isRead: false
+        },
+        {
+          id: 8,
+          title: '订阅通知',
+          description: '用户"CSS大师"订阅了您',
+          time: '2025-4-16',
+          icon: 'bookmark-filled',
+          isRead: true
+        }
+      ]
+    },
+    {
+      type: 'account',
+      messages: [
+        {
+          id: 7,
+          title: '订阅通知',
+          description: '用户"前端学习者"订阅了您',
+          time: '2025-4-18',
+          icon: 'bookmark-filled',
+          isRead: false
+        },
+        {
+          id: 8,
+          title: '订阅通知',
+          description: '用户"CSS大师"订阅了您',
+          time: '2025-4-16',
+          icon: 'bookmark-filled',
+          isRead: true
+        }
+      ]
+    }
   ]
 });
 
@@ -306,13 +391,13 @@ onMounted(() => {
 <style lang="scss">
 page {
   background-color: #f5f5f5;
-  min-height: 100vh;
+  min-height: 100%;
 }
 
 .message-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  padding: 20px;
   
   // 顶部选项卡样式
   .tabs-container {
@@ -362,9 +447,7 @@ page {
   
   // 消息列表样式
   .message-list {
-    flex: 1;
-    padding: 20rpx;
-    
+	margin-top: 20rpx;
     .message-item {
       display: flex;
       background-color: #fff;
