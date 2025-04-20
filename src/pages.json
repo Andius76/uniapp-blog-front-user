@@ -26,6 +26,24 @@
 			}
 		},
 		{
+			"path": "pages/classification/classification",
+			"style": {
+				"navigationBarTitleText": "分类"
+			}
+		},
+		{
+			"path": "pages/classification/classification",
+			"style": {
+				"navigationBarTitleText": "发布"
+			}
+		},
+		{
+			"path": "pages/message/message",
+			"style": {
+				"navigationBarTitleText": "消息"
+			}
+		},
+		{
 			"path": "pages/forget-password/forget-password",
 			"style": {
 				"navigationBarTitleText": "忘记密码"
@@ -39,6 +57,12 @@
 				"selectedIconPath": "static/tabbar/index.png",
 				"text": "首页",
 				"enablePullDownRefresh": true
+			},
+			{
+				"pagePath": "pages/classification/classification",
+				"text": "分类",
+				"iconPath": "static/tabbar/classiz-un.png", //未选中图片
+				"selectedIconPath": "static/tabbar/classiz.png" //选中图片
 			},
 			{
 				"pagePath": "pages/my/my",
