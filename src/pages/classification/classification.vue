@@ -2,28 +2,29 @@
 	<view class="container">
 		<!-- 固定在顶部的标题和分类选择栏 -->
 		<view class="header-fixed">
-			<!-- 顶部区域 - 添加搜索栏，与首页样式一致 -->
-			<view class="header-top">
-				<view class="search-bar">
-					<input type="text" placeholder="请输入搜索标签" v-model="searchText" @confirm="handleSearch" />
-					<button class="search-btn" @click="handleSearch">搜索</button>
-				</view>
-			</view>
-
-			<!-- 分类标签导航 -->
-			<scroll-view class="category-scroll" scroll-x show-scrollbar="false">
-				<view class="category-list">
-					<view 
-						v-for="(tag, index) in tags" 
-						:key="index" 
-						class="category-item" 
-						:class="{ active: currentTag === tag }"
-						@click="switchCategory(tag)"
-					>
-						{{ tag }}
+			<view class="header-main-container">
+				<view class="header-top">
+					<view class="search-bar">
+						<input type="text" placeholder="请输入搜索标签" v-model="searchText" @confirm="handleSearch" />
+						<button class="search-btn" @click="handleSearch">搜索</button>
 					</view>
 				</view>
-			</scroll-view>
+
+				<!-- 分类标签导航 -->
+				<scroll-view class="category-scroll" scroll-x show-scrollbar="false">
+					<view class="category-list">
+						<view 
+							v-for="(tag, index) in tags" 
+							:key="index" 
+							class="category-item" 
+							:class="{ active: currentTag === tag }"
+							@click="switchCategory(tag)"
+						>
+							{{ tag }}
+						</view>
+					</view>
+				</scroll-view>
+			</view>
 		</view>
 
 		<!-- 内容区域，添加上边距为header高度 -->
@@ -608,11 +609,11 @@ page {
 // 内容区域
 .content-area {
 	padding: 20rpx;
-	padding-top: 220rpx; // 增加顶部边距以适应搜索栏
+	padding-top: 340rpx; // 调整顶部间距
 	flex: 1;
 	
 	.article-list {
-		height: calc(100vh - 160rpx);
+		height: calc(100vh - 240rpx);
 	}
 	
 	// 文章卡片
@@ -778,5 +779,22 @@ page {
 		color: #fff;
 		height: 80rpx !important;
 	}
+}
+.header-main-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  padding: 20rpx 0;
+  background: #f5f5f5;
+}
+
+// 调整原有固定定位样式
+.header-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
 }
 </style>
