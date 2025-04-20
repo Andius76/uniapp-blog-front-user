@@ -68,15 +68,13 @@
 				"pagePath": "pages/publish/publish",
 				"text": "发布",
 				"iconPath": "static/tabbar/publish.png",
-				"selectedIconPath": "static/tabbar/publish.png",
-				"iconSize": "50px" // 调整图标尺寸
+				"selectedIconPath": "static/tabbar/publish.png"
 			},
 			{
 				"pagePath": "pages/message/message",
 				"text": "消息",
 				"iconPath": "static/tabbar/message-un.png",
-				"selectedIconPath": "static/tabbar/message.png",
-				"iconSize": "40px"
+				"selectedIconPath": "static/tabbar/message.png"
 			},
 			{
 				"pagePath": "pages/my/my",
