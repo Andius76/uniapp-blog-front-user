@@ -1,65 +1,68 @@
 <template>
 	<view class="profile-container">
-		<!-- 顶部用户信息区域 -->
-		<view class="user-header">
-			<view class="user-info">
-				<image class="avatar" :src="data.userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
-				<text class="nickname">{{ data.userInfo.nickname }}</text>
-			</view>
-			<view class="user-actions">
-				<view class="action-btn" @click="navigateTo('/pages/creation-center/creation-center')">
-					创作中心
+		<!-- 固定在顶部的用户信息和标签导航 -->
+		<view class="header-fixed">
+			<!-- 顶部用户信息区域 -->
+			<view class="user-header">
+				<view class="user-info">
+					<image class="avatar" :src="data.userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+					<text class="nickname">{{ data.userInfo.nickname }}</text>
 				</view>
-				<view class="settings-btn" @click="navigateTo('/pages/settings/settings')">
-					<uni-icons type="gear" size="24" color="#333"></uni-icons>
+				<view class="user-actions">
+					<view class="action-btn" @click="navigateTo('/pages/creation-center/creation-center')">
+						创作中心
+					</view>
+					<view class="settings-btn" @click="navigateTo('/pages/settings/settings')">
+						<uni-icons type="gear" size="24" color="#333"></uni-icons>
+					</view>
 				</view>
 			</view>
-		</view>
 
-		<!-- 用户数据统计区域 -->
-		<view class="user-stats">
-			<view class="stat-item" @click="navigateTo('/pages/follows/follows')">
-				<text class="stat-num">{{ data.userInfo.followCount }}</text>
-				<text class="stat-label">关注</text>
+			<!-- 用户数据统计区域 -->
+			<view class="user-stats">
+				<view class="stat-item" @click="navigateTo('/pages/follows/follows')">
+					<text class="stat-num">{{ data.userInfo.followCount }}</text>
+					<text class="stat-label">关注</text>
+				</view>
+				<view class="stat-divider">|</view>
+				<view class="stat-item" @click="navigateTo('/pages/followers/followers')">
+					<text class="stat-num">{{ data.userInfo.followerCount }}</text>
+					<text class="stat-label">被关注</text>
+				</view>
+				<view class="stat-divider">|</view>
+				<view class="stat-item" @click="navigateTo('/pages/collection/collection')">
+					<text class="stat-num">{{ data.userInfo.collectionCount }}</text>
+					<text class="stat-label">收藏</text>
+				</view>
+				<view class="stat-divider">|</view>
+				<view class="stat-item" @click="navigateTo('/pages/history/history')">
+					<text class="stat-num">{{ data.userInfo.historyCount }}</text>
+					<text class="stat-label">最近浏览</text>
+				</view>
 			</view>
-			<view class="stat-divider">|</view>
-			<view class="stat-item" @click="navigateTo('/pages/followers/followers')">
-				<text class="stat-num">{{ data.userInfo.followerCount }}</text>
-				<text class="stat-label">被关注</text>
-			</view>
-			<view class="stat-divider">|</view>
-			<view class="stat-item" @click="navigateTo('/pages/collection/collection')">
-				<text class="stat-num">{{ data.userInfo.collectionCount }}</text>
-				<text class="stat-label">收藏</text>
-			</view>
-			<view class="stat-divider">|</view>
-			<view class="stat-item" @click="navigateTo('/pages/history/history')">
-				<text class="stat-num">{{ data.userInfo.historyCount }}</text>
-				<text class="stat-label">最近浏览</text>
-			</view>
-		</view>
 
-		<!-- 个人简介区域 -->
-		<view class="user-bio">
-			<view class="bio-content">
-				<uni-icons type="person" size="20" color="#666"></uni-icons>
-				<text class="bio-text">个人简介：{{ data.userInfo.bio }}</text>
+			<!-- 个人简介区域 -->
+			<view class="user-bio">
+				<view class="bio-content">
+					<uni-icons type="person" size="20" color="#666"></uni-icons>
+					<text class="bio-text">个人简介：{{ data.userInfo.bio }}</text>
+				</view>
+				<view class="edit-profile-btn" @click="handleEditProfile">
+					编辑资料
+				</view>
 			</view>
-			<view class="edit-profile-btn" @click="handleEditProfile">
-				编辑资料
-			</view>
-		</view>
 
-		<!-- 标签页导航 -->
-		<view class="tabs-container">
-			<view 
-				v-for="(tab, index) in data.tabs" 
-				:key="index" 
-				class="tab-item" 
-				:class="{ active: data.currentTab === index }"
-				@click="switchTab(index)"
-			>
-				<text class="tab-text">{{ tab.name }}</text>
+			<!-- 标签页导航 -->
+			<view class="tabs-container">
+				<view 
+					v-for="(tab, index) in data.tabs" 
+					:key="index" 
+					class="tab-item" 
+					:class="{ active: data.currentTab === index }"
+					@click="switchTab(index)"
+				>
+					<text class="tab-text">{{ tab.name }}</text>
+				</view>
 			</view>
 		</view>
 
@@ -524,146 +527,155 @@ page {
 .profile-container {
 	display: flex;
 	flex-direction: column;
+	position: relative;
+	min-height: 100vh;
 	
-	// 用户头部信息
-	.user-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 30rpx;
-		background-color: #fff;
-		
-		.user-info {
-			display: flex;
-			align-items: center;
-			
-			.avatar {
-				width: 120rpx;
-				height: 120rpx;
-				border-radius: 50%;
-				margin-right: 20rpx;
-				background-color: #eee;
-			}
-			
-			.nickname {
-				font-size: 34rpx;
-				font-weight: bold;
-				color: #333;
-			}
-		}
-		
-		.user-actions {
-			display: flex;
-			align-items: center;
-			
-			.action-btn {
-				font-size: 26rpx;
-				color: #666;
-				margin-right: 30rpx;
-			}
-			
-			.settings-btn {
-				display: flex;
-				justify-content: center;
-				align-items: center;
-			}
-		}
-	}
-	
-	// 用户统计数据
-	.user-stats {
-		display: flex;
-		justify-content: space-around;
-		padding: 20rpx 0;
-		background-color: #fff;
-		border-top: 1rpx solid #f0f0f0;
-		
-		.stat-item {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			
-			.stat-num {
-				font-size: 32rpx;
-				color: #333;
-				font-weight: 500;
-			}
-			
-			.stat-label {
-				font-size: 24rpx;
-				color: #666;
-				margin-top: 6rpx;
-			}
-		}
-		
-		.stat-divider {
-			color: #ddd;
-			font-size: 24rpx;
-			align-self: center;
-		}
-	}
-	
-	// 个人简介
-	.user-bio {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 20rpx 30rpx;
-		background-color: #fff;
-		margin-top: 2rpx;
-		
-		.bio-content {
-			display: flex;
-			align-items: center;
-			
-			.bio-text {
-				font-size: 26rpx;
-				color: #666;
-				margin-left: 10rpx;
-			}
-		}
-		
-		.edit-profile-btn {
-			background-color: #f8f8f8;
-			color: #666;
-			font-size: 24rpx;
-			padding: 10rpx 30rpx;
-			border-radius: 30rpx;
-			border: 1rpx solid #eee;
-		}
-	}
-	
-	// 标签页导航
-	.tabs-container {
-		display: flex;
-		justify-content: space-around;
-		padding: 0 30rpx;
-		background-color: #fff;
-		margin-top: 2rpx;
-		position: sticky;
+	// 固定在顶部的用户信息和标签导航
+	.header-fixed {
+		position: fixed;
 		top: 0;
-		z-index: 10;
+		left: 0;
+		right: 0;
+		background-color: #f5f5f5;
+		z-index: 100;
 		
-		.tab-item {
-			padding: 20rpx 0;
-			font-size: 28rpx;
-			color: #666;
-			position: relative;
+		// 用户头部信息
+		.user-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 30rpx;
+			background-color: #fff;
 			
-			&.active {
-				color: #4361ee;
-				font-weight: bold;
+			.user-info {
+				display: flex;
+				align-items: center;
 				
-				&::after {
-					content: '';
-					position: absolute;
-					bottom: 0;
-					left: 50%;
-					transform: translateX(-50%);
-					width: 40rpx;
-					height: 4rpx;
-					background-color: #4361ee;
-					border-radius: 2rpx;
+				.avatar {
+					width: 120rpx;
+					height: 120rpx;
+					border-radius: 50%;
+					margin-right: 20rpx;
+					background-color: #eee;
+				}
+				
+				.nickname {
+					font-size: 34rpx;
+					font-weight: bold;
+					color: #333;
+				}
+			}
+			
+			.user-actions {
+				display: flex;
+				align-items: center;
+				
+				.action-btn {
+					font-size: 26rpx;
+					color: #666;
+					margin-right: 30rpx;
+				}
+				
+				.settings-btn {
+					display: flex;
+					justify-content: center;
+					align-items: center;
+				}
+			}
+		}
+		
+		// 用户统计数据
+		.user-stats {
+			display: flex;
+			justify-content: space-around;
+			padding: 20rpx 0;
+			background-color: #fff;
+			border-top: 1rpx solid #f0f0f0;
+			
+			.stat-item {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				
+				.stat-num {
+					font-size: 32rpx;
+					color: #333;
+					font-weight: 500;
+				}
+				
+				.stat-label {
+					font-size: 24rpx;
+					color: #666;
+					margin-top: 6rpx;
+				}
+			}
+			
+			.stat-divider {
+				color: #ddd;
+				font-size: 24rpx;
+				align-self: center;
+			}
+		}
+		
+		// 个人简介
+		.user-bio {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 20rpx 30rpx;
+			background-color: #fff;
+			margin-top: 2rpx;
+			
+			.bio-content {
+				display: flex;
+				align-items: center;
+				
+				.bio-text {
+					font-size: 26rpx;
+					color: #666;
+					margin-left: 10rpx;
+				}
+			}
+			
+			.edit-profile-btn {
+				background-color: #f8f8f8;
+				color: #666;
+				font-size: 24rpx;
+				padding: 10rpx 30rpx;
+				border-radius: 30rpx;
+				border: 1rpx solid #eee;
+			}
+		}
+		
+		// 标签页导航
+		.tabs-container {
+			display: flex;
+			justify-content: space-around;
+			padding: 0 30rpx;
+			background-color: #fff;
+			margin-top: 2rpx;
+			
+			.tab-item {
+				padding: 20rpx 0;
+				font-size: 28rpx;
+				color: #666;
+				position: relative;
+				
+				&.active {
+					color: #4361ee;
+					font-weight: bold;
+					
+					&::after {
+						content: '';
+						position: absolute;
+						bottom: 0;
+						left: 50%;
+						transform: translateX(-50%);
+						width: 40rpx;
+						height: 4rpx;
+						background-color: #4361ee;
+						border-radius: 2rpx;
+					}
 				}
 			}
 		}
@@ -673,6 +685,8 @@ page {
 	.content-list {
 		flex: 1;
 		padding-top: 2rpx;
+		margin-top: 370rpx; // 为固定的header留出空间，根据实际高度调整
+		
 		// 帖子项
 		.post-item {
 			background-color: #fff;
