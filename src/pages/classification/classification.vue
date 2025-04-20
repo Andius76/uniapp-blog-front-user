@@ -582,7 +582,7 @@ page {
 	.category-scroll {
 		width: 100%;
 		white-space: nowrap;
-		background-color: #fff;
+		background-color: #f5f5f5;
 		padding: 10rpx 0;
 		position: relative;
 		z-index: 100;
