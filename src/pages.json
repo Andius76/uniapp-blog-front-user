@@ -4,7 +4,7 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationBarTitleText": "首页"
 			}
 		},
 		{
@@ -63,6 +63,20 @@
 				"text": "分类",
 				"iconPath": "static/tabbar/classiz-un.png", //未选中图片
 				"selectedIconPath": "static/tabbar/classiz.png" //选中图片
+			},
+			{
+				"pagePath": "pages/publish/publish",
+				"text": "发布",
+				"iconPath": "static/tabbar/publish-un.png",
+				"selectedIconPath": "static/tabbar/publish.png",
+				"iconSize": "50px" // 调整图标尺寸
+			},
+			{
+				"pagePath": "pages/message/message",
+				"text": "消息",
+				"iconPath": "static/tabbar/message-un.png",
+				"selectedIconPath": "static/tabbar/message.png",
+				"iconSize": "40px"
 			},
 			{
 				"pagePath": "pages/my/my",
