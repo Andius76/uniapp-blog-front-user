@@ -678,9 +678,8 @@
 	// 内容区域
 	.content-area {
 		padding: 20rpx;
-		padding-top: 170rpx; // 增加上边距以避免导航栏覆盖文章
+		padding-top: 165rpx; // 增加上边距以避免导航栏覆盖文章
 		flex: 1;
-
 		.article-list {
 			height: calc(100vh - 225rpx);
 		}
@@ -690,6 +689,7 @@
 			background-color: #fff;
 			border-radius: 20rpx;
 			padding: 30rpx;
+			margin-top: 20rpx;
 			margin-bottom: 20rpx;
 			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 
