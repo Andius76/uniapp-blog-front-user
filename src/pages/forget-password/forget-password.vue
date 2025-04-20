@@ -303,7 +303,9 @@ const handleSubmit = () => {
  * 返回登录页面
  */
 const goBack = () => {
-	uni.navigateBack();
+	uni.navigateTo({
+		url: '/pages/login/login'
+	});
 };
 </script>
 
