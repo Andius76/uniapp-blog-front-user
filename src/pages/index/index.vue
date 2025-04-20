@@ -591,7 +591,7 @@
 		left: 0;
 		right: 0;
 		background-color: #f5f5f5;
-		padding: 10rpx;
+		padding: 5rpx;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
 
@@ -645,7 +645,7 @@
 		// 导航菜单
 		.nav-menu {
 			display: flex;
-			padding: 20rpx 30rpx 5rpx;
+			padding: 10rpx 30rpx 5rpx;
 			background-color: #f5f5f5;
 
 			.nav-item {
@@ -677,8 +677,8 @@
 
 	// 内容区域
 	.content-area {
-		padding: 35rpx;
-		padding-top: 185rpx; // 增加上边距以避免导航栏覆盖文章
+		padding: 20rpx;
+		padding-top: 170rpx; // 增加上边距以避免导航栏覆盖文章
 		flex: 1;
 
 		.article-list {
@@ -690,7 +690,6 @@
 			background-color: #fff;
 			border-radius: 20rpx;
 			padding: 30rpx;
-			margin-top: 15rpx;
 			margin-bottom: 20rpx;
 			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 
