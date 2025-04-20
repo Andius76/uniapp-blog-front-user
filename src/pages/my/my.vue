@@ -396,6 +396,9 @@ const handleCollect = (index) => {
 	});
 	
 	// TODO: 实际收藏API调用
+	// api.collectArticle(post.id, post.isCollected).then(res => {
+	//   console.log('收藏状态已更新');
+	// });
 };
 
 /**
@@ -404,7 +407,13 @@ const handleCollect = (index) => {
  */
 const handleComment = (index) => {
 	const postId = data.contentList[index].id;
-	navigateTo(`/pages/comment/comment?id=${postId}`);
+	uni.showToast({
+		title: '打开评论列表: ID=' + postId,
+		icon: 'none'
+	});
+	
+	// TODO: 跳转到评论页面
+	// navigateTo(`/pages/comment/comment?id=${postId}`);
 };
 
 /**
@@ -422,6 +431,9 @@ const handleLike = (index) => {
 	});
 	
 	// TODO: 实际点赞API调用
+	// api.likeArticle(post.id, post.isLiked).then(res => {
+	//   console.log('点赞状态已更新');
+	// });
 };
 
 /**
@@ -436,7 +448,59 @@ const handleEditProfile = () => {
  * @param {String} url - 导航地址
  */
 const navigateTo = (url) => {
-	uni.navigateTo({ url });
+	// 检查页面是否存在，这里只是模拟
+	if (url.includes('creation-center')) {
+		uni.showToast({
+			title: '进入创作中心',
+			icon: 'none'
+		});
+		return;
+	} else if (url.includes('settings')) {
+		uni.showToast({
+			title: '进入设置页面',
+			icon: 'none'
+		});
+		return;
+	} else if (url.includes('follows')) {
+		uni.showToast({
+			title: '查看我的关注',
+			icon: 'none'
+		});
+		return;
+	} else if (url.includes('followers')) {
+		uni.showToast({
+			title: '查看我的粉丝',
+			icon: 'none'
+		});
+		return;
+	} else if (url.includes('collection')) {
+		uni.showToast({
+			title: '查看我的收藏',
+			icon: 'none'
+		});
+		return;
+	} else if (url.includes('history')) {
+		uni.showToast({
+			title: '查看浏览历史',
+			icon: 'none'
+		});
+		return;
+	} else if (url.includes('edit-profile')) {
+		uni.showToast({
+			title: '编辑个人资料',
+			icon: 'none'
+		});
+		return;
+	} else if (url.includes('article-detail')) {
+		uni.showToast({
+			title: '查看文章详情: ' + url.split('=')[1],
+			icon: 'none'
+		});
+		return;
+	}
+	
+	// 实际跳转，当后端连接后使用
+	// uni.navigateTo({ url });
 };
 
 // 页面初始化
