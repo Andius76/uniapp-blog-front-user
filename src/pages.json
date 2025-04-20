@@ -67,7 +67,7 @@
 			{
 				"pagePath": "pages/publish/publish",
 				"text": "发布",
-				"iconPath": "static/tabbar/publish-un.png",
+				"iconPath": "static/tabbar/publish.png",
 				"selectedIconPath": "static/tabbar/publish.png",
 				"iconSize": "50px" // 调整图标尺寸
 			},
