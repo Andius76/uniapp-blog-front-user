@@ -65,12 +65,6 @@
 				"selectedIconPath": "static/tabbar/classiz.png" //选中图片
 			},
 			{
-				"pagePath": "pages/publish/publish",
-				"text": "发布",
-				"iconPath": "static/tabbar/publish.png",
-				"selectedIconPath": "static/tabbar/publish.png"
-			},
-			{
 				"pagePath": "pages/message/message",
 				"text": "消息",
 				"iconPath": "static/tabbar/message-un.png",
