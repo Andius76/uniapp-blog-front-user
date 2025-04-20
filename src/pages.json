@@ -25,6 +25,25 @@
 			}
 		}
 	],
+	"tabBar": {
+		"color": "#7A7E83",
+		"selectedColor": "#4361ee",
+		"borderStyle": "black",
+		"backgroundColor": "#ffffff",
+		"list": [{
+				"pagePath": "pages/index/index",
+				"iconPath": "/src/static/tabbar/index-un.png",
+				"selectedIconPath": "/src/static/tabbar/index.png",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/my/my",
+				"text": "我的",
+				"iconPath": "/src/static/tabbar/my-un.png", //未选中图片
+				"selectedIconPath": "/src/static/tabbar/my.png" //选中图片
+			}
+		]
+	},
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "uni-app",
