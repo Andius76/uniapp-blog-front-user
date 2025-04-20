@@ -3,6 +3,7 @@
 		<!-- 固定在顶部的标题和分类选择栏 -->
 		<view class="header-fixed">
 			<view class="header-main-container">
+				<!-- 分类滑块容器 -->
 				<view class="header-top">
 					<view class="search-bar">
 						<input type="text" placeholder="请输入搜索标签" v-model="searchText" @confirm="handleSearch" />
@@ -583,6 +584,9 @@ page {
 		white-space: nowrap;
 		background-color: #fff;
 		padding: 10rpx 0;
+		position: relative;
+		z-index: 100;
+
 		
 		.category-list {
 			display: inline-flex;
@@ -609,7 +613,7 @@ page {
 // 内容区域
 .content-area {
 	padding: 20rpx;
-	padding-top: 230rpx; // 调整顶部间距
+	padding-top: 212rpx; // 调整顶部间距适应新布局
 	flex: 1;
 	
 	.article-list {
@@ -783,9 +787,11 @@ page {
 .header-main-container {
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
-  padding: 20rpx 0 0 0;
+  gap: 10rpx;
+  padding: 15rpx 0 0 0;
   background: #f5f5f5;
+  position: relative;
+  z-index: 99;
 }
 
 // 调整原有固定定位样式
