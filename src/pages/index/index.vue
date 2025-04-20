@@ -644,6 +644,10 @@ const switchNav = (index) => {
 		
 		// 发表按钮
 		.publish-btn {
+			height: 60rpx;
+			line-height: 60rpx;
+			padding: 0 30rpx;
+			font-size: 26rpx;
 			margin-left: 20rpx;
 		}
 		
