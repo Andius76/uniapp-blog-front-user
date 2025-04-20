@@ -645,7 +645,7 @@
 		// 导航菜单
 		.nav-menu {
 			display: flex;
-			padding: 20rpx 30rpx 15rpx;
+			padding: 20rpx 30rpx 5rpx;
 			background-color: #f5f5f5;
 			margin-bottom: 5rpx;
 
