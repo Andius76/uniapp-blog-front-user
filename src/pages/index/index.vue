@@ -68,6 +68,11 @@
 							<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
 							<text>{{article.commentCount}}</text>
 						</view>
+						<view class="action-item" @click="handleCollect(index)">
+							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" 
+							:color="article.isCollected ? '#ffc107' : '#666'"></uni-icons>
+							<text :class="{'collected': article.isCollected}">{{article.collectCount}}</text>
+						</view>
 						<view class="action-item" @click="handleLike(index)">
 							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
 								:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
@@ -133,6 +138,8 @@
 	const mockArticles = [{
 			id: 1,
 			title: '前端学习路线图 - Vue3新特性解析',
+			collectCount: 45,
+			isCollected: false,
 			summary: 'Vue3带来了Composition API、Teleport、Fragments等新特性，本文详细介绍这些新特性的使用方法和优势',
 			imageType: 'single',
 			coverImg: '/static/images/default.png',
@@ -148,6 +155,8 @@
 		{
 			id: 2,
 			title: 'uniapp跨平台开发实战经验分享',
+			collectCount: 32,
+			isCollected: true,
 			summary: '使用uniapp开发跨平台应用的实战经验，包括性能优化、组件复用、条件编译等多个方面的技巧',
 			imageType: 'multi',
 			images: [
@@ -569,6 +578,16 @@
 		//   pageSize: data.pageSize
 		// }).then(/* 处理响应 */);
 	};
+
+	const handleCollect = (index) => {
+		const article = data.articleList[index];
+		article.isCollected = !article.isCollected;
+		article.collectCount += article.isCollected ? 1 : -1;
+		uni.showToast({
+			title: article.isCollected ? '收藏成功' : '已取消收藏',
+			icon: article.isCollected ? 'success' : 'none'
+		});
+	};
 </script>
 
 <style lang="scss">
@@ -825,5 +844,9 @@
 		&-inner {
 			color: #fff;
 		}
+	}
+
+	.collected {
+		color: #ffc107;
 	}
 </style>
