@@ -17,7 +17,13 @@
     </view>
 
     <!-- 消息列表 -->
-    <scroll-view scroll-y class="message-list">
+    <scroll-view 
+      scroll-y 
+      class="message-list" 
+      @scrolltolower="loadMore" 
+      refresher-enabled 
+      :refresher-triggered="isRefreshing" 
+      @refresherrefresh="refreshList">
       <!-- 消息分组 -->
       <block v-for="(group, groupIndex) in messageGroups" :key="groupIndex">
         <!-- 消息组列表 -->
@@ -41,6 +47,11 @@
         <uni-icons type="info" size="50" color="#ddd"></uni-icons>
         <text>暂无消息</text>
       </view>
+
+      <!-- 加载状态 -->
+      <view v-if="isLoading" class="loading-state">
+        <text>加载中...</text>
+      </view>
     </scroll-view>
   </view>
 </template>
@@ -52,6 +63,12 @@ import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue
 
 // 当前选中的选项卡
 const currentTab = ref(0);
+// 刷新和加载状态
+const isRefreshing = ref(false);
+const isLoading = ref(false);
+const noMoreData = ref(false);
+const currentPage = ref(1);
+const pageSize = 5; // 每页5条消息
 
 // 选项卡数据
 const tabs = reactive([
@@ -292,6 +309,126 @@ const allMessages = reactive({
 });
 
 /**
+ * 加载消息列表
+ * TODO: 实际项目中应替换为API调用
+ */
+const loadMessages = () => {
+  // 如果已经没有更多数据或正在加载中，则不处理
+  if (noMoreData.value || isLoading.value) return;
+
+  isLoading.value = true;
+
+  // 模拟API请求延迟
+  setTimeout(() => {
+    const tabType = tabs[currentTab.value].type;
+    
+    if (allMessages[tabType]) {
+      // 复制对应类型的消息数据
+      Object.keys(messageGroups).forEach(key => {
+        messageGroups.splice(0, messageGroups.length);
+      });
+      
+      // 计算本次应加载的消息数据
+      const endIndex = Math.min(currentPage.value * pageSize, allMessages[tabType].length);
+      const startIndex = 0; // 由于我们是替换而非追加，所以从0开始
+      
+      // 获取当前页的数据
+      const pageData = allMessages[tabType].slice(startIndex, endIndex);
+      
+      // 添加到消息列表
+      pageData.forEach(group => {
+        messageGroups.push({
+          type: group.type,
+          messages: [...group.messages]
+        });
+      });
+      
+      // 更新页码
+      currentPage.value++;
+      
+      // 如果获取的数据比总数少，说明已加载完全部数据
+      if (endIndex >= allMessages[tabType].length) {
+        noMoreData.value = true;
+      }
+    }
+    
+    isLoading.value = false;
+    
+    // 如果是刷新状态，结束刷新
+    if (isRefreshing.value) {
+      isRefreshing.value = false;
+    }
+  }, 800);
+  
+  // TODO: 替换为实际API调用
+  // api.getMessages({
+  //   page: currentPage.value,
+  //   pageSize: pageSize,
+  //   type: tabs[currentTab.value].type
+  // }).then(res => {
+  //   // 处理响应数据
+  //   if (res.data.length > 0) {
+  //     messageGroups.push(...res.data);
+  //     currentPage.value++;
+  //     noMoreData.value = res.data.length < pageSize;
+  //   } else {
+  //     noMoreData.value = true;
+  //   }
+  //   isLoading.value = false;
+  //   if (isRefreshing.value) isRefreshing.value = false;
+  // }).catch(err => {
+  //   console.error('获取消息列表失败', err);
+  //   isLoading.value = false;
+  //   if (isRefreshing.value) isRefreshing.value = false;
+  // });
+};
+
+/**
+ * 刷新列表
+ */
+const refreshList = () => {
+  // 设置刷新状态
+  isRefreshing.value = true;
+
+  // 重置数据
+  Object.keys(messageGroups).forEach(key => {
+    messageGroups.splice(0, messageGroups.length);
+  });
+  currentPage.value = 1;
+  noMoreData.value = false;
+
+  // 重新加载
+  loadMessages();
+
+  // 提示用户
+  uni.showToast({
+    title: '刷新成功',
+    icon: 'success',
+    duration: 1500
+  });
+};
+
+/**
+ * 加载更多
+ */
+const loadMore = () => {
+  if (!noMoreData.value) {
+    uni.showToast({
+      title: '加载更多消息',
+      icon: 'none',
+      duration: 500
+    });
+    loadMessages();
+  } else {
+    uni.showToast({
+      title: '没有更多消息了',
+      icon: 'none',
+      duration: 1500
+    });
+  }
+};
+
+/**
  * 切换选项卡
  * @param {Number} index - 选项卡索引
  */
@@ -300,36 +437,25 @@ const switchTab = (index) => {
   
   currentTab.value = index;
   
-  // 根据当前选项卡加载对应的消息数据
-  const tabType = tabs[index].type;
-  
-  // 复制对应类型的消息数据
+  // 重置加载状态
   Object.keys(messageGroups).forEach(key => {
     messageGroups.splice(0, messageGroups.length);
   });
-  
-  if (allMessages[tabType]) {
-    allMessages[tabType].forEach(group => {
-      messageGroups.push({
-        type: group.type,
-        messages: [...group.messages]
-      });
-    });
-  }
+  currentPage.value = 1;
+  noMoreData.value = false;
   
   // 显示加载提示
-  uni.showToast({
-    title: `加载${tabs[index].name}消息`,
-    icon: 'none',
-    duration: 1000
+  uni.showLoading({
+    title: `加载${tabs[index].name}消息`
   });
   
-  // TODO: 实际项目中可以调用API获取消息数据
-  // api.getMessages({
-  //   type: tabType
-  // }).then(res => {
-  //   // 处理返回的消息数据
-  // });
+  // 加载新选项卡的消息
+  loadMessages();
+  
+  // 隐藏加载提示
+  setTimeout(() => {
+    uni.hideLoading();
+  }, 500);
 };
 
 /**
@@ -382,7 +508,7 @@ const readMessage = (message) => {
 // 页面初始化
 onMounted(() => {
   // 加载默认选项卡的消息
-  switchTab(0);
+  loadMessages();
   
   // TODO: 后续可以添加实时消息通知的功能
 });
@@ -454,6 +580,16 @@ page {
   // 消息列表样式
   .message-list {
     margin-top: 120rpx; // 为固定的tabs-container留出空间
+    
+    // 加载状态
+    .loading-state {
+      text-align: center;
+      font-size: 24rpx;
+      color: #999;
+      margin: 20rpx 0;
+      padding: 20rpx 0;
+    }
+    
     .message-item {
       display: flex;
       background-color: #fff;
