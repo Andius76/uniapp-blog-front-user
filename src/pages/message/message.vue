@@ -523,7 +523,7 @@ page {
 .message-container {
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 20px 10px;
   
   // 顶部选项卡样式
   .tabs-container {
@@ -666,4 +666,12 @@ page {
     }
   }
 }
+// 全局样式覆盖
+.uni-scroll-view-refresh {
+		background-color: #f5f5f5 !important;
+
+		&-inner {
+			color: #fff;
+		}
+	}
 </style>

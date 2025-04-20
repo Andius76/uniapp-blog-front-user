@@ -689,7 +689,7 @@
 			background-color: #fff;
 			border-radius: 20rpx;
 			padding: 30rpx;
-			margin-top: 20rpx;
+			margin-top: 5rpx;
 			margin-bottom: 20rpx;
 			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 
