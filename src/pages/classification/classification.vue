@@ -2,8 +2,12 @@
 	<view class="container">
 		<!-- 固定在顶部的标题和分类选择栏 -->
 		<view class="header-fixed">
+			<!-- 顶部区域 - 添加搜索栏，与首页样式一致 -->
 			<view class="header-top">
-				<text class="page-title">文章分类</text>
+				<view class="search-bar">
+					<input type="text" placeholder="请输入搜索标签" v-model="searchText" @confirm="handleSearch" />
+					<button class="search-btn" @click="handleSearch">搜索</button>
+				</view>
 			</view>
 
 			<!-- 分类标签导航 -->
@@ -101,6 +105,9 @@
 import { reactive, ref, onMounted } from 'vue';
 // 导入uni-icons组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+
+// 搜索相关
+const searchText = ref('');
 
 // 可用的标签分类
 const tags = ref([
@@ -471,6 +478,37 @@ const toggleFollow = (index) => {
 	// api.followAuthor(author.id, author.isFollowed);
 };
 
+/**
+ * 处理搜索
+ */
+const handleSearch = () => {
+	if (!searchText.value.trim()) {
+		uni.showToast({
+			title: '请输入搜索内容',
+			icon: 'none'
+		});
+		return;
+	}
+	
+	// 模拟搜索
+	uni.showToast({
+		title: '搜索标签: ' + searchText.value,
+		icon: 'none'
+	});
+	
+	// TODO: 实际搜索标签API调用
+	// 可以添加标签到tags数组中，或者直接切换到匹配的标签分类
+	// 例如：如果搜索的标签存在，可以直接切换到该标签
+	// const searchedTag = searchText.value.trim();
+	// if (tags.value.includes(searchedTag)) {
+	//   switchCategory(searchedTag);
+	// } else {
+	//   // 可以添加到tags中并切换
+	//   tags.value.push(searchedTag);
+	//   switchCategory(searchedTag);
+	// }
+};
+
 // 页面初始化
 onMounted(() => {
 	// 加载文章列表
@@ -505,13 +543,36 @@ page {
 	.header-top {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		padding: 20rpx;
+		padding: 15rpx 20rpx;
 		
-		.page-title {
-			font-size: 36rpx;
-			font-weight: bold;
-			color: #333;
+		// 搜索栏样式
+		.search-bar {
+			display: flex;
+			background: #fff;
+			border-radius: 40rpx;
+			overflow: hidden;
+			padding: 0 20rpx;
+			flex: 1;
+			box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+			
+			input {
+				flex: 1;
+				height: 80rpx;
+				padding: 0 20rpx;
+				font-size: 28rpx;
+			}
+		}
+		
+		// 搜索按钮
+		.search-btn {
+			height: 60rpx;
+			line-height: 60rpx;
+			margin: 10rpx 0;
+			background-color: #4361ee;
+			color: #fff;
+			font-size: 26rpx;
+			border-radius: 30rpx;
+			padding: 0 30rpx;
 		}
 	}
 	
@@ -547,7 +608,7 @@ page {
 // 内容区域
 .content-area {
 	padding: 20rpx;
-	padding-top: 160rpx; // 为固定的header留出空间
+	padding-top: 220rpx; // 增加顶部边距以适应搜索栏
 	flex: 1;
 	
 	.article-list {
