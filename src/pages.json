@@ -1,11 +1,6 @@
 {
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
-		{
-			"path": "pages/login/login",
-			"style": {
-				"navigationBarTitleText": "登录"
-			}
-		},
+
 		{
 			"path": "pages/index/index",
 			"style": {
@@ -13,9 +8,21 @@
 			}
 		},
 		{
+			"path": "pages/my/my",
+			"style": {
+				"navigationBarTitleText": "个人信息"
+			}
+		},
+		{
 			"path": "pages/register/register",
 			"style": {
 				"navigationBarTitleText": "注册"
+			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录"
 			}
 		},
 		{
@@ -26,21 +33,18 @@
 		}
 	],
 	"tabBar": {
-		"color": "#7A7E83",
-		"selectedColor": "#4361ee",
-		"borderStyle": "black",
-		"backgroundColor": "#ffffff",
 		"list": [{
 				"pagePath": "pages/index/index",
-				"iconPath": "/src/static/tabbar/index-un.png",
-				"selectedIconPath": "/src/static/tabbar/index.png",
-				"text": "首页"
+				"iconPath": "static/tabbar/index-un.png",
+				"selectedIconPath": "static/tabbar/index.png",
+				"text": "首页",
+				"enablePullDownRefresh": true
 			},
 			{
 				"pagePath": "pages/my/my",
 				"text": "我的",
-				"iconPath": "/src/static/tabbar/my-un.png", //未选中图片
-				"selectedIconPath": "/src/static/tabbar/my.png" //选中图片
+				"iconPath": "static/tabbar/my-un.png", //未选中图片
+				"selectedIconPath": "static/tabbar/my.png" //选中图片
 			}
 		]
 	},
