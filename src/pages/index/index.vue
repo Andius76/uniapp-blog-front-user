@@ -842,7 +842,7 @@
 		background-color: #f5f5f5 !important;
 
 		&-inner {
-			color: #fff;
+			color: #b82222;
 		}
 	}
 
