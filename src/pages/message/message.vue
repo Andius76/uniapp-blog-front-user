@@ -67,7 +67,7 @@ const tabs = reactive([
   },
   {
     name: '订阅了我',
-    icon: 'bookmark',
+    icon: 'plus',
     type: 'subscribe'
   }
 ]);
@@ -406,6 +406,12 @@ page {
     padding: 20rpx 0;
     background-color: #fff;
     box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    margin-top: 0;
     
     .tab-item {
       display: flex;
@@ -447,7 +453,7 @@ page {
   
   // 消息列表样式
   .message-list {
-	margin-top: 20rpx;
+    margin-top: 120rpx; // 为固定的tabs-container留出空间
     .message-item {
       display: flex;
       background-color: #fff;
