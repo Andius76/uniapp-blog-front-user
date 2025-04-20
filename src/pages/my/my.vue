@@ -331,11 +331,7 @@ const refreshList = () => {
 	loadContent();
 	
 	// 提示用户
-	uni.showToast({
-		title: '刷新成功',
-		icon: 'success',
-		duration: 1500
-	});
+	
 };
 
 /**
