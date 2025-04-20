@@ -88,18 +88,19 @@
 
 					<view class="article-actions">
 						<view class="action-item" @click="handleShare(index)">
-							<image class="action-icon" src="/static/images/share.png"></image>
+							<uni-icons type="redo-filled" size="20" color="#666"></uni-icons>
 							<text>分享</text>
 						</view>
 						<view class="action-item" @click="handleComment(index)">
-							<image class="action-icon" src="/static/images/comment.png"></image>
+							<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
 							<text>{{article.commentCount}}</text>
 						</view>
 						<view class="action-item" @click="handleLike(index)">
-							<image 
-								class="action-icon"
-								:src="article.isLiked ? '/static/images/like-filled.png' : '/static/images/like.png'"
-							></image>
+							<uni-icons 
+								:type="article.isLiked ? 'heart-filled' : 'heart'" 
+								size="20" 
+								:color="article.isLiked ? '#ff6b6b' : '#666'"
+							></uni-icons>
 							<text :class="{'liked': article.isLiked}">{{article.likeCount}}</text>
 						</view>
 					</view>
@@ -118,6 +119,8 @@
 
 <script setup>
 import { reactive, onMounted } from 'vue';
+// 导入uni-icons组件
+import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 
 // 使用reactive统一管理数据
 const data = reactive({
@@ -802,9 +805,7 @@ const switchNav = (index) => {
 					display: flex;
 					align-items: center;
 					
-					.action-icon {
-						width: 40rpx;
-						height: 40rpx;
+					.uni-icons {
 						margin-right: 10rpx;
 					}
 					
