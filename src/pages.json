@@ -13,17 +13,15 @@
 			}
 		},
 		{
-			"path" : "pages/register/register",
-			"style" : 
-			{
-				"navigationBarTitleText" : "注册"
+			"path": "pages/register/register",
+			"style": {
+				"navigationBarTitleText": "注册"
 			}
 		},
 		{
-			"path" : "pages/forget-password/forget-password",
-			"style" : 
-			{
-				"navigationBarTitleText" : "忘记密码"
+			"path": "pages/forget-password/forget-password",
+			"style": {
+				"navigationBarTitleText": "忘记密码"
 			}
 		}
 	],
