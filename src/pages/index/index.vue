@@ -12,6 +12,10 @@
 					:style="{ borderRadius: '50rpx', padding: '0 30rpx' }">
 					发表
 				</button>
+				<button type="primary" size="mini" class="publish-btn" @click="handleTest"
+					:style="{ borderRadius: '50rpx', padding: '0 30rpx' }">
+					发表
+				</button>
 			</view>
 
 			<!-- 导航菜单 -->
@@ -429,6 +433,11 @@
 	const handlePost = () => {
 		uni.navigateTo({
 			url: '/pages/publish/publish'
+		});
+	};
+	const handleTest = () => {
+		uni.navigateTo({
+			url: '/pages/test/test'
 		});
 	};
 
