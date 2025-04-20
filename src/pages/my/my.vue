@@ -610,7 +610,7 @@ page {
 		align-items: center;
 		padding: 20rpx 30rpx;
 		background-color: #fff;
-		margin-top: 20rpx;
+		margin-top: 2rpx;
 		
 		.bio-content {
 			display: flex;
@@ -639,7 +639,7 @@ page {
 		justify-content: space-around;
 		padding: 0 30rpx;
 		background-color: #fff;
-		margin-top: 20rpx;
+		margin-top: 2rpx;
 		position: sticky;
 		top: 0;
 		z-index: 10;
@@ -672,14 +672,13 @@ page {
 	// 内容列表
 	.content-list {
 		flex: 1;
-		padding: 20rpx;
-		
+		padding-top: 2rpx;
 		// 帖子项
 		.post-item {
 			background-color: #fff;
 			border-radius: 12rpx;
 			padding: 30rpx;
-			margin-bottom: 20rpx;
+			margin: 0 15rpx 20rpx 15rpx;
 			box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 			
 			// 帖子头部
