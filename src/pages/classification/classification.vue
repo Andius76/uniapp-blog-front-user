@@ -609,7 +609,7 @@ page {
 // 内容区域
 .content-area {
 	padding: 20rpx;
-	padding-top: 340rpx; // 调整顶部间距
+	padding-top: 230rpx; // 调整顶部间距
 	flex: 1;
 	
 	.article-list {
@@ -784,7 +784,7 @@ page {
   display: flex;
   flex-direction: column;
   gap: 20rpx;
-  padding: 20rpx 0;
+  padding: 20rpx 0 0 0;
   background: #f5f5f5;
 }
 
