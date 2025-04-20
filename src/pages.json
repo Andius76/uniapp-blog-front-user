@@ -48,6 +48,13 @@
 			"style": {
 				"navigationBarTitleText": "忘记密码"
 			}
+		},
+		{
+			"path" : "pages/test/test",
+			"style" : 
+			{
+				"navigationBarTitleText" : "测试跳转"
+			}
 		}
 	],
 	"tabBar": {
