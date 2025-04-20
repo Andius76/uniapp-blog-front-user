@@ -1,155 +1,444 @@
 <template>
-	<view class="message-container">
-	  <!-- 顶部标签栏 -->
-	  <view class="tab-bar">
-		<view 
-		  v-for="(tab, index) in data.tabs" 
-		  :key="index"
-		  class="tab-item"
-		  :class="{ active: data.currentTab === index }"
-		  @click="data.currentTab = index"
-		>
-		  <view class="tab-icon">
-			<uni-icons :type="tab.icon" size="24" :color="data.currentTab === index ? '#2979ff' : '#666'"></uni-icons>
-		  </view>
-		  <text>{{ tab.title }}</text>
-		</view>
-	  </view>
-  
-	  <!-- 消息列表 -->
-	  <scroll-view scroll-y class="message-list">
-		<view class="message-item system" v-for="(item, index) in data.messages" :key="index">
-		  <view class="message-icon">
-			<uni-icons :type="item.type === 'system' ? 'notification' : 'person'" size="32" color="#666"></uni-icons>
-		  </view>
-		  <view class="message-content">
-			<view class="message-title">{{ item.title }}</view>
-			<view class="message-desc">{{ item.description }}</view>
-			<view class="message-time">{{ item.time }}</view>
-		  </view>
-		  <view class="message-badge" v-if="item.unread">{{ item.unread }}</view>
-		</view>
-	  </scroll-view>
-	</view>
-  </template>
-  
-  <script setup>
-  import { reactive } from 'vue'
-  
-  // 页面数据
-  const data = reactive({
-	// 顶部标签数据
-	currentTab: 0,
-	tabs: [
-	  { title: '点赞了我', icon: 'heart' },
-	  { title: '收藏了我', icon: 'star' },
-	  { title: '订阅了我', icon: 'plusempty' }
-	],
-	// 消息列表数据
-	messages: [
-	  {
-		type: 'system',
-		title: '系统通知',
-		description: '系统更新',
-		time: '2025-4-20',
-		unread: 1
-	  },
-	  {
-		type: 'user',
-		title: '账号消息',
-		description: '欢迎xxxx，完善资料...',
-		time: '2025-4-20',
-		unread: 2
-	  }
-	]
-  })
-  </script>
-  
-  <style lang="scss">
-  .message-container {
-	min-height: 100vh;
-	background-color: #f5f5f5;
-	
-	// 顶部标签栏样式
-	.tab-bar {
-	  display: flex;
-	  justify-content: space-around;
-	  align-items: center;
-	  background-color: #ffffff;
-	  padding: 20rpx 0;
-	  border-bottom: 1rpx solid #eee;
-	  
-	  .tab-item {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 10rpx 30rpx;
-		
-		&.active {
-		  color: #2979ff;
-		}
-		
-		.tab-icon {
-		  margin-bottom: 6rpx;
-		}
-		
-		text {
-		  font-size: 24rpx;
-		}
-	  }
-	}
-	
-	// 消息列表样式
-	.message-list {
-	  padding: 20rpx;
-	  
-	  .message-item {
-		display: flex;
-		align-items: center;
-		background-color: #ffffff;
-		padding: 30rpx;
-		border-radius: 12rpx;
-		margin-bottom: 20rpx;
-		position: relative;
-		
-		.message-icon {
-		  margin-right: 20rpx;
-		}
-		
-		.message-content {
-		  flex: 1;
-		  
-		  .message-title {
-			font-size: 28rpx;
-			color: #333;
-			margin-bottom: 8rpx;
-		  }
-		  
-		  .message-desc {
-			font-size: 24rpx;
-			color: #666;
-			margin-bottom: 8rpx;
-		  }
-		  
-		  .message-time {
-			font-size: 22rpx;
-			color: #999;
-		  }
-		}
-		
-		.message-badge {
-		  position: absolute;
-		  top: 20rpx;
-		  right: 20rpx;
-		  background-color: #ff5a5f;
-		  color: #fff;
-		  font-size: 20rpx;
-		  padding: 4rpx 12rpx;
-		  border-radius: 20rpx;
-		  min-width: 32rpx;
-		  text-align: center;
-		}
-	  }
-	}
+  <view class="message-container">
+    <!-- 顶部选项卡 -->
+    <view class="tabs-container">
+      <view 
+        v-for="(tab, index) in tabs" 
+        :key="index" 
+        class="tab-item" 
+        :class="{ active: currentTab === index }"
+        @click="switchTab(index)"
+      >
+        <view class="tab-icon">
+          <uni-icons :type="tab.icon" size="24" :color="currentTab === index ? '#4361ee' : '#666'"></uni-icons>
+        </view>
+        <text class="tab-text">{{ tab.name }}</text>
+      </view>
+    </view>
+
+    <!-- 消息列表 -->
+    <scroll-view scroll-y class="message-list">
+      <!-- 消息分组 -->
+      <block v-for="(group, groupIndex) in messageGroups" :key="groupIndex">
+        <!-- 消息组列表 -->
+        <view v-for="(message, messageIndex) in group.messages" :key="messageIndex" class="message-item" @click="readMessage(message)">
+          <view class="message-icon">
+            <uni-icons :type="message.icon" size="30" color="#666"></uni-icons>
+          </view>
+          <view class="message-content">
+            <view class="message-title">{{ message.title }}</view>
+            <view class="message-desc">{{ message.description }}</view>
+          </view>
+          <view class="message-right">
+            <view class="message-time">{{ message.time }}</view>
+            <view class="unread-dot" v-if="!message.isRead"></view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 无消息提示 -->
+      <view v-if="messageGroups.length === 0 || (messageGroups[0] && messageGroups[0].messages.length === 0)" class="no-message">
+        <uni-icons type="info" size="50" color="#ddd"></uni-icons>
+        <text>暂无消息</text>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup>
+import { reactive, ref, onMounted } from 'vue';
+// 导入uni-icons组件
+import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+
+// 当前选中的选项卡
+const currentTab = ref(0);
+
+// 选项卡数据
+const tabs = reactive([
+  {
+    name: '点赞了我',
+    icon: 'heart',
+    type: 'like'
+  },
+  {
+    name: '收藏了我',
+    icon: 'star',
+    type: 'collect'
+  },
+  {
+    name: '订阅了我',
+    icon: 'bookmark',
+    type: 'subscribe'
   }
-  </style> 
+]);
+
+// 消息组数据
+const messageGroups = reactive([
+  {
+    type: 'system',
+    messages: [
+      {
+        id: 1,
+        title: '系统消息',
+        description: '系统更新',
+        time: '2025-4-20',
+        icon: 'notification',
+        isRead: false
+      }
+    ]
+  },
+  {
+    type: 'account',
+    messages: [
+      {
+        id: 2,
+        title: '账号消息',
+        description: '欢迎xxxx，登录系统...',
+        time: '2025-4-20',
+        icon: 'person',
+        isRead: false
+      }
+    ]
+  }
+]);
+
+// 原始消息数据（用于模拟不同选项卡下的数据）
+const allMessages = reactive({
+  like: [
+    {
+      type: 'system',
+      messages: [
+        {
+          id: 1,
+          title: '系统消息',
+          description: '您的文章《Vue3新特性解析》获得5个赞',
+          time: '2025-4-20',
+          icon: 'notification',
+          isRead: false
+        }
+      ]
+    },
+    {
+      type: 'account',
+      messages: [
+        {
+          id: 2,
+          title: '点赞通知',
+          description: '用户"前端达人"赞了您的文章',
+          time: '2025-4-19',
+          icon: 'heart-filled',
+          isRead: true
+        },
+        {
+          id: 3,
+          title: '点赞通知',
+          description: '用户"JavaScript专家"赞了您的评论',
+          time: '2025-4-18',
+          icon: 'heart-filled',
+          isRead: false
+        }
+      ]
+    }
+  ],
+  collect: [
+    {
+      type: 'system',
+      messages: [
+        {
+          id: 4,
+          title: '系统消息',
+          description: '您的文章《uniapp跨平台开发实战》被收藏3次',
+          time: '2025-4-20',
+          icon: 'notification',
+          isRead: false
+        }
+      ]
+    },
+    {
+      type: 'account',
+      messages: [
+        {
+          id: 5,
+          title: '收藏通知',
+          description: '用户"移动开发专家"收藏了您的文章',
+          time: '2025-4-17',
+          icon: 'star-filled',
+          isRead: true
+        }
+      ]
+    }
+  ],
+  subscribe: [
+    {
+      type: 'system',
+      messages: [
+        {
+          id: 6,
+          title: '系统消息',
+          description: '恭喜您获得2位新订阅者',
+          time: '2025-4-20',
+          icon: 'notification',
+          isRead: true
+        }
+      ]
+    },
+    {
+      type: 'account',
+      messages: [
+        {
+          id: 7,
+          title: '订阅通知',
+          description: '用户"前端学习者"订阅了您',
+          time: '2025-4-18',
+          icon: 'bookmark-filled',
+          isRead: false
+        },
+        {
+          id: 8,
+          title: '订阅通知',
+          description: '用户"CSS大师"订阅了您',
+          time: '2025-4-16',
+          icon: 'bookmark-filled',
+          isRead: true
+        }
+      ]
+    }
+  ]
+});
+
+/**
+ * 切换选项卡
+ * @param {Number} index - 选项卡索引
+ */
+const switchTab = (index) => {
+  if (currentTab.value === index) return;
+  
+  currentTab.value = index;
+  
+  // 根据当前选项卡加载对应的消息数据
+  const tabType = tabs[index].type;
+  
+  // 复制对应类型的消息数据
+  Object.keys(messageGroups).forEach(key => {
+    messageGroups.splice(0, messageGroups.length);
+  });
+  
+  if (allMessages[tabType]) {
+    allMessages[tabType].forEach(group => {
+      messageGroups.push({
+        type: group.type,
+        messages: [...group.messages]
+      });
+    });
+  }
+  
+  // 显示加载提示
+  uni.showToast({
+    title: `加载${tabs[index].name}消息`,
+    icon: 'none',
+    duration: 1000
+  });
+  
+  // TODO: 实际项目中可以调用API获取消息数据
+  // api.getMessages({
+  //   type: tabType
+  // }).then(res => {
+  //   // 处理返回的消息数据
+  // });
+};
+
+/**
+ * 读取消息
+ * @param {Object} message - 消息对象
+ */
+const readMessage = (message) => {
+  if (!message.isRead) {
+    message.isRead = true;
+    
+    // 显示提示
+    uni.showToast({
+      title: '已读消息',
+      icon: 'success',
+      duration: 1000
+    });
+    
+    // TODO: 实际项目中可以调用API标记消息为已读
+    // api.markMessageRead(message.id).then(res => {
+    //   // 处理返回结果
+    // });
+  }
+  
+  // 处理点击消息的其他逻辑
+  // 根据消息类型跳转到不同页面或者执行不同操作
+  switch (tabs[currentTab.value].type) {
+    case 'like':
+      uni.showToast({
+        title: '查看点赞详情',
+        icon: 'none'
+      });
+      // 可以跳转到具体文章或评论
+      // uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${relatedId}` });
+      break;
+    case 'collect':
+      uni.showToast({
+        title: '查看收藏详情',
+        icon: 'none'
+      });
+      break;
+    case 'subscribe':
+      uni.showToast({
+        title: '查看订阅者信息',
+        icon: 'none'
+      });
+      break;
+  }
+};
+
+// 页面初始化
+onMounted(() => {
+  // 加载默认选项卡的消息
+  switchTab(0);
+  
+  // TODO: 后续可以添加实时消息通知的功能
+});
+</script>
+
+<style lang="scss">
+page {
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+.message-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  
+  // 顶部选项卡样式
+  .tabs-container {
+    display: flex;
+    justify-content: space-around;
+    padding: 20rpx 0;
+    background-color: #fff;
+    box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+    
+    .tab-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10rpx 0;
+      flex: 1;
+      position: relative;
+      
+      &.active {
+        .tab-text {
+          color: #4361ee;
+          font-weight: bold;
+        }
+        
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -10rpx;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 60rpx;
+          height: 6rpx;
+          background-color: #4361ee;
+          border-radius: 3rpx;
+        }
+      }
+      
+      .tab-icon {
+        margin-bottom: 10rpx;
+      }
+      
+      .tab-text {
+        font-size: 26rpx;
+        color: #666;
+      }
+    }
+  }
+  
+  // 消息列表样式
+  .message-list {
+    flex: 1;
+    padding: 20rpx;
+    
+    .message-item {
+      display: flex;
+      background-color: #fff;
+      padding: 30rpx;
+      margin-bottom: 20rpx;
+      border-radius: 20rpx;
+      box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+      position: relative;
+      
+      .message-icon {
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 50%;
+        background-color: #f0f0f0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-right: 20rpx;
+      }
+      
+      .message-content {
+        flex: 1;
+        
+        .message-title {
+          font-size: 28rpx;
+          color: #333;
+          margin-bottom: 10rpx;
+          font-weight: 500;
+        }
+        
+        .message-desc {
+          font-size: 26rpx;
+          color: #666;
+        }
+      }
+      
+      .message-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: space-between;
+        
+        .message-time {
+          font-size: 24rpx;
+          color: #999;
+        }
+        
+        .unread-dot {
+          width: 16rpx;
+          height: 16rpx;
+          border-radius: 50%;
+          background-color: #ff6b6b;
+        }
+      }
+      
+      &:active {
+        opacity: 0.7;
+      }
+    }
+    
+    // 无消息提示
+    .no-message {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100rpx 0;
+      
+      text {
+        font-size: 28rpx;
+        color: #999;
+        margin-top: 20rpx;
+      }
+    }
+  }
+}
+</style>
