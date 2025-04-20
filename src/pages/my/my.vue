@@ -77,6 +77,7 @@
 					refresher-enabled 
 					:refresher-triggered="data.isRefreshing" 
 					@refresherrefresh="refreshList"
+					:refresher-threshold="100"
 				>
 					<!-- 我的帖子列表，使用首页的文章卡片样式 -->
 					<view v-for="(post, index) in data.contentList" :key="index" class="article-card">
@@ -115,19 +116,19 @@
 							</view>
 						</view>
 					</view>
-
-					<!-- 无内容提示 -->
-					<view v-if="data.contentList.length === 0" class="no-content">
-						<uni-icons type="info" size="50" color="#ddd"></uni-icons>
-						<text>暂无内容</text>
-					</view>
-					
 					<!-- 加载状态 -->
 					<view class="loading-state">
 						<text v-if="data.isLoading">加载中...</text>
 						<text v-else-if="data.noMoreData && data.contentList.length > 0">没有更多内容了</text>
 						<text v-else>↓向下滑动加载更多内容↓</text>
 					</view>
+					<!-- 无内容提示 -->
+					<view v-if="data.contentList.length === 0" class="no-content">
+						<uni-icons type="info" size="50" color="#ddd"></uni-icons>
+						<text>暂无内容</text>
+					</view>
+					
+					
 				</scroll-view>
 			</view>
 		</view>
@@ -396,8 +397,7 @@ const refreshList = () => {
 	// 重新加载
 	loadContent();
 	
-	// 提示用户
-	
+	// 不在这里显示刷新成功提示，等待数据加载完成后自动关闭刷新状态
 };
 
 /**
@@ -756,11 +756,22 @@ onMounted(() => {
 
 // 内容区域，使用首页的样式
 .content-area {
-  padding: 0 15rpx 0 15rpx;
+  padding: 0 20rpx 0 20rpx;
   flex: 1;
   
   .article-list {
     height: calc(100vh - 445rpx);
+    
+    // 自定义下拉刷新样式
+    &::before {
+      content: '';
+      width: 100%;
+      height: 80rpx;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background-color: transparent;
+    }
   }
   
   // 文章卡片
@@ -892,6 +903,7 @@ onMounted(() => {
   
   &-inner {
     color: #fff;
+    height: 80rpx !important; // 调整刷新区域高度
   }
 }
 
