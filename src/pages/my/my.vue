@@ -14,7 +14,7 @@
 						<view class="action-btn" @click="navigateTo('/pages/creation-center/creation-center')">
 							创作中心
 						</view>
-						<view class="settings-btn" @click="navigateTo('/pages/settings/settings')">
+						<view @click="navigateTo('/pages/settings/settings')">
 							<uni-icons type="gear" size="24" color="#333"></uni-icons>
 						</view>
 					</view>
@@ -641,18 +641,7 @@ onMounted(() => {
       .action-btn {
         display: flex;
         align-items: center;
-        
-        .action-btn {
-          font-size: 26rpx;
-          color: #666;
-          margin-right: 30rpx;
-        }
-        
-        .settings-btn {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
+        margin-right: 50rpx;
       }
     }
   }
