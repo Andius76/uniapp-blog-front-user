@@ -696,11 +696,10 @@
 
 	// 内容区域
 	.content-area {
-		padding: 20rpx;
-		padding-top: 165rpx; // 增加上边距以避免导航栏覆盖文章
+		padding: 165rpx 20rpx 0rpx 20rpx;
 		flex: 1;
 		.article-list {
-			height: calc(100vh - 225rpx);
+			height: calc(100vh - 165rpx); // 减去底部导航栏高度
 		}
 
 		// 文章卡片
@@ -832,8 +831,9 @@
 			text-align: center;
 			font-size: 24rpx;
 			color: #999;
-			margin: 20rpx 0;
-			padding: 20rpx 0;
+			margin-top: 20rpx;
+			padding-top: 20rpx;
+			padding-bottom: 50rpx; // 增加底部间距，确保在底部导航栏上方可见
 		}
 	}
 

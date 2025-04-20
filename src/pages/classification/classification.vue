@@ -612,12 +612,11 @@ page {
 
 // 内容区域
 .content-area {
-	padding: 20rpx;
-	padding-top: 212rpx; // 调整顶部间距适应新布局
+	padding: 212rpx 20rpx 0 20rpx;
 	flex: 1;
 	
 	.article-list {
-		height: calc(100vh - 240rpx);
+		height: calc(100vh - 212rpx); // 减去底部导航栏高度
 	}
 	
 	// 文章卡片
@@ -772,6 +771,7 @@ page {
 		color: #999;
 		margin: 20rpx 0;
 		padding: 20rpx 0;
+		padding-bottom: 50rpx; // 增加底部间距，确保在底部导航栏上方可见
 	}
 }
 
