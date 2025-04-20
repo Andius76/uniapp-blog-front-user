@@ -2,9 +2,21 @@
 	<view class="container">
 		<!-- 固定在顶部的标题和搜索栏 -->
 		<view class="header-fixed">
-			<view class="search-bar">
-				<input type="text" placeholder="请输入搜索内容" v-model="searchText" @confirm="handleSearch" />
-				<button class="search-btn" @click="handleSearch">搜索</button>
+			<view class="header-top">
+				<view class="search-bar">
+					<input type="text" placeholder="请输入搜索内容" v-model="searchText" @confirm="handleSearch" />
+					<button class="search-btn" @click="handleSearch">搜索</button>
+				</view>
+
+				<uni-button 
+					type="primary" 
+					size="mini"
+					class="publish-btn"
+					@click="handlePost"
+					:style="{ borderRadius: '50rpx', padding: '0 30rpx' }"
+				>
+					发表
+				</uni-button>
 			</view>
 
 			<!-- 添加导航菜单 -->
@@ -371,6 +383,13 @@
 		});
 	};
 
+	// 发表文章处理
+	const handlePost = () => {
+		uni.navigateTo({
+			url: '/pages/publish/publish'
+		});
+	};
+
 	// 点赞处理
 	const handleLike = (index) => {
 		const article = articleList.value[index];
@@ -493,21 +512,28 @@
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
 	}
 
-	/* 内容区域 */
-	.content-area {
-		padding: 20rpx;
-		padding-top: 225rpx;
-		/* 增加上边距以避免导航栏覆盖文章 */
-		flex: 1;
+	/* 顶部区域(搜索栏和发表按钮)容器 */
+	.header-top {
+		display: flex;
+		align-items: center;
+		position: relative;
+		margin: 0 20rpx;
 	}
 
-	.page-title {
-		font-size: 40rpx;
+	/* 发表按钮 */
+	.post-btn {
+		width: 60rpx;
+		height: 60rpx;
+		border-radius: 50%;
+		background-color: #4361ee;
+		color: #fff;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		font-size: 32rpx;
 		font-weight: bold;
-		color: #333;
-		margin-bottom: 20rpx;
-		text-align: center;
-		display: block;
+		margin-left: 20rpx;
+		box-shadow: 0 4rpx 10rpx rgba(67, 97, 238, 0.3);
 	}
 
 	.search-bar {
@@ -516,7 +542,7 @@
 		border-radius: 40rpx;
 		overflow: hidden;
 		padding: 0 20rpx;
-		margin: 0 20rpx;
+		flex: 1;
 		box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
 	}
 
@@ -536,6 +562,22 @@
 		font-size: 26rpx;
 		border-radius: 30rpx;
 		padding: 0 30rpx;
+	}
+
+	.content-area {
+		padding: 20rpx;
+		padding-top: 225rpx;
+		/* 增加上边距以避免导航栏覆盖文章 */
+		flex: 1;
+	}
+
+	.page-title {
+		font-size: 40rpx;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 20rpx;
+		text-align: center;
+		display: block;
 	}
 
 	.article-list {
@@ -712,4 +754,10 @@
 	.uni-scroll-view-refresh-inner {
 		color: #fff;
 	}
+</style>
+
+<style>
+  .publish-btn {
+    margin-left: 20rpx;
+  }
 </style>
