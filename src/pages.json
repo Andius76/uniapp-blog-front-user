@@ -48,6 +48,13 @@
 			"style": {
 				"navigationBarTitleText": "忘记密码"
 			}
+		},
+		{
+			"path" : "pages/collection/collection",
+			"style" : 
+			{
+				"navigationBarTitleText" : "收藏"
+			}
 		}
 	],
 	"tabBar": {
