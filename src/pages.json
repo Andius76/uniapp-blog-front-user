@@ -32,7 +32,7 @@
 			}
 		},
 		{
-			"path": "pages/classification/classification",
+			"path": "pages/publish/publish",
 			"style": {
 				"navigationBarTitleText": "发布"
 			}
