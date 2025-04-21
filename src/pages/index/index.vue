@@ -12,10 +12,10 @@
 					:style="{ borderRadius: '50rpx', padding: '0 30rpx' }">
 					发表
 				</button>
-				<button type="primary" size="mini" class="publish-btn" @click="handleTest"
+				<!-- <button type="primary" size="mini" class="publish-btn" @click="handleTest"
 					:style="{ borderRadius: '50rpx', padding: '0 30rpx' }">
 					发表
-				</button>
+				</button> -->
 			</view>
 
 			<!-- 导航菜单 -->
@@ -69,8 +69,8 @@
 							<text>{{article.commentCount}}</text>
 						</view>
 						<view class="action-item" @click="handleCollect(index)">
-							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" 
-							:color="article.isCollected ? '#ffc107' : '#666'"></uni-icons>
+							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20"
+								:color="article.isCollected ? '#ffc107' : '#666'"></uni-icons>
 							<text :class="{'collected': article.isCollected}">{{article.collectCount}}</text>
 						</view>
 						<view class="action-item" @click="handleLike(index)">
@@ -698,6 +698,7 @@
 	.content-area {
 		padding: 165rpx 20rpx 0rpx 20rpx;
 		flex: 1;
+
 		.article-list {
 			height: calc(100vh - 165rpx); // 减去底部导航栏高度
 		}
