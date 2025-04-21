@@ -326,6 +326,8 @@ Element Plus 是 ‌基于 Vue 3‌ 的企业级 UI 组件库，提供丰富的�
   status       TINYINT         DEFAULT 1                状态（1:正常, 2:封禁）
 
   created_at   DATETIME        NOT NULL                 创建时间
+
+  updated_at   DATETIME        NOT NULL                 更新时间
   ------------ --------------- ------------------------ ------------------------
 
 2.  文章表（article）
@@ -346,6 +348,8 @@ Element Plus 是 ‌基于 Vue 3‌ 的企业级 UI 组件库，提供丰富的�
   status        TINYINT         DEFAULT 1               状态（1:草稿, 2:发布, 3:下架）
 
   created_at    DATETIME        NOT NULL                创建时间
+
+  updated_at    DATETIME        NOT NULL                更新时间
   ------------- --------------- ----------------------- --------------------------------
 
 3.  标签表
@@ -356,6 +360,10 @@ Element Plus 是 ‌基于 Vue 3‌ 的企业级 UI 组件库，提供丰富的�
   id         BIGINT          PRIMARY KEY, AUTO_INC      标签唯一标识
 
   name       VARCHAR(50)     UNIQUE, NOT NULL           标签名称
+
+  description  VARCHAR(200)                          // 标签描述
+
+  created_at   DATETIME      NOT NULL                // 创建时间
   ------------------------------------------------------------------------
 
 4.  文章-标签关联表
@@ -381,6 +389,12 @@ Element Plus 是 ‌基于 Vue 3‌ 的企业级 UI 组件库，提供丰富的�
 
   article_id   BIGINT        FOREIGN KEY (article.id)        关联文章ID
 
+  parent_id    BIGINT                                // 父评论ID(回复评论时用)
+
+  like_count   INT           DEFAULT 0               // 点赞次数
+
+  status       TINYINT       DEFAULT 1               // 状态(1:正常,2:删除)
+
   created_at   DATETIME      NOT NULL                        创建时间
   --------------------------------------------------------------------------
 
@@ -391,7 +405,7 @@ Element Plus 是 ‌基于 Vue 3‌ 的企业级 UI 组件库，提供丰富的�
   -------- ------------- ------------------------- -------------------------
   id       BIGINT        PRIMARY KEY, AUTO_INC     角色唯一标识
 
-  name     VARCHAR(20)   UNIQUE, NOT NULL          角色名称（ADMIN/USER）
+  name     VARCHAR(50)   UNIQUE, NOT NULL          角色名称（ADMIN/USER）
   --------------------------------------------------------------------------
 
 7.  权限表 (permission)
