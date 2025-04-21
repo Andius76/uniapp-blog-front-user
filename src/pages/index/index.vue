@@ -541,7 +541,7 @@
 			title: '查看文章详情: ' + id,
 			icon: 'none'
 		});
-
+		uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${id}` });
 		// TODO: 跳转到文章详情页
 		// uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${id}` });
 	};
