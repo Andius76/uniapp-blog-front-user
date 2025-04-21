@@ -56,16 +56,61 @@
         </view>
       </view>
 
+      <!-- 评论输入框 -->
+      <view class="comment-input-container">
+        <uni-search-bar
+          v-model="commentText"
+          placeholder="输入评论..."
+          :radius="20"
+          @confirm="submitComment"
+          cancel-button="none"
+        />
+      </view>
+
       <!-- 评论列表 -->
       <view class="comment-section">
-        <text class="section-title">热门评论</text>
+        <text class="section-title">热门评论（{{data.article.commentCount}}）</text>
         <view class="comment-list">
-          <view v-for="(comment, index) in data.comments" :key="index" class="comment-item">
+          <view v-for="(comment, index) in data.comments" :key="comment.id" class="comment-item shadow-card">
             <image :src="comment.avatar" class="comment-avatar"/>
             <view class="comment-content">
-              <text class="comment-author">{{ comment.author }}</text>
+              <view class="comment-header">
+                <text class="comment-author">{{ comment.author }}</text>
+                <text class="comment-time">{{ comment.time }}</text>
+              </view>
               <text class="comment-text">{{ comment.content }}</text>
-              <text class="comment-time">{{ comment.time }}</text>
+              
+              <!-- 操作按钮 -->
+              <view class="action-buttons">
+                <view class="action-btn" @click="toggleLike(comment)">
+                  <uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16" 
+                    :color="comment.isLiked ? '#ff6b6b' : '#666'"/>
+                  <text class="count">{{ comment.likeCount }}</text>
+                </view>
+                <view class="action-btn" @click="showReplyInput(comment)">
+                  <uni-icons type="chatbubble" size="16" color="#666"/>
+                  <text>回复</text>
+                </view>
+              </view>
+
+              <!-- 回复输入框 -->
+              <view v-if="comment.showReply" class="reply-input">
+                <uni-easyinput
+                  v-model="comment.replyText"
+                  placeholder="输入回复..."
+                  :styles="{backgroundColor: '#f5f5f5', borderRadius: '12px'}"
+                  @confirm="submitReply(comment)"
+                />
+              </view>
+
+              <!-- 回复列表 -->
+              <view v-if="comment.replies.length" class="reply-list">
+                <view v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                  <text class="reply-author">{{ reply.author }}：</text>
+                  <text class="reply-text">{{ reply.content }}</text>
+                  <text class="reply-time">{{ reply.time }}</text>
+                </view>
+              </view>
             </view>
           </view>
         </view>
@@ -77,6 +122,8 @@
 <script setup>
 import { reactive, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+
+const commentText = ref('')
 
 const data = reactive({
   article: {
@@ -98,13 +145,61 @@ const data = reactive({
   },
   comments: [
     {
+      id: 1,
       author: '用户A',
       avatar: '/static/images/avatar.png',
       content: '非常棒的文章！',
-      time: '1小时前'
+      time: '1小时前',
+      likeCount: 12,
+      isLiked: false,
+      showReply: false,
+      replyText: '',
+      replies: []
     }
   ]
 })
+
+const submitComment = () => {
+  if (commentText.value.trim()) {
+    data.comments.unshift({
+      id: Date.now(),
+      avatar: '/static/images/avatar.png',
+      author: '当前用户',
+      content: commentText.value,
+      time: '刚刚',
+      likeCount: 0,
+      isLiked: false,
+      showReply: false,
+      replyText: '',
+      replies: []
+    })
+    commentText.value = ''
+    data.article.commentCount++
+  }
+}
+
+const toggleLike = (comment) => {
+  comment.isLiked = !comment.isLiked
+  comment.likeCount += comment.isLiked ? 1 : -1
+}
+
+const showReplyInput = (comment) => {
+  comment.showReply = !comment.showReply
+  if (!comment.showReply) comment.replyText = ''
+}
+
+const submitReply = (comment) => {
+  if (comment.replyText.trim()) {
+    comment.replies.push({
+      id: Date.now(),
+      author: '当前用户',
+      content: comment.replyText,
+      time: '刚刚'
+    })
+    comment.replyText = ''
+    comment.showReply = false
+  }
+}
 
 onLoad((options) => {
   if (options?.id) {
