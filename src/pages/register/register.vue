@@ -3,7 +3,7 @@
 		<view class="login-container">
 			<view class="title-area">
 				<text class="title">注册</text>
-				<text class="subtitle">欢迎加入，请输入注册信息</text>
+				<text class="subtitle">欢迎加入，请输入邮箱注册</text>
 			</view>
 
 			<form @submit.prevent="handleSubmit">
@@ -16,7 +16,7 @@
 								type="text" 
 								class="input-field" 
 								v-model="data.formData.username" 
-								placeholder="请输入手机号/邮箱"
+								placeholder="请输入邮箱"
 								@input="validateUsername" 
 							/>
 						</view>
@@ -132,11 +132,10 @@ const validateUsername = () => {
 	}
 
 	// 验证邮箱或手机号格式
-	const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-	const isPhone = /^1[3-9]\d{9}$/.test(value);
+	const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-	if (!isEmail && !isPhone) {
-		data.errors.username = '请输入有效的邮箱或手机号';
+	if (!isValidEmail) {
+		data.errors.username = '请输入有效的邮箱';
 		return false;
 	}
 
@@ -209,7 +208,7 @@ const handleSubmit = () => {
 
 	if (!data.formData.agreeTerms) {
 		uni.showToast({
-			title: '请同意相关条款',
+			title: '请阅读并同意相关条款',
 			icon: 'none'
 		});
 		return;
