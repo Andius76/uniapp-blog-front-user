@@ -1,6 +1,6 @@
 {
 	"pages": [
-     //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		//pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
 
 		{
 			"path": "pages/index/index",
@@ -35,17 +35,17 @@
 		{
 			"path": "pages/article-detail/article-detail",
 			"style": {
-			  "navigationBarTitleText": "文章详情",
-			  "app-plus": {
-				"titleNView": {
-				  "buttons": [{
-					"text": "分享",
-					"fontSize": "16"
-				  }]
+				"navigationBarTitleText": "文章详情",
+				"app-plus": {
+					"titleNView": {
+						"buttons": [{
+							"text": "分享",
+							"fontSize": "16"
+						}]
+					}
 				}
-			  }
 			}
-		  },
+		},
 		{
 			"path": "pages/publish/publish",
 			"style": {
@@ -66,10 +66,15 @@
 			}
 		},
 		{
-			"path" : "pages/collection/collection",
-			"style" : 
-			{
-				"navigationBarTitleText" : "收藏"
+			"path": "pages/collection/collection",
+			"style": {
+				"navigationBarTitleText": "收藏"
+			}
+		},
+		{
+			"path": "pages/settings/settings",
+			"style": {
+				"navigationBarTitleText": "设置中心"
 			}
 		}
 	],
