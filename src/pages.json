@@ -70,12 +70,6 @@
 			"style": {
 				"navigationBarTitleText": "收藏"
 			}
-		},
-		{
-			"path": "pages/settings/settings",
-			"style": {
-				"navigationBarTitleText": "设置中心"
-			}
 		}
 	],
 	"tabBar": {
