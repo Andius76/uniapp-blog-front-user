@@ -8,14 +8,14 @@
 			<form @submit.prevent="handleSubmit">
 				<view class="form-area">
 					<view class="input-group">
-						<text class="input-label">手机号/邮箱</text>
+						<text class="input-label">邮箱</text>
 						<view class="input-wrapper">
 							<uni-icons type="person" size="20" color="#999"></uni-icons>
 							<input 
 								type="text" 
 								class="input-field" 
 								v-model="data.formData.username" 
-								placeholder="请输入手机号/邮箱"
+								placeholder="请输入邮箱"
 								@input="validateUsername" 
 							/>
 						</view>
@@ -113,10 +113,8 @@ const validateUsername = () => {
 
 	// 验证邮箱或手机号格式
 	const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-	const isPhone = /^1[3-9]\d{9}$/.test(value);
-
-	if (!isEmail && !isPhone) {
-		data.errors.username = '请输入有效的邮箱或手机号';
+	if (!isEmail) {
+		data.errors.username = '请输入有效的邮箱';
 		return false;
 	}
 
