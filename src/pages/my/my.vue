@@ -180,16 +180,29 @@
 				</view>
 			</scroll-view>
 		</view>
+		
+		<!-- 用户设置组件 -->
+		<UserSettings 
+			:visible="data.showUserSettings" 
+			:userInfo="data.userInfo"
+			@update:visible="data.showUserSettings = $event"
+			@avatar-change="handleAvatarChange"
+			@nickname-change="handleNicknameChange"
+			@logout="handleLogout"
+		/>
 	</view>
 </template>
 
 <script setup>
 	import {
 		reactive,
-		onMounted
+		onMounted,
+		ref
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+	// 导入用户设置组件
+	import UserSettings from '@/components/user-settings/user-settings.vue';
 
 	// 使用reactive统一管理数据
 	const data = reactive({
@@ -222,7 +235,10 @@
 		noMoreData: false,
 		currentPage: 1,
 		pageSize: 5,
-		isRefreshing: false
+		isRefreshing: false,
+		
+		// 用户设置面板显示状态
+		showUserSettings: false
 	});
 
 	// 模拟内容数据
@@ -494,10 +510,8 @@
 			});
 			return;
 		} else if (url.includes('settings')) {
-			// 实际跳转到设置页面
-			uni.navigateTo({
-				url: '/pages/settings/settings'
-			});
+			// 显示自定义设置面板
+			data.showUserSettings = true;
 			return;
 		} else if (url.includes('follows')) {
 			uni.showToast({
@@ -539,6 +553,46 @@
 
 		// 实际跳转，当后端连接后使用
 		// uni.navigateTo({ url });
+	};
+	
+	/**
+	 * 修改用户头像
+	 * @param {String} newAvatar - 新头像地址
+	 */
+	const handleAvatarChange = (newAvatar) => {
+		data.userInfo.avatar = newAvatar;
+		
+		// TODO: 保存到服务器
+		// api.updateUserInfo({ avatar: newAvatar }).then(res => {
+		//   console.log('头像更新成功');
+		// });
+	};
+	
+	/**
+	 * 修改用户昵称
+	 * @param {String} newNickname - 新昵称
+	 */
+	const handleNicknameChange = (newNickname) => {
+		data.userInfo.nickname = newNickname;
+		
+		// TODO: 保存到服务器
+		// api.updateUserInfo({ nickname: newNickname }).then(res => {
+		//   console.log('昵称更新成功');
+		// });
+	};
+	
+	/**
+	 * 处理退出登录
+	 */
+	const handleLogout = () => {
+		// 清除用户数据和本地缓存
+		uni.removeStorageSync('token');
+		uni.removeStorageSync('userInfo');
+		
+		// 跳转到登录页
+		uni.reLaunch({
+			url: '/pages/login/login'
+		});
 	};
 
 	// 页面初始化
