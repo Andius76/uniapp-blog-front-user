@@ -52,19 +52,6 @@
 
 					
 
-					<view class="form-options">
-						<label class="remember-me">
-							<checkbox 
-								:value="'agree'" 
-								:checked="data.formData.agreeTerms" 
-								@click="data.formData.agreeTerms = !data.formData.agreeTerms" 
-								color="#4361ee"
-								scale="0.7" 
-							/>
-							<text>我已阅读并同意相关条款</text>
-						</label>
-					</view>
-
 					<button class="btn-login" :disabled="data.loading" @click="handleSubmit">
 						<text v-if="!data.loading">立即注册</text>
 						<text v-else>注册中...</text>
@@ -90,15 +77,12 @@ const data = reactive({
 	// 表单数据
 	formData: {
 		username: '',
-		password: '',
-		
-		agreeTerms: false
+		password: ''
 	},
 	// 错误信息
 	errors: {
 		username: '',
-		password: '',
-		
+		password: ''
 	},
 	// 界面状态
 	loading: false,
@@ -163,15 +147,8 @@ const togglePasswordVisibility = () => {
 const handleSubmit = () => {
 	const usernameValid = validateUsername();
 	const passwordValid = validatePassword();
-	if (!data.formData.agreeTerms) {
-		uni.showToast({
-			title: '请阅读并同意相关条款',
-			icon: 'none'
-		});
-		return;
-	}
 
-	if (usernameValid && passwordValid && data.formData.agreeTerms) {
+	if (usernameValid && passwordValid) {
 		data.loading = true;
 
 		// 模拟注册请求
@@ -279,7 +256,7 @@ page {
 		
 		// 表单区域
 		.form-area {
-			margin-bottom: 20rpx;
+			margin-bottom: 40rpx; // 原为20rpx
 			
 			// 输入框组
 			.input-group {
