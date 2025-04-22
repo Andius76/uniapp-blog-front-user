@@ -50,23 +50,7 @@
 						>{{ data.errors.password }}</text>
 					</view>
 
-					<view class="input-group">
-						<text class="input-label">确认密码</text>
-						<view class="input-wrapper">
-							<uni-icons type="locked" size="20" color="#999"></uni-icons>
-							<input 
-								:type="data.showPassword ? 'text' : 'password'" 
-								class="input-field"
-								v-model="data.formData.confirmPassword" 
-								placeholder="请再次输入密码" 
-								@input="validateConfirmPassword" 
-							/>
-						</view>
-						<text 
-							v-if="data.errors.confirmPassword"
-							class="validation-feedback show-feedback"
-						>{{ data.errors.confirmPassword }}</text>
-					</view>
+					
 
 					<view class="form-options">
 						<label class="remember-me">
@@ -106,14 +90,14 @@ const data = reactive({
 	formData: {
 		username: '',
 		password: '',
-		confirmPassword: '',
+		
 		agreeTerms: false
 	},
 	// 错误信息
 	errors: {
 		username: '',
 		password: '',
-		confirmPassword: ''
+		
 	},
 	// 界面状态
 	loading: false,
@@ -163,25 +147,7 @@ const validatePassword = () => {
 	return true;
 };
 
-/**
- * 验证确认密码
- * @returns {boolean} 验证结果
- */
-const validateConfirmPassword = () => {
-	const value = data.formData.confirmPassword.trim();
-	if (!value) {
-		data.errors.confirmPassword = '请再次输入密码';
-		return false;
-	}
 
-	if (value !== data.formData.password) {
-		data.errors.confirmPassword = '两次输入的密码不一致';
-		return false;
-	}
-
-	data.errors.confirmPassword = '';
-	return true;
-};
 
 /**
  * 切换密码显示/隐藏
@@ -204,8 +170,6 @@ const handleAgreeTermsChange = (e) => {
 const handleSubmit = () => {
 	const usernameValid = validateUsername();
 	const passwordValid = validatePassword();
-	const confirmPasswordValid = validateConfirmPassword();
-
 	if (!data.formData.agreeTerms) {
 		uni.showToast({
 			title: '请阅读并同意相关条款',
@@ -214,7 +178,7 @@ const handleSubmit = () => {
 		return;
 	}
 
-	if (usernameValid && passwordValid && confirmPasswordValid && data.formData.agreeTerms) {
+	if (usernameValid && passwordValid && data.formData.agreeTerms) {
 		data.loading = true;
 
 		// 模拟注册请求
