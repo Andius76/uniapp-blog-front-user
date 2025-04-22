@@ -288,7 +288,7 @@ page {
 				.input-wrapper {
 					display: flex;
 					align-items: center;
-					width: 100%;
+					width: 90%;
 					height: 96rpx;
 					background: #f8f8f8;
 					border: 1px solid #eee;
