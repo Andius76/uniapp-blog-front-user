@@ -187,7 +187,7 @@
 				messages: [{
 					id: 6,
 					title: '系统消息',
-					description: '恭喜您获得2位新订阅者',
+					description: '恭喜您获得2位新关注者',
 					time: '2025-4-20',
 					icon: 'notification',
 					isRead: true
@@ -197,8 +197,8 @@
 				type: 'account',
 				messages: [{
 						id: 7,
-						title: '新订阅者',
-						description: '用户"前端学习者"订阅了您',
+						title: '新关注者',
+						description: '用户"前端学习者"关注了您',
 						time: '2025-4-18',
 						icon: 'bookmark-filled',
 						isRead: false,
@@ -211,8 +211,8 @@
 					},
 					{
 						id: 8,
-						title: '订阅通知',
-						description: '用户"CSS大师"订阅了您',
+						title: '关注通知',
+						description: '用户"CSS大师"关注了您',
 						time: '2025-4-16',
 						icon: 'bookmark-filled',
 						isRead: true
@@ -223,8 +223,8 @@
 				type: 'account',
 				messages: [{
 						id: 7,
-						title: '新订阅者',
-						description: '用户"前端学习者"订阅了您',
+						title: '新关注者',
+						description: '用户"前端学习者"关注了您',
 						time: '2025-4-18',
 						icon: 'bookmark-filled',
 						isRead: false,
@@ -237,8 +237,8 @@
 					},
 					{
 						id: 8,
-						title: '订阅通知',
-						description: '用户"CSS大师"订阅了您',
+						title: '关注通知',
+						description: '用户"CSS大师"关注了您',
 						time: '2025-4-16',
 						icon: 'bookmark-filled',
 						isRead: true
@@ -249,8 +249,8 @@
 				type: 'account',
 				messages: [{
 						id: 7,
-						title: '新订阅者',
-						description: '用户"前端学习者"订阅了您',
+						title: '新关注者',
+						description: '用户"前端学习者"关注了您',
 						time: '2025-4-18',
 						icon: 'bookmark-filled',
 						isRead: false,
@@ -263,8 +263,8 @@
 					},
 					{
 						id: 8,
-						title: '订阅通知',
-						description: '用户"CSS大师"订阅了您',
+						title: '关注通知',
+						description: '用户"CSS大师"关注了您',
 						time: '2025-4-16',
 						icon: 'bookmark-filled',
 						isRead: true
@@ -275,8 +275,8 @@
 				type: 'account',
 				messages: [{
 						id: 7,
-						title: '新订阅者',
-						description: '用户"前端学习者"订阅了您',
+						title: '新关注者',
+						description: '用户"前端学习者"关注了您',
 						time: '2025-4-18',
 						icon: 'bookmark-filled',
 						isRead: false,
@@ -289,8 +289,8 @@
 					},
 					{
 						id: 8,
-						title: '订阅通知',
-						description: '用户"CSS大师"订阅了您',
+						title: '关注通知',
+						description: '用户"CSS大师"关注了您',
 						time: '2025-4-16',
 						icon: 'bookmark-filled',
 						isRead: true
@@ -301,8 +301,8 @@
 				type: 'account',
 				messages: [{
 						id: 7,
-						title: '新订阅者',
-						description: '用户"前端学习者"订阅了您',
+						title: '新关注者',
+						description: '用户"前端学习者"关注了您',
 						time: '2025-4-18',
 						icon: 'bookmark-filled',
 						isRead: false,
@@ -315,8 +315,8 @@
 					},
 					{
 						id: 8,
-						title: '订阅通知',
-						description: '用户"CSS大师"订阅了您',
+						title: '关注通知',
+						description: '用户"CSS大师"关注了您',
 						time: '2025-4-16',
 						icon: 'bookmark-filled',
 						isRead: true
