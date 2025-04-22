@@ -9,7 +9,7 @@
 			<form @submit.prevent="handleSubmit">
 				<view class="form-area">
 					<view class="input-group">
-						<text class="input-label">用户名</text>
+						<text class="input-label">邮箱</text>
 						<view class="input-wrapper">
 							<uni-icons type="person" size="20" color="#999"></uni-icons>
 							<input 
@@ -24,6 +24,27 @@
 							v-if="data.errors.username"
 							class="validation-feedback show-feedback"
 						>{{ data.errors.username }}</text>
+					</view>
+
+					<view class="input-group">
+						<text class="input-label">验证码</text>
+						<view class="input-wrapper code-wrapper">
+							<uni-icons type="chat" size="20" color="#999"></uni-icons>
+							<input 
+								type="text" 
+								class="input-field" 
+								v-model="data.formData.verificationCode" 
+								placeholder="请输入验证码"
+								@input="validateVerificationCode" 
+							/>
+							<button class="get-code-btn" @click="getVerificationCode" :disabled="data.codeBtnDisabled">
+								{{ data.codeBtnText }}
+							</button>
+						</view>
+						<text 
+							v-if="data.errors.verificationCode"
+							class="validation-feedback show-feedback"
+						>{{ data.errors.verificationCode }}</text>
 					</view>
 
 					<view class="input-group">
@@ -50,8 +71,6 @@
 						>{{ data.errors.password }}</text>
 					</view>
 
-					
-
 					<button class="btn-login" :disabled="data.loading" @click="handleSubmit">
 						<text v-if="!data.loading">立即注册</text>
 						<text v-else>注册中...</text>
@@ -77,30 +96,36 @@ const data = reactive({
 	// 表单数据
 	formData: {
 		username: '',
+		verificationCode: '',
 		password: ''
 	},
 	// 错误信息
 	errors: {
 		username: '',
+		verificationCode: '',
 		password: ''
 	},
 	// 界面状态
 	loading: false,
-	showPassword: false
+	showPassword: false,
+	// 验证码按钮状态
+	codeBtnDisabled: false,
+	codeBtnText: '获取验证码',
+	countdown: 60
 });
 
 /**
- * 验证用户名（邮箱或手机号）
+ * 验证用户名（邮箱）
  * @returns {boolean} 验证结果
  */
 const validateUsername = () => {
 	const value = data.formData.username.trim();
 	if (!value) {
-		data.errors.username = '请输入手机号或邮箱';
+		data.errors.username = '请输入邮箱';
 		return false;
 	}
 
-	// 验证邮箱或手机号格式
+	// 验证邮箱格式
 	const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 	if (!isValidEmail) {
@@ -109,6 +134,26 @@ const validateUsername = () => {
 	}
 
 	data.errors.username = '';
+	return true;
+};
+
+/**
+ * 验证验证码
+ * @returns {boolean} 验证结果
+ */
+const validateVerificationCode = () => {
+	const value = data.formData.verificationCode.trim();
+	if (!value) {
+		data.errors.verificationCode = '请输入验证码';
+		return false;
+	}
+
+	if (value.length !== 6) {
+		data.errors.verificationCode = '验证码必须为6位';
+		return false;
+	}
+
+	data.errors.verificationCode = '';
 	return true;
 };
 
@@ -132,8 +177,6 @@ const validatePassword = () => {
 	return true;
 };
 
-
-
 /**
  * 切换密码显示/隐藏
  */
@@ -142,13 +185,78 @@ const togglePasswordVisibility = () => {
 };
 
 /**
+ * 获取验证码
+ */
+const getVerificationCode = () => {
+	if (!validateUsername()) {
+		uni.showToast({
+			title: '请先输入有效的邮箱',
+			icon: 'none'
+		});
+		return;
+	}
+	
+	// 禁用按钮并开始倒计时
+	data.codeBtnDisabled = true;
+	data.countdown = 60;
+	data.codeBtnText = `${data.countdown}秒后重新获取`;
+	
+	const timer = setInterval(() => {
+		data.countdown--;
+		data.codeBtnText = `${data.countdown}秒后重新获取`;
+		
+		if (data.countdown <= 0) {
+			clearInterval(timer);
+			data.codeBtnDisabled = false;
+			data.codeBtnText = '获取验证码';
+		}
+	}, 1000);
+	
+	// 模拟发送验证码
+	uni.showToast({
+		title: '验证码已发送',
+		icon: 'success'
+	});
+	
+	// TODO: 实际发送验证码API调用
+	// api.sendVerificationCode(data.formData.username).then(res => {
+	//   if (res.success) {
+	//     uni.showToast({
+	//       title: '验证码已发送',
+	//       icon: 'success'
+	//     });
+	//   } else {
+	//     uni.showToast({
+	//       title: res.message || '发送失败',
+	//       icon: 'none'
+	//     });
+	//     // 发送失败，重置按钮状态
+	//     clearInterval(timer);
+	//     data.codeBtnDisabled = false;
+	//     data.codeBtnText = '获取验证码';
+	//   }
+	// }).catch(err => {
+	//   console.error('发送验证码失败', err);
+	//   uni.showToast({
+	//     title: '发送失败，请检查网络',
+	//     icon: 'none'
+	//   });
+	//   // 发送失败，重置按钮状态
+	//   clearInterval(timer);
+	//   data.codeBtnDisabled = false;
+	//   data.codeBtnText = '获取验证码';
+	// });
+};
+
+/**
  * 提交表单
  */
 const handleSubmit = () => {
 	const usernameValid = validateUsername();
+	const verificationCodeValid = validateVerificationCode();
 	const passwordValid = validatePassword();
 
-	if (usernameValid && passwordValid) {
+	if (usernameValid && verificationCodeValid && passwordValid) {
 		data.loading = true;
 
 		// 模拟注册请求
@@ -167,7 +275,11 @@ const handleSubmit = () => {
 		}, 1500);
 		
 		// TODO: 实际注册API调用
-		// api.register(data.formData).then(res => {
+		// api.register({
+		//   username: data.formData.username.trim(),
+		//   verificationCode: data.formData.verificationCode,
+		//   password: data.formData.password
+		// }).then(res => {
 		//   if (res.success) {
 		//     uni.showToast({
 		//       title: '注册成功',
@@ -227,7 +339,7 @@ page {
 		background: rgba(255, 255, 255, 0.95);
 		width: 100%;
 		max-width: 320px;
-		padding: 60rpx 50rpx;
+		padding: 60rpx 40rpx;
 		border-radius: 40rpx;
 		box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.1);
 		max-height: 90vh; // 限制最大高度
@@ -281,6 +393,11 @@ page {
 					border: 1px solid #eee;
 					border-radius: 20rpx;
 					padding: 0 10rpx;
+					transition: all 0.3s ease;
+					
+					&.code-wrapper {
+						padding-right: 0;
+					}
 					
 					.uni-icons {
 						margin-right: 10rpx;
@@ -293,6 +410,36 @@ page {
 						color: #333;
 						background: transparent;
 						border: none;
+						transition: all 0.3s ease;
+						
+						&:focus {
+							background: transparent;
+						}
+					}
+					
+					.get-code-btn {
+						height: 96rpx;
+						background: #4361ee;
+						color: white;
+						font-size: 24rpx;
+						border-radius: 0 20rpx 20rpx 0;
+						margin: 0;
+						padding: 0 20rpx;
+						border: none;
+						line-height: 96rpx;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						min-width: 180rpx;
+						
+						&:disabled {
+							background: #999;
+						}
+					}
+					
+					&:focus-within {
+						background: #e8e8e8;
+						border-color: #4361ee;
 					}
 				}
 				
@@ -306,22 +453,8 @@ page {
 					
 					&.show-feedback {
 						display: block;
+						height: 20px;
 					}
-				}
-			}
-			
-			// 表单选项区域
-			.form-options {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				margin: 30rpx 0;
-				font-size: 28rpx;
-				
-				.remember-me {
-					display: flex;
-					align-items: center;
-					color: #666;
 				}
 			}
 			
@@ -335,6 +468,7 @@ page {
 				font-size: 32rpx;
 				font-weight: 500;
 				margin-top: 20rpx;
+				transition: all 0.3s ease;
 				height: 90rpx;
 				line-height: 90rpx;
 				
