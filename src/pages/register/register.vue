@@ -55,8 +55,9 @@
 					<view class="form-options">
 						<label class="remember-me">
 							<checkbox 
+								:value="'agree'" 
 								:checked="data.formData.agreeTerms" 
-								@change="handleAgreeTermsChange" 
+								@click="data.formData.agreeTerms = !data.formData.agreeTerms" 
 								color="#4361ee"
 								scale="0.7" 
 							/>
@@ -157,14 +158,6 @@ const togglePasswordVisibility = () => {
 };
 
 /**
- * checkbox状态变化处理函数
- */
-const handleAgreeTermsChange = (e) => {
-	// 在uniapp中，checkbox的值需要从事件对象中获取
-	data.formData.agreeTerms = e.detail.value.length > 0;
-};
-
-/**
  * 提交表单
  */
 const handleSubmit = () => {
@@ -191,7 +184,7 @@ const handleSubmit = () => {
 			});
 
 			// 跳转到登录页面
-			uni.navigateTo({
+			uni.redirectTo({
 				url: '/pages/login/login'
 			});
 		}, 1500);
@@ -203,7 +196,7 @@ const handleSubmit = () => {
 		//       title: '注册成功',
 		//       icon: 'success'
 		//     });
-		//     uni.navigateTo({
+		//     uni.redirectTo({
 		//       url: '/pages/login/login'
 		//     });
 		//   } else {
@@ -228,7 +221,7 @@ const handleSubmit = () => {
  * 跳转到登录页面
  */
 const goToLogin = () => {
-	uni.navigateTo({
+	uni.redirectTo({
 		url: '/pages/login/login'
 	});
 };
