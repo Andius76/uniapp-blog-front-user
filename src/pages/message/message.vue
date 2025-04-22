@@ -82,11 +82,7 @@ const tabs = reactive([
     icon: 'heart',
     type: 'like'
   },
-  {
-    name: '收藏了我',
-    icon: 'star',
-    type: 'collect'
-  },
+
   {
     name: '订阅了我',
     icon: 'plus',
@@ -201,34 +197,7 @@ const allMessages = reactive({
       ]
     }
   ],
-  collect: [
-    {
-      type: 'system',
-      messages: [
-        {
-          id: 4,
-          title: '系统消息',
-          description: '您的文章《uniapp跨平台开发实战》被收藏3次',
-          time: '2025-4-20',
-          icon: 'notification',
-          isRead: false
-        }
-      ]
-    },
-    {
-      type: 'account',
-      messages: [
-        {
-          id: 5,
-          title: '收藏通知',
-          description: '用户"移动开发专家"收藏了您的文章',
-          time: '2025-4-17',
-          icon: 'star-filled',
-          isRead: true
-        }
-      ]
-    }
-  ],
+
   subscribe: [
     {
       type: 'system',
