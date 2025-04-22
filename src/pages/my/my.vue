@@ -210,7 +210,7 @@
 				type: 'posts'
 			},
 			{
-				name: '赞同',
+				name: '我的点赞',
 				type: 'likes'
 			}
 		],
