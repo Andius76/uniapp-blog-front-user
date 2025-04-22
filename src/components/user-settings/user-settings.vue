@@ -6,14 +6,16 @@
     <!-- 设置面板 -->
     <view class="settings-panel" :class="{ 'visible': visible }">
       <view class="panel-header">
-        <text class="panel-title">{{ isEditingNickname ? '修改昵称' : '用户设置' }}</text>
-        <view class="close-btn" @click="isEditingNickname ? cancelEditNickname() : closeSettings()">
-          <uni-icons :type="isEditingNickname ? 'left' : 'close'" size="24" color="#333"></uni-icons>
+        <text class="panel-title">
+          {{ isConfirmingLogout ? '退出登录' : (isEditingNickname ? '修改昵称' : '用户设置') }}
+        </text>
+        <view class="close-btn" @click="handleBackOrClose">
+          <uni-icons :type="isEditingNickname || isConfirmingLogout ? 'left' : 'close'" size="24" color="#333"></uni-icons>
         </view>
       </view>
       
       <!-- 主设置面板 -->
-      <view class="panel-content" v-if="!isEditingNickname">
+      <view class="panel-content" v-if="!isEditingNickname && !isConfirmingLogout">
         <!-- 头像设置 -->
         <view class="settings-item" @click="changeAvatar">
           <view class="item-label">
@@ -39,7 +41,7 @@
         </view>
         
         <!-- 退出登录 -->
-        <view class="settings-item logout-item" @click="confirmLogout">
+        <view class="settings-item logout-item" @click="showLogoutConfirm">
           <view class="item-label">
             <uni-icons type="logout" size="22" color="#ff6b6b"></uni-icons>
             <text class="logout-text">退出登录</text>
@@ -48,7 +50,7 @@
       </view>
       
       <!-- 昵称编辑面板 -->
-      <view class="nickname-edit-panel" v-else>
+      <view class="nickname-edit-panel" v-else-if="isEditingNickname">
         <view class="nickname-input-container">
           <input 
             class="nickname-input"
@@ -71,8 +73,25 @@
         </view>
       </view>
       
+      <!-- 退出登录确认面板 -->
+      <view class="logout-confirm-panel" v-else-if="isConfirmingLogout">
+        <view class="logout-confirm-content">
+          <uni-icons type="help" size="60" color="#ff6b6b"></uni-icons>
+          <text class="logout-confirm-text">确定要退出登录吗？</text>
+        </view>
+        
+        <view class="logout-actions">
+          <view class="logout-action-btn cancel" @click="cancelLogout">
+            取消
+          </view>
+          <view class="logout-action-btn confirm" @click="logout">
+            确认退出
+          </view>
+        </view>
+      </view>
+      
       <!-- 版本信息 -->
-      <view class="version-info" v-if="!isEditingNickname">
+      <view class="version-info" v-if="!isEditingNickname && !isConfirmingLogout">
         <text>当前版本: v1.0.0</text>
       </view>
     </view>
@@ -101,9 +120,21 @@ const props = defineProps({
 // 定义事件
 const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 'logout']);
 
-// 昵称编辑状态
+// 面板状态管理
 const isEditingNickname = ref(false);
+const isConfirmingLogout = ref(false);
 const newNickname = ref('');
+
+// 处理返回或关闭
+const handleBackOrClose = () => {
+  if (isEditingNickname.value) {
+    cancelEditNickname();
+  } else if (isConfirmingLogout.value) {
+    cancelLogout();
+  } else {
+    closeSettings();
+  }
+};
 
 // 关闭设置面板
 const closeSettings = () => {
@@ -181,21 +212,17 @@ const updateNickname = () => {
   }, 1000);
 };
 
-// 确认退出登录
-const confirmLogout = () => {
-  uni.showModal({
-    title: '提示',
-    content: '确定要退出登录吗？',
-    success: (res) => {
-      if (res.confirm) {
-        // 执行退出登录
-        logout();
-      }
-    }
-  });
+// 显示退出登录确认
+const showLogoutConfirm = () => {
+  isConfirmingLogout.value = true;
 };
 
-// 退出登录
+// 取消退出登录
+const cancelLogout = () => {
+  isConfirmingLogout.value = false;
+};
+
+// 确认退出登录
 const logout = () => {
   uni.showLoading({
     title: '退出中...'
@@ -371,6 +398,56 @@ const logout = () => {
           
           &.confirm {
             background-color: #4361ee;
+            color: #fff;
+          }
+        }
+      }
+    }
+    
+    // 退出登录确认面板
+    .logout-confirm-panel {
+      flex: 1;
+      padding: 40rpx 30rpx;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      
+      .logout-confirm-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 60rpx;
+        
+        .logout-confirm-text {
+          font-size: 34rpx;
+          color: #333;
+          margin-top: 30rpx;
+          font-weight: 500;
+        }
+      }
+      
+      .logout-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 60rpx;
+        
+        .logout-action-btn {
+          width: 45%;
+          height: 80rpx;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8rpx;
+          font-size: 30rpx;
+          
+          &.cancel {
+            background-color: #f8f8f8;
+            color: #666;
+            border: 2rpx solid #eee;
+          }
+          
+          &.confirm {
+            background-color: #ff6b6b;
             color: #fff;
           }
         }
