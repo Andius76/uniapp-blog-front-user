@@ -210,15 +210,11 @@
 				type: 'posts'
 			},
 			{
-				name: '动态',
-				type: 'activities'
-			},
-			{
 				name: '赞同',
 				type: 'likes'
 			}
 		],
-		currentTab: 1, // 默认选中"动态"选项卡
+		currentTab: 0, // 默认选中"我的发表"选项卡
 
 		// 内容列表数据与状态
 		contentList: [],
@@ -260,20 +256,6 @@
 				isLiked: true
 			}
 		],
-		activities: [{
-			id: 3,
-			author: '自己的昵称',
-			avatar: '/static/images/avatar.png',
-			time: '2025-4-20 09:35',
-			title: '文章标题',
-			summary: '一部分正文...全文',
-			image: '/static/images/default.png',
-			collectCount: 6,
-			commentCount: 8,
-			likeCount: 15,
-			isCollected: false,
-			isLiked: false
-		}],
 		likes: [{
 				id: 4,
 				author: '前端达人',
