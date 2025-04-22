@@ -512,9 +512,9 @@
 			});
 			return;
 		} else if (url.includes('settings')) {
-			uni.showToast({
-				title: '进入设置页面',
-				icon: 'none'
+			// 实际跳转到设置页面
+			uni.navigateTo({
+				url: '/pages/settings/settings'
 			});
 			return;
 		} else if (url.includes('follows')) {
