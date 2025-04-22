@@ -15,7 +15,7 @@
 						<view class="action-btn" @click="navigateTo('/pages/creation-center/creation-center')">
 							创作中心
 						</view>
-						<view @click="navigateTo('/pages/settings/settings')">
+						<view @click="showSettingsPopup">
 							<uni-icons type="gear" size="24" color="#333"></uni-icons>
 						</view>
 					</view>
@@ -181,15 +181,162 @@
 			</scroll-view>
 		</view>
 	</view>
+
+	<!-- 设置表单弹出层 -->
+	<uni-popup ref="settingsPopup" type="bottom">
+		<view class="settings-popup-container">
+			<view class="popup-header">
+				<text class="popup-title">设置</text>
+				<view class="popup-close" @click="closeSettingsPopup">
+					<uni-icons type="close" size="24" color="#666"></uni-icons>
+				</view>
+			</view>
+			
+			<scroll-view scroll-y class="settings-scroll">
+				<view class="settings-list">
+					<!-- 用户设置区域 -->
+					<view class="settings-section">
+						<view class="section-title">账号设置</view>
+						
+						<!-- 上传头像 -->
+						<view class="settings-item" @click="chooseAvatar">
+							<view class="item-left">
+								<uni-icons type="image" size="24" color="#666"></uni-icons>
+								<text class="item-label">上传头像</text>
+							</view>
+							<view class="item-right">
+								<image class="avatar-preview" :src="data.userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+								<uni-icons type="forward" size="18" color="#ccc"></uni-icons>
+							</view>
+						</view>
+						
+						<!-- 修改昵称 -->
+						<view class="settings-item" @click="showNicknameModal">
+							<view class="item-left">
+								<uni-icons type="person" size="24" color="#666"></uni-icons>
+								<text class="item-label">修改昵称</text>
+							</view>
+							<view class="item-right">
+								<text class="item-value">{{ data.userInfo.nickname }}</text>
+								<uni-icons type="forward" size="18" color="#ccc"></uni-icons>
+							</view>
+						</view>
+						
+						<!-- 修改性别 -->
+						<view class="settings-item" @click="showGenderPicker">
+							<view class="item-left">
+								<uni-icons type="help" size="24" color="#666"></uni-icons>
+								<text class="item-label">修改性别</text>
+							</view>
+							<view class="item-right">
+								<text class="item-value">{{ genderText }}</text>
+								<uni-icons type="forward" size="18" color="#ccc"></uni-icons>
+							</view>
+						</view>
+					</view>
+					
+					<!-- 其他设置区域 -->
+					<view class="settings-section">
+						<view class="section-title">其他设置</view>
+						
+						<!-- 返回我的页面 -->
+						<view class="settings-item" @click="closeSettingsPopup">
+							<view class="item-left">
+								<uni-icons type="home" size="24" color="#666"></uni-icons>
+								<text class="item-label">返回我的页面</text>
+							</view>
+						</view>
+						
+						<!-- 退出登录 -->
+						<view class="settings-item logout-item" @click="handleLogout">
+							<view class="item-left">
+								<uni-icons type="poweroff" size="24" color="#f56c6c"></uni-icons>
+								<text class="item-label logout-label">退出登录</text>
+							</view>
+						</view>
+					</view>
+				</view>
+			</scroll-view>
+		</view>
+	</uni-popup>
+	
+	<!-- 修改昵称弹窗 -->
+	<uni-popup ref="nicknamePopup" type="dialog">
+		<uni-popup-dialog 
+			title="修改昵称" 
+			:before-close="true"
+			@confirm="confirmNickname" 
+			@close="closeNicknamePopup"
+			confirmText="确认"
+			cancelText="取消"
+		>
+			<input 
+				class="nickname-input" 
+				type="text" 
+				v-model="tempNickname" 
+				placeholder="请输入新昵称" 
+				maxlength="20"
+			/>
+		</uni-popup-dialog>
+	</uni-popup>
+	
+	<!-- 性别选择器 -->
+	<uni-popup ref="genderPopup" type="bottom">
+		<view class="gender-picker-container">
+			<view class="picker-header">
+				<text class="picker-title">请选择性别</text>
+				<text class="picker-close" @click="closeGenderPicker">取消</text>
+			</view>
+			<view class="gender-options">
+				<view 
+					class="gender-option" 
+					:class="{ active: tempGender === 1 }"
+					@click="selectGender(1)"
+				>
+					<text>男</text>
+				</view>
+				<view 
+					class="gender-option" 
+					:class="{ active: tempGender === 2 }"
+					@click="selectGender(2)"
+				>
+					<text>女</text>
+				</view>
+				<view 
+					class="gender-option" 
+					:class="{ active: tempGender === 0 }"
+					@click="selectGender(0)"
+				>
+					<text>保密</text>
+				</view>
+			</view>
+			<view class="confirm-button" @click="confirmGender">
+				<text>确认</text>
+			</view>
+		</view>
+	</uni-popup>
 </template>
 
 <script setup>
 	import {
 		reactive,
-		onMounted
+		onMounted,
+		ref,
+		computed,
+		nextTick
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+	// 导入uni-popup组件
+	import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
+	import uniPopupDialog from '@/uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.vue';
+
+	// 设置需要使用的组件
+	const components = {
+		uniIcons,
+		uniPopup,
+		uniPopupDialog
+	};
 
 	// 使用reactive统一管理数据
 	const data = reactive({
@@ -201,7 +348,8 @@
 			followerCount: 0,
 			collectionCount: 1,
 			historyCount: 55,
-			bio: '简单介绍一下自己'
+			bio: '简单介绍一下自己',
+			gender: 0 // 0:保密 1:男 2:女
 		},
 
 		// 标签页数据
@@ -223,6 +371,22 @@
 		currentPage: 1,
 		pageSize: 5,
 		isRefreshing: false
+	});
+
+	// 临时存储修改信息
+	const tempNickname = ref('');
+	const tempGender = ref(0);
+	
+	// 计算属性，根据性别值返回文本
+	const genderText = computed(() => {
+		switch (data.userInfo.gender) {
+			case 1:
+				return '男';
+			case 2:
+				return '女';
+			default:
+				return '保密';
+		}
 	});
 
 	// 模拟内容数据
@@ -286,6 +450,11 @@
 			}
 		]
 	};
+
+	// 获取popup组件引用
+	const settingsPopup = ref(null);
+	const nicknamePopup = ref(null);
+	const genderPopup = ref(null);
 
 	/**
 	 * 加载内容列表
@@ -494,10 +663,8 @@
 			});
 			return;
 		} else if (url.includes('settings')) {
-			// 实际跳转到设置页面
-			uni.navigateTo({
-				url: '/pages/settings/settings'
-			});
+			// 已改为弹出设置表单，不再跳转
+			showSettingsPopup();
 			return;
 		} else if (url.includes('follows')) {
 			uni.showToast({
@@ -546,11 +713,227 @@
 		// 加载默认选项卡的内容
 		loadContent();
 
+		// 确保popup组件正确初始化
+		nextTick(() => {
+			console.log('popup组件初始化状态:', !!settingsPopup.value);
+		});
+
 		// TODO: 获取用户信息
 		// api.getUserInfo().then(res => {
 		//   data.userInfo = res.data;
 		// });
 	});
+
+	/**
+	 * 显示设置弹出层
+	 */
+	const showSettingsPopup = () => {
+		// 简单处理，直接尝试打开
+		try {
+			console.log('打开设置弹窗', settingsPopup.value);
+			uni.showToast({
+				title: '正在打开设置',
+				icon: 'none',
+				duration: 1000
+			});
+			setTimeout(() => {
+				if (settingsPopup.value) {
+					settingsPopup.value.open();
+				} else {
+					uni.showToast({
+						title: '组件未找到，请检查控制台',
+						icon: 'none'
+					});
+					console.error('settingsPopup组件引用为空');
+				}
+			}, 100);
+		} catch (error) {
+			console.error('打开设置弹窗失败:', error);
+			uni.showToast({
+				title: '打开设置失败，请重试',
+				icon: 'none'
+			});
+		}
+	};
+	
+	/**
+	 * 关闭设置弹出层
+	 */
+	const closeSettingsPopup = () => {
+		settingsPopup.value.close();
+	};
+	
+	/**
+	 * 显示修改昵称弹窗
+	 */
+	const showNicknameModal = () => {
+		tempNickname.value = data.userInfo.nickname;
+		nicknamePopup.value.open();
+	};
+
+	/**
+	 * 关闭修改昵称弹窗
+	 */
+	const closeNicknamePopup = () => {
+		nicknamePopup.value.close();
+	};
+
+	/**
+	 * 确认修改昵称
+	 */
+	const confirmNickname = () => {
+		const newNickname = tempNickname.value.trim();
+		if (!newNickname) {
+			uni.showToast({
+				title: '昵称不能为空',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 更新昵称
+		data.userInfo.nickname = newNickname;
+		
+		// 提示修改成功
+		uni.showToast({
+			title: '昵称修改成功',
+			icon: 'success'
+		});
+		
+		// TODO: 调用后端API保存昵称
+		// api.updateUserProfile({ nickname: newNickname }).then(res => {
+		//   console.log('昵称更新成功');
+		// });
+		
+		// 关闭弹窗
+		closeNicknamePopup();
+	};
+
+	/**
+	 * 显示性别选择器
+	 */
+	const showGenderPicker = () => {
+		tempGender.value = data.userInfo.gender;
+		genderPopup.value.open();
+	};
+
+	/**
+	 * 关闭性别选择器
+	 */
+	const closeGenderPicker = () => {
+		genderPopup.value.close();
+	};
+
+	/**
+	 * 选择性别
+	 * @param {Number} gender - 性别值 0:保密 1:男 2:女
+	 */
+	const selectGender = (gender) => {
+		tempGender.value = gender;
+	};
+
+	/**
+	 * 确认修改性别
+	 */
+	const confirmGender = () => {
+		// 更新性别
+		data.userInfo.gender = tempGender.value;
+		
+		// 提示修改成功
+		uni.showToast({
+			title: '性别修改成功',
+			icon: 'success'
+		});
+		
+		// TODO: 调用后端API保存性别
+		// api.updateUserProfile({ gender: tempGender.value }).then(res => {
+		//   console.log('性别更新成功');
+		// });
+		
+		// 关闭选择器
+		closeGenderPicker();
+	};
+
+	/**
+	 * 选择头像
+	 */
+	const chooseAvatar = () => {
+		uni.chooseImage({
+			count: 1, // 默认9
+			sizeType: ['compressed'], // 压缩图片
+			sourceType: ['album', 'camera'], // 从相册选择或拍照
+			success: (res) => {
+				// 预览选择的图片
+				const tempFilePath = res.tempFilePaths[0];
+				
+				// 更新头像预览
+				data.userInfo.avatar = tempFilePath;
+				
+				// 提示上传成功
+				uni.showToast({
+					title: '头像更新成功',
+					icon: 'success'
+				});
+				
+				// TODO: 实际上传逻辑
+				// uni.uploadFile({
+				//   url: 'your-upload-endpoint',
+				//   filePath: tempFilePath,
+				//   name: 'avatar',
+				//   success: (uploadRes) => {
+				//     const data = JSON.parse(uploadRes.data);
+				//     if (data.success) {
+				//       // 更新头像链接
+				//       data.userInfo.avatar = data.avatarUrl;
+				//       
+				//       uni.showToast({
+				//         title: '头像上传成功',
+				//         icon: 'success'
+				//       });
+				//     } else {
+				//       uni.showToast({
+				//         title: data.message || '上传失败',
+				//         icon: 'none'
+				//       });
+				//     }
+				//   },
+				//   fail: () => {
+				//     uni.showToast({
+				//       title: '上传失败，请重试',
+				//       icon: 'none'
+				//     });
+				//   }
+				// });
+			}
+		});
+	};
+
+	/**
+	 * 退出登录
+	 */
+	const handleLogout = () => {
+		uni.showModal({
+			title: '退出登录',
+			content: '确定要退出登录吗？',
+			success: (res) => {
+				if (res.confirm) {
+					// 清除登录状态和用户信息
+					// uni.removeStorageSync('token');
+					// uni.removeStorageSync('userInfo');
+					
+					// 跳转到登录页面
+					uni.reLaunch({
+						url: '/pages/login/login'
+					});
+					
+					// TODO: 调用后端API退出登录
+					// api.logout().then(res => {
+					//   console.log('已成功退出登录');
+					// });
+				}
+			}
+		});
+	};
 </script>
 
 <style lang="scss">
@@ -897,6 +1280,193 @@
 					}
 				}
 			}
+		}
+	}
+
+	// 设置弹出层样式
+	.settings-popup-container {
+		background-color: #fff;
+		border-radius: 24rpx 24rpx 0 0;
+		padding-bottom: 30rpx;
+		max-height: 80vh;
+		display: flex;
+		flex-direction: column;
+		
+		// 弹出层头部
+		.popup-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 30rpx;
+			border-bottom: 1rpx solid #f0f0f0;
+			
+			.popup-title {
+				font-size: 36rpx;
+				font-weight: bold;
+				color: #333;
+			}
+			
+			.popup-close {
+				padding: 10rpx;
+			}
+		}
+		
+		// 设置内容区域
+		.settings-scroll {
+			flex: 1;
+			height: 100%;
+			max-height: calc(80vh - 100rpx);
+		}
+		
+		// 设置列表
+		.settings-list {
+			width: 100%;
+			
+			// 设置区域
+			.settings-section {
+				padding: 20rpx 0;
+				
+				// 区域标题
+				.section-title {
+					padding: 20rpx 30rpx;
+					font-size: 28rpx;
+					color: #999;
+					font-weight: 500;
+				}
+				
+				// 设置项
+				.settings-item {
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+					padding: 30rpx;
+					border-bottom: 1rpx solid #f5f5f5;
+					
+					&:last-child {
+						border-bottom: none;
+					}
+					
+					// 左侧内容
+					.item-left {
+						display: flex;
+						align-items: center;
+						
+						.item-label {
+							font-size: 32rpx;
+							color: #333;
+							margin-left: 20rpx;
+						}
+					}
+					
+					// 右侧内容
+					.item-right {
+						display: flex;
+						align-items: center;
+						
+						.item-value {
+							font-size: 28rpx;
+							color: #999;
+							margin-right: 10rpx;
+							max-width: 200rpx;
+							overflow: hidden;
+							text-overflow: ellipsis;
+							white-space: nowrap;
+						}
+						
+						.avatar-preview {
+							width: 80rpx;
+							height: 80rpx;
+							border-radius: 50%;
+							background-color: #eee;
+							margin-right: 10rpx;
+							border: 1rpx solid #eee;
+						}
+					}
+					
+					// 退出登录样式
+					&.logout-item {
+						margin-top: 10rpx;
+						
+						.logout-label {
+							color: #f56c6c;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 修改昵称输入框
+	.nickname-input {
+		height: 80rpx;
+		background-color: #f8f8f8;
+		border-radius: 10rpx;
+		padding: 0 20rpx;
+		font-size: 28rpx;
+		margin-top: 20rpx;
+	}
+
+	// 性别选择器
+	.gender-picker-container {
+		background-color: #fff;
+		border-radius: 20rpx 20rpx 0 0;
+		padding-bottom: 30rpx;
+		
+		// 选择器头部
+		.picker-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 30rpx;
+			border-bottom: 1rpx solid #f5f5f5;
+			
+			.picker-title {
+				font-size: 32rpx;
+				font-weight: 500;
+				color: #333;
+			}
+			
+			.picker-close {
+				font-size: 28rpx;
+				color: #999;
+			}
+		}
+		
+		// 性别选项
+		.gender-options {
+			padding: 30rpx;
+			
+			.gender-option {
+				height: 100rpx;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: 10rpx;
+				margin-bottom: 20rpx;
+				font-size: 32rpx;
+				color: #333;
+				border: 1rpx solid #eee;
+				
+				&.active {
+					background-color: #4361ee;
+					color: #fff;
+					border-color: #4361ee;
+				}
+			}
+		}
+		
+		// 确认按钮
+		.confirm-button {
+			margin: 20rpx 30rpx 0;
+			height: 90rpx;
+			background-color: #4361ee;
+			color: #fff;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: 10rpx;
+			font-size: 32rpx;
+			font-weight: 500;
 		}
 	}
 </style>
