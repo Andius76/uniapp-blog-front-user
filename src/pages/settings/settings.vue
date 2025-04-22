@@ -10,6 +10,18 @@
 				<view class="settings-section">
 					<view class="section-title">账号设置</view>
 					
+					<!-- 上传头像 -->
+					<view class="settings-item" @click="chooseAvatar">
+						<view class="item-left">
+							<uni-icons type="image" size="24" color="#666"></uni-icons>
+							<text class="item-label">上传头像</text>
+						</view>
+						<view class="item-right">
+							<image class="avatar-preview" :src="data.userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+							<uni-icons type="forward" size="18" color="#ccc"></uni-icons>
+						</view>
+					</view>
+					
 					<!-- 修改昵称 -->
 					<view class="settings-item" @click="showNicknameModal">
 						<view class="item-left">
@@ -126,6 +138,7 @@ const data = reactive({
 	userInfo: {
 		nickname: '用户asdf',
 		gender: 0, // 0:保密 1:男 2:女
+		avatar: ''
 	},
 	// 临时存储修改信息
 	tempNickname: '',
@@ -233,6 +246,60 @@ const confirmGender = () => {
 	
 	// 关闭选择器
 	closeGenderPicker();
+};
+
+/**
+ * 选择头像
+ */
+const chooseAvatar = () => {
+	uni.chooseImage({
+		count: 1, // 默认9
+		sizeType: ['compressed'], // 压缩图片
+		sourceType: ['album', 'camera'], // 从相册选择或拍照
+		success: (res) => {
+			// 预览选择的图片
+			const tempFilePath = res.tempFilePaths[0];
+			
+			// 更新头像预览
+			data.userInfo.avatar = tempFilePath;
+			
+			// 提示上传成功
+			uni.showToast({
+				title: '头像更新成功',
+				icon: 'success'
+			});
+			
+			// TODO: 实际上传逻辑
+			// uni.uploadFile({
+			//   url: 'your-upload-endpoint',
+			//   filePath: tempFilePath,
+			//   name: 'avatar',
+			//   success: (uploadRes) => {
+			//     const data = JSON.parse(uploadRes.data);
+			//     if (data.success) {
+			//       // 更新头像链接
+			//       data.userInfo.avatar = data.avatarUrl;
+			//       
+			//       uni.showToast({
+			//         title: '头像上传成功',
+			//         icon: 'success'
+			//       });
+			//     } else {
+			//       uni.showToast({
+			//         title: data.message || '上传失败',
+			//         icon: 'none'
+			//       });
+			//     }
+			//   },
+			//   fail: () => {
+			//     uni.showToast({
+			//       title: '上传失败，请重试',
+			//       icon: 'none'
+			//     });
+			//   }
+			// });
+		}
+	});
 };
 
 /**
@@ -346,6 +413,15 @@ page {
 							overflow: hidden;
 							text-overflow: ellipsis;
 							white-space: nowrap;
+						}
+						
+						.avatar-preview {
+							width: 80rpx;
+							height: 80rpx;
+							border-radius: 50%;
+							background-color: #eee;
+							margin-right: 10rpx;
+							border: 1px solid #eee;
 						}
 					}
 					
