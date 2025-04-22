@@ -6,13 +6,14 @@
     <!-- 设置面板 -->
     <view class="settings-panel" :class="{ 'visible': visible }">
       <view class="panel-header">
-        <text class="panel-title">用户设置</text>
-        <view class="close-btn" @click="closeSettings">
-          <uni-icons type="close" size="24" color="#333"></uni-icons>
+        <text class="panel-title">{{ isEditingNickname ? '修改昵称' : '用户设置' }}</text>
+        <view class="close-btn" @click="isEditingNickname ? cancelEditNickname() : closeSettings()">
+          <uni-icons :type="isEditingNickname ? 'left' : 'close'" size="24" color="#333"></uni-icons>
         </view>
       </view>
       
-      <view class="panel-content">
+      <!-- 主设置面板 -->
+      <view class="panel-content" v-if="!isEditingNickname">
         <!-- 头像设置 -->
         <view class="settings-item" @click="changeAvatar">
           <view class="item-label">
@@ -26,7 +27,7 @@
         </view>
         
         <!-- 昵称设置 -->
-        <view class="settings-item" @click="showNicknameInput">
+        <view class="settings-item" @click="showNicknameEdit">
           <view class="item-label">
             <uni-icons type="chat" size="22" color="#666"></uni-icons>
             <text>修改昵称</text>
@@ -46,33 +47,41 @@
         </view>
       </view>
       
+      <!-- 昵称编辑面板 -->
+      <view class="nickname-edit-panel" v-else>
+        <view class="nickname-input-container">
+          <input 
+            class="nickname-input"
+            type="text"
+            v-model="newNickname"
+            placeholder="请输入新昵称"
+            maxlength="20"
+            focus
+          />
+          <text class="char-count">{{ newNickname.length }}/20</text>
+        </view>
+        
+        <view class="nickname-actions">
+          <view class="nickname-action-btn cancel" @click="cancelEditNickname">
+            取消
+          </view>
+          <view class="nickname-action-btn confirm" @click="updateNickname">
+            确认
+          </view>
+        </view>
+      </view>
+      
       <!-- 版本信息 -->
-      <view class="version-info">
+      <view class="version-info" v-if="!isEditingNickname">
         <text>当前版本: v1.0.0</text>
       </view>
     </view>
-    
-    <!-- 修改昵称弹窗 -->
-    <uni-popup ref="nicknamePopup" type="dialog">
-      <uni-popup-dialog 
-        title="修改昵称" 
-        :before-close="true" 
-        @confirm="updateNickname" 
-        @close="closeNicknamePopup"
-        mode="input"
-        :value="newNickname"
-        placeholder="请输入新昵称"
-        @input="onNicknameInput"
-      ></uni-popup-dialog>
-    </uni-popup>
   </view>
 </template>
 
 <script setup>
 import { ref, reactive, defineProps, defineEmits } from 'vue';
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
-import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
-import uniPopupDialog from '@/uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.vue';
 
 // 定义组件属性
 const props = defineProps({
@@ -92,8 +101,8 @@ const props = defineProps({
 // 定义事件
 const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 'logout']);
 
-// 用于控制昵称输入弹窗
-const nicknamePopup = ref(null);
+// 昵称编辑状态
+const isEditingNickname = ref(false);
 const newNickname = ref('');
 
 // 关闭设置面板
@@ -130,20 +139,15 @@ const changeAvatar = () => {
   });
 };
 
-// 显示昵称输入弹窗
-const showNicknameInput = () => {
+// 显示昵称编辑界面
+const showNicknameEdit = () => {
   newNickname.value = props.userInfo.nickname;
-  nicknamePopup.value.open();
+  isEditingNickname.value = true;
 };
 
-// 处理昵称输入
-const onNicknameInput = (e) => {
-  newNickname.value = e;
-};
-
-// 关闭昵称弹窗
-const closeNicknamePopup = () => {
-  nicknamePopup.value.close();
+// 取消编辑昵称
+const cancelEditNickname = () => {
+  isEditingNickname.value = false;
 };
 
 // 更新昵称
@@ -172,7 +176,8 @@ const updateNickname = () => {
       icon: 'success'
     });
     
-    closeNicknamePopup();
+    // 返回主设置界面
+    isEditingNickname.value = false;
   }, 1000);
 };
 
@@ -310,6 +315,63 @@ const logout = () => {
           
           .logout-text {
             color: #ff6b6b;
+          }
+        }
+      }
+    }
+    
+    // 昵称编辑面板
+    .nickname-edit-panel {
+      flex: 1;
+      padding: 30rpx;
+      
+      .nickname-input-container {
+        position: relative;
+        margin-top: 20rpx;
+        
+        .nickname-input {
+          width: 100%;
+          height: 90rpx;
+          background-color: #f8f8f8;
+          border: 2rpx solid #eee;
+          border-radius: 8rpx;
+          padding: 0 20rpx;
+          font-size: 30rpx;
+          color: #333;
+        }
+        
+        .char-count {
+          position: absolute;
+          right: 20rpx;
+          bottom: -50rpx;
+          font-size: 24rpx;
+          color: #999;
+        }
+      }
+      
+      .nickname-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 80rpx;
+        
+        .nickname-action-btn {
+          width: 45%;
+          height: 80rpx;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8rpx;
+          font-size: 30rpx;
+          
+          &.cancel {
+            background-color: #f8f8f8;
+            color: #666;
+            border: 2rpx solid #eee;
+          }
+          
+          &.confirm {
+            background-color: #4361ee;
+            color: #fff;
           }
         }
       }
