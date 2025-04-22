@@ -51,6 +51,14 @@
 				<view class="settings-section">
 					<view class="section-title">其他设置</view>
 					
+					<!-- 返回我的页面 -->
+					<view class="settings-item" @click="goBackToMyPage">
+						<view class="item-left">
+							<uni-icons type="home" size="24" color="#666"></uni-icons>
+							<text class="item-label">返回我的页面</text>
+						</view>
+					</view>
+					
 					<!-- 退出登录 -->
 					<view class="settings-item logout-item" @click="handleLogout">
 						<view class="item-left">
@@ -326,6 +334,16 @@ const handleLogout = () => {
 				// });
 			}
 		}
+	});
+};
+
+/**
+ * 返回我的页面
+ */
+const goBackToMyPage = () => {
+	// 使用导航API返回上一页
+	uni.navigateBack({
+		delta: 1
 	});
 };
 </script>
