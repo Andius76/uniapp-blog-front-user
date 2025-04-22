@@ -73,6 +73,11 @@ const pageSize = 5; // 每页5条消息
 // 选项卡数据
 const tabs = reactive([
   {
+    name: '系统公告',
+    icon: 'sound',
+    type: 'announcement'
+  },
+  {
     name: '点赞了我',
     icon: 'heart',
     type: 'like'
@@ -121,6 +126,37 @@ const messageGroups = reactive([
 
 // 原始消息数据（用于模拟不同选项卡下的数据）
 const allMessages = reactive({
+  announcement: [
+    {
+      type: 'system',
+      messages: [
+        {
+          id: 101,
+          title: '系统升级公告',
+          description: '亲爱的用户，我们将于2025年5月1日凌晨2点-4点进行系统升级维护',
+          time: '2025-4-25',
+          icon: 'sound-filled',
+          isRead: false
+        },
+        {
+          id: 102,
+          title: '活动公告',
+          description: '五一特别活动：发布原创文章即可参与抽奖，赢取精美礼品',
+          time: '2025-4-23',
+          icon: 'sound-filled',
+          isRead: true
+        },
+        {
+          id: 103,
+          title: '功能更新公告',
+          description: '新增markdown编辑器功能，支持更丰富的文章排版',
+          time: '2025-4-20',
+          icon: 'sound-filled',
+          isRead: false
+        }
+      ]
+    }
+  ],
   like: [
     {
       type: 'system',
@@ -477,6 +513,14 @@ const readMessage = (message) => {
   // 处理点击消息的其他逻辑
   // 根据消息类型跳转到不同页面或者执行不同操作
   switch (tabs[currentTab.value].type) {
+    case 'announcement':
+      uni.showToast({
+        title: '查看公告详情',
+        icon: 'none'
+      });
+      // 可以跳转到公告详情页
+      // uni.navigateTo({ url: `/pages/announcement-detail/announcement-detail?id=${message.id}` });
+      break;
     case 'like':
       uni.showToast({
         title: '查看点赞详情',
