@@ -136,7 +136,9 @@ const allMessages = reactive({
           description: '亲爱的用户，我们将于2025年5月1日凌晨2点-4点进行系统升级维护',
           time: '2025-4-25',
           icon: 'sound-filled',
-          isRead: false
+          isRead: false,
+          relatedId: 'notice_101',
+          sourceType: 'system'
         },
         {
           id: 102,
@@ -180,7 +182,13 @@ const allMessages = reactive({
           description: '用户"前端达人"赞了您的文章',
           time: '2025-4-19',
           icon: 'heart-filled',
-          isRead: true
+          isRead: true,
+          relatedId: 'article_123',
+          sourceUser: {
+            id: 'user_001',
+            name: '前端达人',
+            avatar: '/static/avatar/default.png'
+          }
         },
         {
           id: 3,
@@ -240,11 +248,17 @@ const allMessages = reactive({
       messages: [
         {
           id: 7,
-          title: '订阅通知',
+          title: '新订阅者',
           description: '用户"前端学习者"订阅了您',
           time: '2025-4-18',
           icon: 'bookmark-filled',
-          isRead: false
+          isRead: false,
+          sourceUser: {
+            id: 'user_007',
+            name: '前端学习者',
+            avatar: '/static/avatar/default.png'
+          },
+          subscribeType: 'new'
         },
         {
           id: 8,
@@ -262,11 +276,17 @@ const allMessages = reactive({
       messages: [
         {
           id: 7,
-          title: '订阅通知',
+          title: '新订阅者',
           description: '用户"前端学习者"订阅了您',
           time: '2025-4-18',
           icon: 'bookmark-filled',
-          isRead: false
+          isRead: false,
+          sourceUser: {
+            id: 'user_007',
+            name: '前端学习者',
+            avatar: '/static/avatar/default.png'
+          },
+          subscribeType: 'new'
         },
         {
           id: 8,
@@ -283,11 +303,17 @@ const allMessages = reactive({
       messages: [
         {
           id: 7,
-          title: '订阅通知',
+          title: '新订阅者',
           description: '用户"前端学习者"订阅了您',
           time: '2025-4-18',
           icon: 'bookmark-filled',
-          isRead: false
+          isRead: false,
+          sourceUser: {
+            id: 'user_007',
+            name: '前端学习者',
+            avatar: '/static/avatar/default.png'
+          },
+          subscribeType: 'new'
         },
         {
           id: 8,
@@ -304,11 +330,17 @@ const allMessages = reactive({
       messages: [
         {
           id: 7,
-          title: '订阅通知',
+          title: '新订阅者',
           description: '用户"前端学习者"订阅了您',
           time: '2025-4-18',
           icon: 'bookmark-filled',
-          isRead: false
+          isRead: false,
+          sourceUser: {
+            id: 'user_007',
+            name: '前端学习者',
+            avatar: '/static/avatar/default.png'
+          },
+          subscribeType: 'new'
         },
         {
           id: 8,
@@ -325,11 +357,17 @@ const allMessages = reactive({
       messages: [
         {
           id: 7,
-          title: '订阅通知',
+          title: '新订阅者',
           description: '用户"前端学习者"订阅了您',
           time: '2025-4-18',
           icon: 'bookmark-filled',
-          isRead: false
+          isRead: false,
+          sourceUser: {
+            id: 'user_007',
+            name: '前端学习者',
+            avatar: '/static/avatar/default.png'
+          },
+          subscribeType: 'new'
         },
         {
           id: 8,
@@ -514,31 +552,23 @@ const readMessage = (message) => {
   // 根据消息类型跳转到不同页面或者执行不同操作
   switch (tabs[currentTab.value].type) {
     case 'announcement':
-      uni.showToast({
-        title: '查看公告详情',
-        icon: 'none'
+      uni.navigateTo({ 
+        url: `/pages/announcement-detail/announcement-detail?id=${message.relatedId}`
       });
-      // 可以跳转到公告详情页
-      // uni.navigateTo({ url: `/pages/announcement-detail/announcement-detail?id=${message.id}` });
       break;
     case 'like':
-      uni.showToast({
-        title: '查看点赞详情',
-        icon: 'none'
+      uni.navigateTo({
+        url: `/pages/article-detail/article-detail?id=${message.relatedId}`
       });
-      // 可以跳转到具体文章或评论
-      // uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${relatedId}` });
       break;
     case 'collect':
-      uni.showToast({
-        title: '查看收藏详情',
-        icon: 'none'
+      uni.navigateTo({
+        url: `/pages/collection/collection?id=${message.sourceUser.id}`
       });
       break;
     case 'subscribe':
-      uni.showToast({
-        title: '查看订阅者信息',
-        icon: 'none'
+      uni.navigateTo({
+        url: `/pages/user-profile/user-profile?id=${message.sourceUser.id}`
       });
       break;
   }
