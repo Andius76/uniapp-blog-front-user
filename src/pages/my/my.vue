@@ -557,10 +557,8 @@
 			});
 			return;
 		} else if (url.includes('article-detail')) {
-			uni.showToast({
-				title: '查看文章详情: ' + url.split('=')[1],
-				icon: 'none'
-			});
+			// 直接导航到文章详情页面
+			uni.navigateTo({ url });
 			return;
 		}
 
