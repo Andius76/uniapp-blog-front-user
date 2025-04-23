@@ -8,7 +8,7 @@
 
 			<!-- 发布按钮 -->
 			<view class="publish-btn" @click="publishArticle">
-				<text>发布</text>
+				<text>{{ publishBtnText }}</text>
 			</view>
 		</view>
 
@@ -169,13 +169,23 @@
 		return editorContent.value;
 	});
 
+	// 添加模式和文章ID变量
+	const mode = ref('new'); // 默认为新建模式，可能的值: 'new', 'edit'
+	const articleId = ref(null); // 编辑模式下存储文章ID
+
 	// 文章数据
 	const articleData = reactive({
+		id: null,
 		title: '',
 		content: '',
 		htmlContent: '',
 		images: [],
 		tags: [] // 添加标签字段
+	});
+
+	// 发布按钮文本
+	const publishBtnText = computed(() => {
+		return mode.value === 'edit' ? '更新' : '发布';
 	});
 
 	// 可选标签列表
@@ -452,6 +462,53 @@
 	onMounted(() => {
 		listenBackButton();
 		listenTabBarClicks();
+		
+		// 获取页面参数
+		const pages = getCurrentPages();
+		const currentPage = pages[pages.length - 1];
+		const options = currentPage.$page?.options || currentPage.options || {};
+		
+		// 检查是否有mode和articleData参数
+		if (options.mode === 'edit' && options.articleData) {
+			try {
+				// 解码并解析文章数据
+				const decodedData = decodeURIComponent(options.articleData);
+				const parsedData = JSON.parse(decodedData);
+				
+				// 设置为编辑模式
+				mode.value = 'edit';
+				
+				// 填充文章数据
+				articleData.id = parsedData.id;
+				articleData.title = parsedData.title || '';
+				articleData.content = parsedData.content || '';
+				articleData.htmlContent = parsedData.htmlContent || parsedData.content || ''; // 使用HTML内容或普通内容
+				
+				// 填充标签
+				if (Array.isArray(parsedData.tags)) {
+					articleData.tags = [...parsedData.tags];
+					selectedTags.value = [...parsedData.tags];
+				}
+				
+				// 填充图片
+				if (Array.isArray(parsedData.images)) {
+					articleData.images = [...parsedData.images];
+				}
+				
+				console.log('编辑模式：加载文章数据', articleData);
+				
+				// 等待编辑器准备完成后设置内容
+				nextTick(() => {
+					// 编辑器在onEditorReady中会自动加载htmlContent的内容
+				});
+			} catch (error) {
+				console.error('解析文章数据失败', error);
+				uni.showToast({
+					title: '加载文章数据失败',
+					icon: 'none'
+				});
+			}
+		}
 	});
 
 	// 拦截页面离开事件
@@ -484,16 +541,31 @@
 			return;
 		}
 
-		// 模拟发布请求
+		// 根据模式显示不同的加载提示
 		uni.showLoading({
-			title: '发布中...'
+			title: mode.value === 'edit' ? '更新中...' : '发布中...'
 		});
 
+		// 根据模式构建不同的请求数据
+		const requestData = {
+			title: articleData.title,
+			content: articleData.content,
+			htmlContent: articleData.htmlContent,
+			tags: articleData.tags,
+			images: articleData.images
+		};
+		
+		// 如果是编辑模式，添加文章ID
+		if (mode.value === 'edit' && articleData.id) {
+			requestData.id = articleData.id;
+		}
+
 		// 这里应该是实际的API请求
+		// 根据mode值调用不同的API
 		setTimeout(() => {
 			uni.hideLoading();
 			uni.showToast({
-				title: '发布成功',
+				title: mode.value === 'edit' ? '更新成功' : '发布成功',
 				icon: 'success'
 			});
 
@@ -507,6 +579,53 @@
 				});
 			}, 1500);
 		}, 1000);
+		
+		// TODO: 实际的API调用应该类似：
+		/*
+		if (mode.value === 'edit') {
+			// 更新文章
+			api.updateArticle(requestData).then(res => {
+				uni.hideLoading();
+				uni.showToast({
+					title: '更新成功',
+					icon: 'success'
+				});
+				clearAndRefresh();
+				setTimeout(() => {
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
+				}, 1500);
+			}).catch(err => {
+				uni.hideLoading();
+				uni.showToast({
+					title: '更新失败，请重试',
+					icon: 'none'
+				});
+			});
+		} else {
+			// 创建新文章
+			api.createArticle(requestData).then(res => {
+				uni.hideLoading();
+				uni.showToast({
+					title: '发布成功',
+					icon: 'success'
+				});
+				clearAndRefresh();
+				setTimeout(() => {
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
+				}, 1500);
+			}).catch(err => {
+				uni.hideLoading();
+				uni.showToast({
+					title: '发布失败，请重试',
+					icon: 'none'
+				});
+			});
+		}
+		*/
 	};
 
 	// 插入图片
