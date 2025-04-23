@@ -103,19 +103,9 @@
 		"navigationBarTextStyle": "black",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8",
-		"app-plus": {
-			"titleNView": {
-				"autoBackButton": false // 全局隐藏默认返回按钮
-			}
-		},
 		"h5": {
 			"navigationBarTitleText": "",
 			"navigationStyle": "custom"
-		},
-		"mp-weixin": {
-			"titleNView": {
-				"autoBackButton": false // 全局隐藏默认返回按钮
-			}
 		}
 	}
 }

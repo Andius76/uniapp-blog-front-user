@@ -9,9 +9,11 @@
       refresher-default-style="black"
       @scrolltolower="loadMoreComments">
       <!-- 返回按钮 -->
+      <!-- #ifdef H5 -->
       <view class="back-button" @click="goBack">
         <uni-icons type="back" size="24" color="#333"></uni-icons>
       </view>
+      <!-- #endif -->
       
       <!-- 刷新成功提示 -->
       <view class="refresh-success" v-if="data.showRefreshSuccess">
@@ -541,7 +543,12 @@ const getMockComments = (page) => {
 
 .article-header {
   padding: 30rpx;
+  // #ifdef H5
   padding-top: 100rpx;
+  // #endif
+  // #ifndef H5
+  padding-top: 30rpx;
+  // #endif
   border-bottom: 1rpx solid #f0f0f0;
   
   .article-title {

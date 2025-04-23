@@ -1,9 +1,11 @@
 <template>
 	<view class="container">
 		<!-- 返回按钮 -->
+		<!-- #ifdef H5 -->
 		<view class="back-button" @click="goBack">
 			<uni-icons type="back" size="24" color="#333"></uni-icons>
 		</view>
+		<!-- #endif -->
 
 		<!-- 顶部用户信息区域 -->
 		<view class="user-top-container">
@@ -689,7 +691,12 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 30rpx;
-		padding-top: 120rpx; // 增加上边距，为返回按钮留出更多空间
+		// #ifdef H5
+		padding-top: 90rpx; // 为返回按钮留出空间
+		// #endif
+		// #ifndef H5
+		padding-top: 30rpx; // 非H5平台不需要为返回按钮留出空间
+		// #endif
 		background-color: #fff;
 
 		.user-info {
@@ -702,7 +709,9 @@
 				border-radius: 50%;
 				margin-right: 20rpx;
 				background-color: #eee;
+				// #ifdef H5
 				margin-left: 70rpx; // 增加左边距，避免与返回按钮重叠
+				// #endif
 			}
 
 			.nickname {
