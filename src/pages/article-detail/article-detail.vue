@@ -1,9 +1,22 @@
 <template>
   <view class="container">
-    <scroll-view scroll-y class="article-detail">
+    <scroll-view scroll-y class="article-detail"
+      refresher-enabled
+      :refresher-triggered="data.refreshing"
+      @refresherrefresh="onRefresh"
+      @refresherrestore="onRestore"
+      :refresher-background="'#f2f2f2'"
+      refresher-default-style="black"
+      @scrolltolower="loadMoreComments">
       <!-- 返回按钮 -->
       <view class="back-button" @click="goBack">
         <uni-icons type="back" size="24" color="#333"></uni-icons>
+      </view>
+      
+      <!-- 刷新成功提示 -->
+      <view class="refresh-success" v-if="data.showRefreshSuccess">
+        <uni-icons type="checkmarkempty" size="16" color="#09BB07"></uni-icons>
+        <text>刷新成功</text>
       </view>
       
       <!-- 文章标题区域 -->
@@ -63,7 +76,7 @@
 
       <!-- 评论列表 -->
       <view class="comment-section">
-        <text class="section-title">评论（{{ data.comments.length }}）</text>
+        <text class="section-title">评论（{{ data.article.commentCount }}）</text>
         <view class="comment-list">
           <view v-for="(comment, index) in data.comments" :key="index" class="comment-card">
             <view class="comment-item">
@@ -115,6 +128,20 @@
         <view v-if="data.comments.length === 0" class="no-comment">
           <uni-icons type="chat" size="40" color="#ddd"></uni-icons>
           <text>暂无评论，快来发表第一条评论吧</text>
+        </view>
+        
+        <!-- 加载更多 -->
+        <view v-if="data.comments.length > 0" class="load-more">
+          <view v-if="data.isLoadingMore" class="loading">
+            <uni-icons type="spinner-cycle" size="20" color="#999"></uni-icons>
+            <text>加载中...</text>
+          </view>
+          <view v-else-if="data.hasMoreComments" class="load-more-text" @click="loadMoreComments">
+            <text>点击加载更多</text>
+          </view>
+          <view v-else class="no-more">
+            <text>已经到底啦</text>
+          </view>
         </view>
       </view>
     </scroll-view>
@@ -200,7 +227,15 @@ const data = reactive({
   replyTarget: '', // 回复的目标用户
   replyToCommentIndex: -1, // 回复的评论索引
   replyToReplyIndex: -1, // 回复的回复索引
-  inputBottom: 0 // 键盘高度调整
+  inputBottom: 0, // 键盘高度调整
+  refreshing: false, // 是否正在刷新中
+  showRefreshSuccess: false, // 是否显示刷新成功提示
+  
+  // 新增评论加载相关状态
+  currentPage: 1, // 当前评论页码
+  pageSize: 10, // 每页评论数量
+  hasMoreComments: true, // 是否还有更多评论
+  isLoadingMore: false, // 是否正在加载更多评论
 })
 
 onLoad((options) => {
@@ -378,6 +413,101 @@ const handleInputFocus = (e) => {
 // 处理输入框失去焦点
 const handleInputBlur = () => {
   data.inputBottom = 0
+}
+
+// 处理下拉刷新事件
+const onRefresh = () => {
+  data.refreshing = true
+  
+  // 模拟加载数据
+  setTimeout(() => {
+    // 这里可以加入重新获取文章详情和评论的逻辑
+    refreshArticleData()
+  }, 1500)
+}
+
+// 刷新文章数据
+const refreshArticleData = () => {
+  // 在实际应用中，这里应该调用API重新获取文章信息和评论
+  // 模拟刷新成功
+  console.log('刷新文章数据')
+  
+  // 刷新完成后显示成功提示
+  data.refreshing = false
+  data.showRefreshSuccess = true
+  
+  // 2秒后隐藏成功提示
+  setTimeout(() => {
+    data.showRefreshSuccess = false
+  }, 2000)
+}
+
+// 刷新恢复事件
+const onRestore = () => {
+  console.log('刷新控件恢复默认状态')
+}
+
+// 加载更多评论
+const loadMoreComments = () => {
+  // 如果没有更多评论或正在加载中，则不执行
+  if (!data.hasMoreComments || data.isLoadingMore) return
+  
+  data.isLoadingMore = true
+  console.log('加载更多评论，页码：', data.currentPage + 1)
+  
+  // 模拟获取更多评论
+  setTimeout(() => {
+    // 在实际项目中，这里应该调用API获取下一页评论
+    // fetchMoreComments(data.currentPage + 1, data.pageSize)
+    
+    // 模拟新评论数据
+    const newComments = getMockComments(data.currentPage + 1)
+    
+    if (newComments.length > 0) {
+      // 添加新评论到列表
+      data.comments = [...data.comments, ...newComments]
+      data.currentPage += 1
+      
+      // 模拟是否还有更多评论（示例：只加载3页）
+      data.hasMoreComments = data.currentPage < 3
+    } else {
+      data.hasMoreComments = false
+    }
+    
+    data.isLoadingMore = false
+  }, 1000)
+}
+
+// 模拟获取评论数据（实际开发中应替换为API调用）
+const getMockComments = (page) => {
+  // 第一页已经在初始数据中，这里模拟后续页面
+  if (page <= 1) return []
+  
+  const mockComments = []
+  
+  // 每页生成3条模拟评论
+  for (let i = 0; i < 3; i++) {
+    const commentId = 100 + (page - 1) * 3 + i
+    mockComments.push({
+      id: commentId,
+      author: `用户${commentId}`,
+      avatar: '/static/images/avatar.png',
+      content: `这是第${page}页的第${i+1}条评论，用于测试加载更多功能`,
+      time: '刚刚',
+      likeCount: Math.floor(Math.random() * 20),
+      isLiked: false,
+      replies: page === 2 ? [
+        {
+          id: commentId * 10 + 1,
+          author: `回复用户${commentId*10+1}`,
+          content: '感谢分享！',
+          time: '刚刚'
+        }
+      ] : []
+    })
+  }
+  
+  return mockComments
 }
 </script>
 
@@ -727,5 +857,56 @@ const handleInputBlur = () => {
       color: #ffffff;
     }
   }
+}
+
+// 刷新成功提示
+.refresh-success {
+  position: fixed;
+  top: 100rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 26rpx;
+  padding: 12rpx 30rpx;
+  border-radius: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  
+  text {
+    margin-left: 10rpx;
+  }
+}
+
+// 加载更多区域样式
+.load-more {
+  text-align: center;
+  padding: 30rpx 0;
+  margin-bottom: 100rpx;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  text {
+    margin-left: 10rpx;
+    font-size: 26rpx;
+    color: #999;
+  }
+}
+
+.load-more-text {
+  padding: 20rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.no-more {
+  font-size: 26rpx;
+  color: #999;
 }
 </style>
