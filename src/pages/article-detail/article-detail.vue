@@ -1,6 +1,11 @@
 <template>
   <view class="container">
     <scroll-view scroll-y class="article-detail">
+      <!-- 返回按钮 -->
+      <view class="back-button" @click="goBack">
+        <uni-icons type="back" size="24" color="#333"></uni-icons>
+      </view>
+      
       <!-- 文章标题区域 -->
       <view class="article-header">
         <text class="article-title">{{ data.article.title }}</text>
@@ -58,19 +63,74 @@
 
       <!-- 评论列表 -->
       <view class="comment-section">
-        <text class="section-title">热门评论</text>
+        <text class="section-title">评论（{{ data.comments.length }}）</text>
         <view class="comment-list">
           <view v-for="(comment, index) in data.comments" :key="index" class="comment-item">
             <image :src="comment.avatar" class="comment-avatar"/>
             <view class="comment-content">
-              <text class="comment-author">{{ comment.author }}</text>
+              <view class="comment-header">
+                <text class="comment-author">{{ comment.author }}</text>
+                <view class="comment-actions">
+                  <view class="like-action" @click="handleCommentLike(index)">
+                    <uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16" 
+                      :color="comment.isLiked ? '#ff6b6b' : '#999'"/>
+                    <text :class="{'liked': comment.isLiked}">{{ comment.likeCount || 0 }}</text>
+                  </view>
+                </view>
+              </view>
               <text class="comment-text">{{ comment.content }}</text>
-              <text class="comment-time">{{ comment.time }}</text>
+              <view class="comment-footer">
+                <text class="comment-time">{{ comment.time }}</text>
+                <text class="reply-btn" @click="replyToComment(index)">回复</text>
+              </view>
+              
+              <!-- 评论回复区域 -->
+              <view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
+                <view v-for="(reply, replyIndex) in comment.replies" :key="replyIndex" class="reply-item">
+                  <view class="reply-content">
+                    <text class="reply-author">{{ reply.author }}</text>
+                    <text v-if="reply.replyTo" class="reply-to">回复</text>
+                    <text v-if="reply.replyTo" class="reply-to-author">@{{ reply.replyTo }}</text>
+                    <text class="reply-text">：{{ reply.content }}</text>
+                  </view>
+                  <view class="reply-footer">
+                    <text class="reply-time">{{ reply.time }}</text>
+                    <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
+                  </view>
+                </view>
+                
+                <!-- 查看更多回复 -->
+                <view v-if="comment.replies.length > 2 && !comment.showAllReplies" class="more-replies" 
+                      @click="showAllReplies(index)">
+                  <text>查看更多回复</text>
+                </view>
+              </view>
             </view>
           </view>
         </view>
+        
+        <!-- 无评论提示 -->
+        <view v-if="data.comments.length === 0" class="no-comment">
+          <uni-icons type="chat" size="40" color="#ddd"></uni-icons>
+          <text>暂无评论，快来发表第一条评论吧</text>
+        </view>
       </view>
     </scroll-view>
+    
+    <!-- 评论输入框 -->
+    <view class="comment-input-container" :style="{ bottom: inputBottom + 'px' }">
+      <input
+        class="comment-input"
+        type="text"
+        v-model="data.commentContent"
+        :placeholder="data.replyTarget ? `回复 ${data.replyTarget}` : '说点什么...'"
+        confirm-type="send"
+        @confirm="submitComment"
+        @focus="handleInputFocus"
+        @blur="handleInputBlur"
+      />
+      <button class="send-btn" :disabled="!data.commentContent.trim()" @click="submitComment">发送</button>
+    </view>
   </view>
 </template>
 
@@ -98,12 +158,47 @@ const data = reactive({
   },
   comments: [
     {
+      id: 1,
       author: '用户A',
       avatar: '/static/images/avatar.png',
-      content: '非常棒的文章！',
-      time: '1小时前'
+      content: '非常棒的文章，学习了很多知识！',
+      time: '1小时前',
+      likeCount: 12,
+      isLiked: false,
+      showAllReplies: false,
+      replies: [
+        {
+          id: 11,
+          author: '用户B',
+          replyTo: '用户A',
+          content: '同感，我也学到了很多',
+          time: '50分钟前'
+        },
+        {
+          id: 12,
+          author: '用户C',
+          replyTo: '用户B',
+          content: '期待作者的下一篇文章',
+          time: '30分钟前'
+        }
+      ]
+    },
+    {
+      id: 2,
+      author: '用户D',
+      avatar: '/static/images/avatar.png',
+      content: '文章解释得很清楚，希望作者能多写一些这方面的内容',
+      time: '2小时前',
+      likeCount: 8,
+      isLiked: false,
+      replies: []
     }
-  ]
+  ],
+  commentContent: '', // 评论输入内容
+  replyTarget: '', // 回复的目标用户
+  replyToCommentIndex: -1, // 回复的评论索引
+  replyToReplyIndex: -1, // 回复的回复索引
+  inputBottom: 0 // 键盘高度调整
 })
 
 onLoad((options) => {
@@ -111,8 +206,27 @@ onLoad((options) => {
     // TODO: 根据ID获取文章详情
     console.log('加载文章ID:', options.id)
   }
+  
+  // 显示评论区
+  if (options?.showComments) {
+    // 可以滚动到评论区
+    setTimeout(() => {
+      const query = uni.createSelectorQuery()
+      query.select('.comment-section').boundingClientRect()
+      query.selectViewport().scrollOffset()
+      query.exec(res => {
+        if (res && res[0]) {
+          uni.pageScrollTo({
+            scrollTop: res[0].top,
+            duration: 300
+          })
+        }
+      })
+    }, 500)
+  }
 })
 
+// 处理文章点赞
 const handleLike = () => {
   data.article.isLiked = !data.article.isLiked
   data.article.likeCount += data.article.isLiked ? 1 : -1
@@ -122,6 +236,7 @@ const handleLike = () => {
   })
 }
 
+// 处理文章收藏
 const handleCollect = () => {
   data.article.isCollected = !data.article.isCollected
   data.article.collectCount += data.article.isCollected ? 1 : -1
@@ -131,11 +246,136 @@ const handleCollect = () => {
   })
 }
 
+// 处理评论
 const handleComment = () => {
+  // 聚焦到评论输入框
+  const inputEl = document.querySelector('.comment-input')
+  if (inputEl) {
+    inputEl.focus()
+  }
+}
+
+// 返回上一页
+const goBack = () => {
+  uni.navigateBack({
+    delta: 1
+  });
+}
+
+// 处理评论点赞
+const handleCommentLike = (index) => {
+  const comment = data.comments[index]
+  comment.isLiked = !comment.isLiked
+  comment.likeCount += comment.isLiked ? 1 : -1
+  
   uni.showToast({
-    title: '打开评论输入',
-    icon: 'none'
+    title: comment.isLiked ? '点赞成功' : '已取消点赞',
+    icon: 'none',
+    duration: 1000
   })
+}
+
+// 回复评论
+const replyToComment = (index) => {
+  const comment = data.comments[index]
+  data.replyTarget = comment.author
+  data.replyToCommentIndex = index
+  data.replyToReplyIndex = -1
+  
+  // 聚焦到输入框
+  const inputEl = document.querySelector('.comment-input')
+  if (inputEl) {
+    inputEl.focus()
+  }
+}
+
+// 回复回复
+const replyToReply = (commentIndex, replyIndex) => {
+  const comment = data.comments[commentIndex]
+  const reply = comment.replies[replyIndex]
+  data.replyTarget = reply.author
+  data.replyToCommentIndex = commentIndex
+  data.replyToReplyIndex = replyIndex
+  
+  // 聚焦到输入框
+  const inputEl = document.querySelector('.comment-input')
+  if (inputEl) {
+    inputEl.focus()
+  }
+}
+
+// 提交评论
+const submitComment = () => {
+  if (!data.commentContent.trim()) return
+  
+  // 根据是否是回复决定操作
+  if (data.replyToCommentIndex >= 0) {
+    // 添加回复
+    const now = new Date()
+    const timeStr = `${now.getHours()}:${now.getMinutes()}`
+    
+    const newReply = {
+      id: Math.floor(Math.random() * 1000) + 100,
+      author: '当前用户', // 这里应该是登录用户的信息
+      content: data.commentContent,
+      time: '刚刚',
+      replyTo: data.replyTarget
+    }
+    
+    data.comments[data.replyToCommentIndex].replies.push(newReply)
+    
+    // 更新文章评论计数
+    data.article.commentCount++
+    
+    uni.showToast({
+      title: '回复成功',
+      icon: 'success'
+    })
+  } else {
+    // 添加新评论
+    const newComment = {
+      id: Math.floor(Math.random() * 1000) + 100,
+      author: '当前用户', // 这里应该是登录用户的信息
+      avatar: '/static/images/avatar.png',
+      content: data.commentContent,
+      time: '刚刚',
+      likeCount: 0,
+      isLiked: false,
+      replies: []
+    }
+    
+    data.comments.unshift(newComment)
+    
+    // 更新文章评论计数
+    data.article.commentCount++
+    
+    uni.showToast({
+      title: '评论成功',
+      icon: 'success'
+    })
+  }
+  
+  // 清空输入框和状态
+  data.commentContent = ''
+  data.replyTarget = ''
+  data.replyToCommentIndex = -1
+  data.replyToReplyIndex = -1
+}
+
+// 显示所有回复
+const showAllReplies = (index) => {
+  data.comments[index].showAllReplies = true
+}
+
+// 处理输入框获得焦点
+const handleInputFocus = (e) => {
+  // 处理键盘弹出
+  data.inputBottom = e.detail.height || 0
+}
+
+// 处理输入框失去焦点
+const handleInputBlur = () => {
+  data.inputBottom = 0
 }
 </script>
 
@@ -143,14 +383,33 @@ const handleComment = () => {
 .container {
   padding: 20rpx;
   background-color: #fff;
+  position: relative;
+  min-height: 100vh;
 }
 
 .article-detail {
-  height: calc(100vh - 88rpx);
+  height: calc(100vh - 120rpx); // 调整高度以适应评论输入框
+  padding-bottom: 100rpx;
+}
+
+.back-button {
+  position: fixed;
+  top: 40rpx;
+  left: 30rpx;
+  z-index: 10;
+  width: 70rpx;
+  height: 70rpx;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
 }
 
 .article-header {
   padding: 30rpx;
+  padding-top: 100rpx;
   border-bottom: 1rpx solid #f0f0f0;
   
   .article-title {
@@ -228,7 +487,7 @@ const handleComment = () => {
 
 .action-bar {
   position: fixed;
-  bottom: 0;
+  bottom: 100rpx; // 调整位置以适应评论输入框
   left: 0;
   right: 0;
   background-color: #fff;
@@ -252,7 +511,7 @@ const handleComment = () => {
 
 .comment-section {
   padding: 30rpx;
-  margin-bottom: 100rpx;
+  margin-bottom: 140rpx; // 为评论输入框留出空间
   
   .section-title {
     font-size: 32rpx;
@@ -264,6 +523,8 @@ const handleComment = () => {
   .comment-item {
     display: flex;
     margin-bottom: 30rpx;
+    padding-bottom: 20rpx;
+    border-bottom: 1rpx solid #f0f0f0;
     
     .comment-avatar {
       width: 80rpx;
@@ -275,10 +536,37 @@ const handleComment = () => {
     .comment-content {
       flex: 1;
       
-      .comment-author {
-        font-size: 28rpx;
-        color: #666;
+      .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 10rpx;
+        
+        .comment-author {
+          font-size: 28rpx;
+          color: #333;
+          font-weight: bold;
+        }
+        
+        .comment-actions {
+          display: flex;
+          align-items: center;
+          
+          .like-action {
+            display: flex;
+            align-items: center;
+            
+            text {
+              font-size: 24rpx;
+              color: #999;
+              margin-left: 4rpx;
+              
+              &.liked {
+                color: #ff6b6b;
+              }
+            }
+          }
+        }
       }
       
       .comment-text {
@@ -287,11 +575,138 @@ const handleComment = () => {
         line-height: 1.6;
       }
       
-      .comment-time {
-        font-size: 24rpx;
-        color: #999;
-        margin-top: 10rpx;
+      .comment-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 16rpx;
+        
+        .comment-time {
+          font-size: 24rpx;
+          color: #999;
+        }
+        
+        .reply-btn {
+          font-size: 24rpx;
+          color: #666;
+          padding: 4rpx 12rpx;
+        }
       }
+      
+      .reply-list {
+        margin-top: 20rpx;
+        background-color: #f8f8f8;
+        border-radius: 12rpx;
+        padding: 16rpx;
+        
+        .reply-item {
+          margin-bottom: 16rpx;
+          
+          .reply-content {
+            font-size: 28rpx;
+            line-height: 1.5;
+            
+            .reply-author {
+              color: #1296db;
+              font-weight: bold;
+            }
+            
+            .reply-to {
+              color: #666;
+              margin: 0 4rpx;
+            }
+            
+            .reply-to-author {
+              color: #1296db;
+            }
+            
+            .reply-text {
+              color: #333;
+            }
+          }
+          
+          .reply-footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8rpx;
+            
+            .reply-time {
+              font-size: 24rpx;
+              color: #999;
+            }
+            
+            .reply-btn {
+              font-size: 24rpx;
+              color: #666;
+            }
+          }
+        }
+        
+        .more-replies {
+          text-align: center;
+          padding: 10rpx 0;
+          
+          text {
+            font-size: 26rpx;
+            color: #1296db;
+          }
+        }
+      }
+    }
+  }
+  
+  .no-comment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60rpx 0;
+    
+    text {
+      margin-top: 20rpx;
+      color: #999;
+      font-size: 28rpx;
+    }
+  }
+}
+
+// 评论输入框
+.comment-input-container {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  background-color: #fff;
+  border-top: 1rpx solid #eee;
+  box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05);
+  z-index: 100;
+  
+  .comment-input {
+    flex: 1;
+    height: 70rpx;
+    background-color: #f5f5f5;
+    border-radius: 35rpx;
+    padding: 0 30rpx;
+    font-size: 28rpx;
+  }
+  
+  .send-btn {
+    margin-left: 20rpx;
+    background-color: #4361ee;
+    color: #fff;
+    height: 70rpx;
+    font-size: 28rpx;
+    padding: 0 30rpx;
+    border-radius: 35rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    &[disabled] {
+      background-color: #cccccc;
+      color: #ffffff;
     }
   }
 }
