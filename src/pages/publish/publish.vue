@@ -55,20 +55,11 @@
 
 				<!-- 富文本编辑器 -->
 				<rich-text class="rich-display" :nodes="renderedContent" v-if="previewMode"></rich-text>
-				
-				<editor
-					v-else
-					id="editor"
-					class="rich-editor"
-					:class="{'editor-height': showFormattingToolbar}"
-					:placeholder="'请输入正文'"
-					@ready="onEditorReady"
-					@input="onEditorInput"
-					@paste="handlePaste"
-					@focus="editorFocus"
-					@blur="editorBlur"
-				></editor>
-				
+
+				<editor v-else id="editor" class="rich-editor" :class="{'editor-height': showFormattingToolbar}"
+					:placeholder="'请输入正文'" @ready="onEditorReady" @input="onEditorInput" @paste="handlePaste"
+					@focus="editorFocus" @blur="editorBlur"></editor>
+
 				<!-- 预览切换按钮 -->
 				<view class="preview-toggle" @click="togglePreview">
 					<text>{{ previewMode ? '编辑模式' : '预览模式' }}</text>
@@ -157,17 +148,11 @@
 				</view>
 			</view>
 		</uni-popup>
-		
+
 		<!-- 链接插入弹窗 -->
 		<uni-popup ref="linkPopup" type="dialog">
-			<uni-popup-dialog
-				title="插入链接"
-				:before-close="true"
-				@confirm="confirmInsertLink"
-				@close="closeLinkPopup"
-				confirmText="确认"
-				cancelText="取消"
-			>
+			<uni-popup-dialog title="插入链接" :before-close="true" @confirm="confirmInsertLink" @close="closeLinkPopup"
+				confirmText="确认" cancelText="取消">
 				<view class="link-input-container">
 					<input class="link-input" type="text" v-model="linkUrl" placeholder="请输入链接URL" />
 					<input class="link-text-input" type="text" v-model="linkText" placeholder="请输入链接文本" />
@@ -192,23 +177,23 @@
 	// 引入uni-popup组件
 	const tagPopup = ref(null);
 	const linkPopup = ref(null);
-	
+
 	// 自定义标签输入
 	const customTagInput = ref('');
-	
+
 	// 链接相关
 	const linkUrl = ref('');
 	const linkText = ref('');
-	
+
 	// 是否已经确认离开
 	let isConfirmedExit = false;
-	
+
 	// 编辑器实例
 	let editorCtx = null;
 	const showFormattingToolbar = ref(false);
 	const previewMode = ref(false);
 	const editorContent = ref('');
-	
+
 	// 计算属性：渲染后的内容
 	const renderedContent = computed(() => {
 		return editorContent.value;
@@ -232,7 +217,7 @@
 
 	// 已选标签
 	const selectedTags = ref([]);
-	
+
 	// 编辑器准备完成
 	const onEditorReady = () => {
 		// #ifdef MP-WEIXIN || H5
@@ -253,7 +238,7 @@
 			.exec();
 		// #endif
 	};
-	
+
 	// 编辑器内容变化
 	const onEditorInput = (e) => {
 		// 存储编辑器的最新内容
@@ -261,24 +246,24 @@
 		articleData.content = e.detail.text || '';
 		editorContent.value = e.detail.html || '';
 	};
-	
+
 	// 处理粘贴事件
 	const handlePaste = async (e) => {
 		// 粘贴内容处理逻辑
 		console.log('粘贴了内容', e);
 		// 可以在这里对粘贴内容进行额外处理，例如过滤、清理样式等
 	};
-	
+
 	// 编辑器获取焦点
 	const editorFocus = () => {
 		// 当编辑器获得焦点时可以做一些操作
 	};
-	
+
 	// 编辑器失去焦点
 	const editorBlur = () => {
 		// 当编辑器失去焦点时可以做一些操作
 	};
-	
+
 	// 切换预览模式
 	const togglePreview = () => {
 		previewMode.value = !previewMode.value;
@@ -370,19 +355,19 @@
 			icon: 'success'
 		});
 	};
-	
+
 	// 显示链接插入弹窗
 	const showLinkPopup = () => {
 		linkUrl.value = '';
 		linkText.value = '';
 		linkPopup.value.open();
 	};
-	
+
 	// 关闭链接插入弹窗
 	const closeLinkPopup = () => {
 		linkPopup.value.close();
 	};
-	
+
 	// 确认插入链接
 	const confirmInsertLink = () => {
 		if (!linkUrl.value.trim()) {
@@ -392,17 +377,17 @@
 			});
 			return;
 		}
-		
+
 		// 如果没有输入链接文本，就使用URL作为文本
 		const text = linkText.value.trim() || linkUrl.value;
-		
+
 		if (editorCtx) {
 			editorCtx.insertLink({
 				text: text,
 				url: linkUrl.value
 			});
 		}
-		
+
 		closeLinkPopup();
 	};
 
@@ -566,11 +551,11 @@
 				uni.showLoading({
 					title: '正在处理图片...'
 				});
-				
+
 				// 模拟上传图片到服务器
 				setTimeout(() => {
 					uni.hideLoading();
-					
+
 					// 向编辑器中插入图片
 					tempFilePaths.forEach(path => {
 						if (editorCtx) {
@@ -583,10 +568,10 @@
 							});
 						}
 					});
-					
+
 					// 添加到图片数组
 					articleData.images = [...articleData.images, ...tempFilePaths];
-					
+
 					uni.showToast({
 						title: '图片添加成功',
 						icon: 'success'
@@ -604,7 +589,7 @@
 	// 应用格式化
 	const applyFormat = (format) => {
 		if (!editorCtx) return;
-		
+
 		switch (format) {
 			case 'bold':
 				editorCtx.bold();
@@ -709,7 +694,7 @@
 		padding: 20rpx 0;
 		border-bottom: 1px solid #eee;
 	}
-	
+
 	/* 富文本编辑器容器 */
 	.rich-editor-container {
 		position: relative;
@@ -717,7 +702,7 @@
 		display: flex;
 		flex-direction: column;
 	}
-	
+
 	/* 编辑器格式化工具栏 */
 	.editor-format-toolbar {
 		display: flex;
@@ -727,7 +712,7 @@
 		border-radius: 8rpx;
 		margin-bottom: 10rpx;
 	}
-	
+
 	.format-btn {
 		width: 70rpx;
 		height: 70rpx;
@@ -736,12 +721,12 @@
 		align-items: center;
 		margin: 5rpx;
 	}
-	
+
 	.format-text {
 		font-size: 30rpx;
 		font-weight: bold;
 	}
-	
+
 	/* 富文本编辑器 */
 	.rich-editor {
 		min-height: 500rpx;
@@ -751,11 +736,11 @@
 		border: 1px solid #eee;
 		border-radius: 8rpx;
 	}
-	
+
 	.editor-height {
-		min-height: 450rpx;
+		min-height: 1000rpx;
 	}
-	
+
 	.rich-display {
 		min-height: 500rpx;
 		width: 100%;
@@ -765,17 +750,17 @@
 		border-radius: 8rpx;
 		background-color: #fafafa;
 	}
-	
+
 	.preview-toggle {
 		margin-top: 20rpx;
 		text-align: right;
 	}
-	
+
 	.preview-toggle text {
 		color: #4361ee;
 		font-size: 28rpx;
 	}
-	
+
 	/* 链接输入容器 */
 	.link-input-container {
 		display: flex;
@@ -783,8 +768,9 @@
 		gap: 20rpx;
 		margin-top: 20rpx;
 	}
-	
-	.link-input, .link-text-input {
+
+	.link-input,
+	.link-text-input {
 		height: 80rpx;
 		padding: 0 20rpx;
 		border-radius: 8rpx;
