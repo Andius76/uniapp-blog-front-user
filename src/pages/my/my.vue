@@ -185,6 +185,7 @@
 		<UserSettings 
 			:visible="data.showUserSettings" 
 			:userInfo="data.userInfo"
+			:initialView="data.settingsInitialView"
 			@update:visible="data.showUserSettings = $event"
 			@avatar-change="handleAvatarChange"
 			@nickname-change="handleNicknameChange"
@@ -239,7 +240,8 @@
 		isRefreshing: false,
 		
 		// 用户设置面板显示状态
-		showUserSettings: false
+		showUserSettings: false,
+		settingsInitialView: 'main' // 设置面板初始视图
 	});
 
 	// 模拟内容数据
@@ -502,6 +504,9 @@
 	 * 打开用户设置面板
 	 */
 	const openUserSettings = () => {
+		// 设置初始视图为编辑个人简介
+		data.settingsInitialView = 'bio';
+		// 显示设置面板
 		data.showUserSettings = true;
 	};
 

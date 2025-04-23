@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, defineProps, defineEmits } from 'vue';
+import { ref, reactive, defineProps, defineEmits, watch } from 'vue';
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 
 // 定义组件属性
@@ -149,6 +149,10 @@ const props = defineProps({
       nickname: '用户昵称',
       bio: '这个人很懒，什么都没写'
     })
+  },
+  initialView: {
+    type: String,
+    default: 'main' // 可选值: 'main', 'bio', 'nickname'
   }
 });
 
@@ -161,6 +165,23 @@ const isConfirmingLogout = ref(false);
 const isEditingBio = ref(false);
 const newNickname = ref('');
 const newBio = ref('');
+
+// 监听面板显示状态，显示时根据初始视图参数决定显示哪个界面
+watch(() => props.visible, (newVal) => {
+  if (newVal) {
+    // 如果面板显示，根据初始视图设置显示哪个界面
+    if (props.initialView === 'bio') {
+      showBioEdit();
+    } else if (props.initialView === 'nickname') {
+      showNicknameEdit();
+    }
+  } else {
+    // 面板隐藏时重置所有状态
+    isEditingNickname.value = false;
+    isEditingBio.value = false;
+    isConfirmingLogout.value = false;
+  }
+});
 
 // 处理返回或关闭
 const handleBackOrClose = () => {
