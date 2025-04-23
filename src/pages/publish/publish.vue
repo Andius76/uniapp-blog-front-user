@@ -572,11 +572,9 @@
 			// 发布成功后清空内容并标记为已确认离开
 			clearAndRefresh();
 
-			// 延迟返回首页
+			// 延迟返回上一页面
 			setTimeout(() => {
-				uni.switchTab({
-					url: '/pages/index/index'
-				});
+				uni.navigateBack();
 			}, 1500);
 		}, 1000);
 		
@@ -592,9 +590,7 @@
 				});
 				clearAndRefresh();
 				setTimeout(() => {
-					uni.switchTab({
-						url: '/pages/index/index'
-					});
+					uni.navigateBack();
 				}, 1500);
 			}).catch(err => {
 				uni.hideLoading();
@@ -613,9 +609,7 @@
 				});
 				clearAndRefresh();
 				setTimeout(() => {
-					uni.switchTab({
-						url: '/pages/index/index'
-					});
+					uni.navigateBack();
 				}, 1500);
 			}).catch(err => {
 				uni.hideLoading();
