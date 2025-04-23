@@ -670,7 +670,7 @@ const getMockComments = (page) => {
   padding: 20rpx;
   margin-bottom: 30rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
-}
+  }
   
   .comment-item {
     display: flex;

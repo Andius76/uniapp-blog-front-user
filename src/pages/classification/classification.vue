@@ -49,7 +49,7 @@
 						</button>
 					</view>
 
-					<view class="article-content" @click="viewArticleDetail(article.id)">
+					<view class="article-content" @click="viewArticleDetail(index)">
 						<text class="article-title">{{article.title}}</text>
 						<text class="article-summary">{{article.summary}}...全文</text>
 
@@ -368,16 +368,44 @@ const loadMore = () => {
 
 /**
  * 查看文章详情
- * @param {Number} id - 文章ID
+ * @param {Number} index - 文章索引
  */
-const viewArticleDetail = (id) => {
-	uni.showToast({
-		title: '查看文章详情: ' + id,
-		icon: 'none'
+const viewArticleDetail = (index) => {
+	// 获取文章完整数据
+	const article = articleList.value[index];
+	
+	// 创建要传递的文章数据对象
+	const articleData = {
+		id: article.id,
+		title: article.title,
+		content: article.summary, // 这里使用摘要，实际项目中可能需要获取完整内容
+		author: article.author,
+		publishTime: article.publishTime || '2025-05-01 12:00', // 假设有发布时间
+		tags: article.tags || [],
+		likeCount: article.likeCount,
+		commentCount: article.commentCount,
+		collectCount: article.collectCount,
+		isLiked: article.isLiked,
+		isCollected: article.isCollected,
+		imageType: article.imageType,
+		coverImg: article.coverImg,
+		images: article.images
+	};
+	
+	// 将数据转换为JSON字符串并进行URI编码
+	const articleDataStr = encodeURIComponent(JSON.stringify(articleData));
+	
+	// 跳转到文章详情页面，传递文章数据
+	uni.navigateTo({
+		url: `/pages/article-detail/article-detail?articleData=${articleDataStr}`
 	});
 	
-	// TODO: 跳转到文章详情页
-	// uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${id}` });
+	/* 
+	// 如果文章详情页面支持通过ID获取数据，也可以只传ID
+	uni.navigateTo({
+		url: `/pages/article-detail/article-detail?id=${article.id}`
+	});
+	*/
 };
 
 /**
