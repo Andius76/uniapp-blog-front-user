@@ -698,7 +698,7 @@
 	/* 富文本编辑器容器 */
 	.rich-editor-container {
 		position: relative;
-		min-height: 500rpx;
+		min-height: 800rpx;
 		display: flex;
 		flex-direction: column;
 	}
@@ -729,7 +729,7 @@
 
 	/* 富文本编辑器 */
 	.rich-editor {
-		min-height: 500rpx;
+		min-height: 800rpx;
 		width: 100%;
 		padding: 20rpx;
 		box-sizing: border-box;
@@ -738,11 +738,11 @@
 	}
 
 	.editor-height {
-		min-height: 1000rpx;
+		min-height: 1200rpx;
 	}
 
 	.rich-display {
-		min-height: 500rpx;
+		min-height: 800rpx;
 		width: 100%;
 		padding: 20rpx;
 		box-sizing: border-box;
