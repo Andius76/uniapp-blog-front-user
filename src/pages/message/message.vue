@@ -78,7 +78,11 @@
 			icon: 'heart',
 			type: 'like'
 		},
-
+		{
+			name: '评论通知',
+			icon: 'chat',
+			type: 'comment'
+		},
 		{
 			name: '关注了我',
 			icon: 'plus',
@@ -181,7 +185,70 @@
 				]
 			}
 		],
-
+		comment: [{
+				type: 'system',
+				messages: [{
+					id: 201,
+					title: '评论汇总',
+					description: '您的评论收到了3条新回复',
+					time: '2025-4-22',
+					icon: 'notification',
+					isRead: false
+				}]
+			},
+			{
+				type: 'account',
+				messages: [{
+						id: 202,
+						title: '评论回复',
+						description: '用户"Vue学习者"回复了您在《Vue3实战指南》文章下的评论',
+						time: '2025-4-21',
+						icon: 'chat-filled',
+						isRead: false,
+						relatedId: 'article_456',
+						commentId: 'comment_789',
+						sourceUser: {
+							id: 'user_002',
+							name: 'Vue学习者',
+							avatar: '/static/avatar/default.png'
+						},
+						articleTitle: 'Vue3实战指南'
+					},
+					{
+						id: 203,
+						title: '评论回复',
+						description: '用户"前端工程师"回复了您在《JavaScript设计模式》文章下的评论',
+						time: '2025-4-20',
+						icon: 'chat-filled',
+						isRead: true,
+						relatedId: 'article_789',
+						commentId: 'comment_123',
+						sourceUser: {
+							id: 'user_003',
+							name: '前端工程师',
+							avatar: '/static/avatar/default.png'
+						},
+						articleTitle: 'JavaScript设计模式'
+					},
+					{
+						id: 204,
+						title: '评论回复',
+						description: '用户"区块链开发者"回复了您在《Web3入门》文章下的评论',
+						time: '2025-4-19',
+						icon: 'chat-filled',
+						isRead: false,
+						relatedId: 'article_321',
+						commentId: 'comment_456',
+						sourceUser: {
+							id: 'user_004',
+							name: '区块链开发者',
+							avatar: '/static/avatar/default.png'
+						},
+						articleTitle: 'Web3入门'
+					}
+				]
+			}
+		],
 		subscribe: [{
 				type: 'system',
 				messages: [{
@@ -192,32 +259,6 @@
 					icon: 'notification',
 					isRead: true
 				}]
-			},
-			{
-				type: 'account',
-				messages: [{
-						id: 7,
-						title: '新关注者',
-						description: '用户"前端学习者"关注了您',
-						time: '2025-4-18',
-						icon: 'bookmark-filled',
-						isRead: false,
-						sourceUser: {
-							id: 'user_007',
-							name: '前端学习者',
-							avatar: '/static/avatar/default.png'
-						},
-						subscribeType: 'new'
-					},
-					{
-						id: 8,
-						title: '关注通知',
-						description: '用户"CSS大师"关注了您',
-						time: '2025-4-16',
-						icon: 'bookmark-filled',
-						isRead: true
-					}
-				]
 			},
 			{
 				type: 'account',
@@ -508,6 +549,22 @@
 			case 'collect':
 				uni.navigateTo({
 					url: `/pages/collection/collection?id=${message.sourceUser.id}`
+				});
+				break;
+			case 'comment':
+				// 评论跳转，带上评论ID以便高亮显示对应评论
+				uni.navigateTo({
+					url: `/pages/article-detail/article-detail?id=${message.relatedId}&commentId=${message.commentId}`,
+					success: () => {
+						// 成功跳转后的回调，可以用于显示额外信息
+						if (message.articleTitle) {
+							uni.showToast({
+								title: `正在查看《${message.articleTitle}》下的评论`,
+								icon: 'none',
+								duration: 1500
+							});
+						}
+					}
 				});
 				break;
 			case 'subscribe':
