@@ -1,5 +1,10 @@
 <template>
 	<view class="container">
+		<!-- 返回按钮 -->
+		<view class="back-button" @click="goBack">
+			<uni-icons type="back" size="24" color="#333"></uni-icons>
+		</view>
+		
 		<!-- 顶部用户信息区域 -->
 		<view class="user-top-container">
 			<!-- 用户信息区域内容 -->
@@ -53,7 +58,7 @@
 		<!-- 内容区域 -->
 		<view class="content-area">
 			<scroll-view scroll-y class="article-list" @scrolltolower="loadMore" refresher-enabled
-				:refresher-triggered="isRefreshing" @refresherrefresh="refreshList">
+				:refresher-triggered="isRefreshing" @refresherrefresh="refreshList" :refresher-threshold="100">
 				<!-- 文章列表 -->
 				<view v-for="(post, index) in contentList" :key="index" class="article-card">
 					<!-- 用户信息 -->
@@ -301,6 +306,15 @@
 				isLiked: false
 			}
 		]
+	};
+	
+	/**
+	 * 返回上一页
+	 */
+	const goBack = () => {
+		uni.navigateBack({
+			delta: 1
+		});
 	};
 	
 	/**
@@ -636,12 +650,32 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 100vh;
+		position: relative;
+		padding-top: 20rpx;
+	}
+	
+	// 返回按钮样式
+	.back-button {
+		position: fixed;
+		top: 40rpx;
+		left: 30rpx;
+		z-index: 101;
+		width: 70rpx;
+		height: 70rpx;
+		border-radius: 50%;
+		background-color: rgba(255, 255, 255, 0.8);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
 	}
 	
 	.user-top-container {
+		position: sticky;
+		top: 0;
+		z-index: 100;
 		background: #f5f5f5;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-		z-index: 100;
 		
 		.user-header,
 		.user-stats,
@@ -659,6 +693,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 30rpx;
+		padding-top: 120rpx; // 增加上边距，为返回按钮留出更多空间
 		background-color: #fff;
 		
 		.user-info {
@@ -671,6 +706,7 @@
 				border-radius: 50%;
 				margin-right: 20rpx;
 				background-color: #eee;
+				margin-left: 70rpx; // 增加左边距，避免与返回按钮重叠
 			}
 			
 			.nickname {
@@ -754,6 +790,11 @@
 				font-size: 26rpx;
 				color: #666;
 				margin-left: 10rpx;
+				word-break: break-all;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
 			}
 		}
 	}
@@ -798,7 +839,18 @@
 		margin-top: 20rpx;
 		
 		.article-list {
-			height: calc(100vh - 400rpx);
+			height: calc(100vh - 445rpx);
+			
+			// 自定义下拉刷新样式
+			&::before {
+				content: '';
+				width: 100%;
+				height: 80rpx;
+				position: absolute;
+				top: 0;
+				left: 0;
+				background-color: transparent;
+			}
 		}
 		
 		// 文章卡片
@@ -920,6 +972,16 @@
 			color: #999;
 			margin: 20rpx 0;
 			padding: 20rpx 0;
+		}
+	}
+	
+	// 全局样式覆盖
+	.uni-scroll-view-refresh {
+		background-color: #f5f5f5 !important;
+		
+		&-inner {
+			color: #fff;
+			height: 80rpx !important; // 调整刷新区域高度
 		}
 	}
 	
