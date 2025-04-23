@@ -108,11 +108,9 @@
 							<template v-if="data.currentTab === 0">
 								<view class="action-item" @click.stop="handleEditPost(index)">
 									<uni-icons type="compose" size="20" color="#666"></uni-icons>
-									<text>编辑</text>
 								</view>
 								<view class="action-item" @click.stop="handleDeletePost(index)">
 									<uni-icons type="trash" size="20" color="#666"></uni-icons>
-									<text>删除</text>
 								</view>
 							</template>
 						</view>
@@ -202,18 +200,11 @@
 				</view>
 			</scroll-view>
 		</view>
-		
+
 		<!-- 用户设置组件 -->
-		<UserSettings 
-			:visible="data.showUserSettings" 
-			:userInfo="data.userInfo"
-			:initialView="data.settingsInitialView"
-			@update:visible="data.showUserSettings = $event"
-			@avatar-change="handleAvatarChange"
-			@nickname-change="handleNicknameChange"
-			@bio-change="handleBioChange"
-			@logout="handleLogout"
-		/>
+		<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo" :initialView="data.settingsInitialView"
+			@update:visible="data.showUserSettings = $event" @avatar-change="handleAvatarChange"
+			@nickname-change="handleNicknameChange" @bio-change="handleBioChange" @logout="handleLogout" />
 	</view>
 </template>
 
@@ -260,7 +251,7 @@
 		currentPage: 1,
 		pageSize: 5,
 		isRefreshing: false,
-		
+
 		// 用户设置面板显示状态
 		showUserSettings: false,
 		settingsInitialView: 'main' // 设置面板初始视图
@@ -580,53 +571,55 @@
 			return;
 		} else if (url.includes('article-detail')) {
 			// 直接导航到文章详情页面
-			uni.navigateTo({ url });
+			uni.navigateTo({
+				url
+			});
 			return;
 		}
 
 		// 实际跳转，当后端连接后使用
 		// uni.navigateTo({ url });
 	};
-	
+
 	/**
 	 * 修改用户头像
 	 * @param {String} newAvatar - 新头像地址
 	 */
 	const handleAvatarChange = (newAvatar) => {
 		data.userInfo.avatar = newAvatar;
-		
+
 		// TODO: 保存到服务器
 		// api.updateUserInfo({ avatar: newAvatar }).then(res => {
 		//   console.log('头像更新成功');
 		// });
 	};
-	
+
 	/**
 	 * 修改用户昵称
 	 * @param {String} newNickname - 新昵称
 	 */
 	const handleNicknameChange = (newNickname) => {
 		data.userInfo.nickname = newNickname;
-		
+
 		// TODO: 保存到服务器
 		// api.updateUserInfo({ nickname: newNickname }).then(res => {
 		//   console.log('昵称更新成功');
 		// });
 	};
-	
+
 	/**
 	 * 修改用户个人简介
 	 * @param {String} newBio - 新个人简介
 	 */
 	const handleBioChange = (newBio) => {
 		data.userInfo.bio = newBio;
-		
+
 		// TODO: 保存到服务器
 		// api.updateUserInfo({ bio: newBio }).then(res => {
 		//   console.log('个人简介更新成功');
 		// });
 	};
-	
+
 	/**
 	 * 处理退出登录
 	 */
@@ -634,7 +627,7 @@
 		// 清除用户数据和本地缓存
 		uni.removeStorageSync('token');
 		uni.removeStorageSync('userInfo');
-		
+
 		// 跳转到登录页
 		uni.reLaunch({
 			url: '/pages/login/login'
@@ -647,7 +640,7 @@
 	 */
 	const handleEditPost = (index) => {
 		const post = data.contentList[index];
-		
+
 		// 组装需要传递的文章数据
 		const articleData = {
 			id: post.id,
@@ -656,10 +649,10 @@
 			tags: post.tags || [],
 			images: post.image ? [post.image] : []
 		};
-		
+
 		// 将文章数据转换为JSON字符串，并进行URI编码
 		const articleDataStr = encodeURIComponent(JSON.stringify(articleData));
-		
+
 		// 跳转到发布页面，带上文章数据
 		uni.navigateTo({
 			url: `/pages/publish/publish?mode=edit&articleData=${articleDataStr}`
@@ -672,7 +665,7 @@
 	 */
 	const handleDeletePost = (index) => {
 		const post = data.contentList[index];
-		
+
 		// 显示确认对话框
 		uni.showModal({
 			title: '确认删除',
@@ -698,21 +691,21 @@
 		uni.showLoading({
 			title: '删除中...'
 		});
-		
+
 		// 模拟删除请求
 		setTimeout(() => {
 			// 从列表中移除文章
 			data.contentList.splice(index, 1);
-			
+
 			// 隐藏加载提示
 			uni.hideLoading();
-			
+
 			// 显示成功提示
 			uni.showToast({
 				title: '删除成功',
 				icon: 'success'
 			});
-			
+
 			// TODO: 实际删除API调用
 			// api.deleteArticle(postId).then(res => {
 			//   console.log('文章删除成功');
@@ -996,25 +989,25 @@
 				border-top: 2rpx solid #f0f0f0;
 				padding-top: 20rpx;
 				flex-wrap: wrap;
-				
+
 				.action-item {
 					display: flex;
 					align-items: center;
 					padding: 0 10rpx;
 					margin-bottom: 10rpx;
-					
+
 					.uni-icons {
 						margin-right: 10rpx;
 					}
-					
+
 					text {
 						font-size: 24rpx;
 						color: #666;
-						
+
 						&.liked {
 							color: #ff6b6b;
 						}
-						
+
 						&.collected {
 							color: #ffc107;
 						}
