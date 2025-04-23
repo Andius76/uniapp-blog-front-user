@@ -540,9 +540,9 @@
 			data.showUserSettings = true;
 			return;
 		} else if (url.includes('follows')) {
-			uni.showToast({
-				title: '查看我的关注',
-				icon: 'none'
+			// 实际导航到关注列表页面
+			uni.navigateTo({
+				url
 			});
 			return;
 		} else if (url.includes('followers')) {

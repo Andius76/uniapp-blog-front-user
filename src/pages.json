@@ -69,6 +69,12 @@
 				"navigationBarTitleText": "用户资料",
 				"enablePullDownRefresh": false
 			}
+		},
+		{
+			"path": "pages/follows/follows",
+			"style": {
+				"navigationBarTitleText": "关注列表"
+			}
 		}
 	],
 	"tabBar": {
