@@ -87,14 +87,7 @@
 				<uni-icons type="image" size="24" color="#333"></uni-icons>
 				<text class="toolbar-text">上传图片</text>
 			</view>
-			<view class="toolbar-item" @click="undo">
-				<uni-icons type="undo" size="24" color="#333"></uni-icons>
-				<text class="toolbar-text">撤销</text>
-			</view>
-			<view class="toolbar-item" @click="redo">
-				<uni-icons type="redo" size="24" color="#333"></uni-icons>
-				<text class="toolbar-text">重做</text>
-			</view>
+			<!-- 删除撤销和重做按钮 -->
 			<view class="toolbar-item" @click="showTagSelector">
 				<uni-icons type="tag" size="24" color="#333"></uni-icons>
 				<text class="toolbar-text">添加标签</text>
