@@ -155,8 +155,11 @@
 	const linkUrl = ref('');
 	const linkText = ref('');
 
-	// 是否已经确认离开
+	// 恢复是否已经确认离开的变量
 	let isConfirmedExit = false;
+
+	// 添加一个标记变量，防止重复显示提示
+	const showingExitDialog = ref(false);
 
 	// 编辑器实例
 	let editorCtx = null;
@@ -389,8 +392,11 @@
 		isConfirmedExit = true;
 	};
 
-	// 显示退出确认弹窗
+	// 修改退出确认弹窗方法
 	const showExitConfirm = () => {
+		// 如果已经显示了对话框，则不再重复显示
+		if (showingExitDialog.value) return;
+		
 		// 判断是否有编辑内容，如果没有直接返回
 		if (!articleData.title.trim() && !articleData.content.trim() &&
 			articleData.images.length === 0 && articleData.tags.length === 0) {
@@ -401,6 +407,9 @@
 			return;
 		}
 
+		// 标记正在显示对话框
+		showingExitDialog.value = true;
+
 		// 显示确认对话框
 		uni.showModal({
 			title: '确认退出',
@@ -408,13 +417,26 @@
 			confirmText: '确认退出',
 			cancelText: '继续编辑',
 			success: (res) => {
+				// 标记对话框已关闭
+				showingExitDialog.value = false;
+				
 				if (res.confirm) {
 					// 用户点击确认，清空内容并退出
 					clearAndRefresh();
 					// 返回上一页面而不是跳转到首页
 					uni.navigateBack();
+				} else {
+					// 用户点击取消，显示提示，继续编辑
+					uni.showToast({
+						title: '继续编辑',
+						icon: 'none',
+						duration: 1500
+					});
 				}
-				// 用户点击取消，不做任何操作
+			},
+			fail: () => {
+				// 确保对话框关闭时重置标记
+				showingExitDialog.value = false;
 			}
 		});
 	};
