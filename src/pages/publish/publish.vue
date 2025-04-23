@@ -6,11 +6,6 @@
 				<uni-icons type="closeempty" size="24" color="#333"></uni-icons>
 			</view>
 
-			<!-- 标题 -->
-			<view class="header-title">
-				<text>写文章</text>
-			</view>
-
 			<!-- 发布按钮 -->
 			<view class="publish-btn" @click="publishArticle">
 				<text>发布</text>
@@ -621,10 +616,6 @@
 		align-items: center;
 	}
 
-	.header-title {
-		font-size: 36rpx;
-		font-weight: bold;
-	}
 
 	.publish-btn {
 		background-color: #4361ee;
