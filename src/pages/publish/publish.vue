@@ -23,9 +23,56 @@
 				<input type="text" v-model="articleData.title" placeholder="请输入标题" class="input-field" />
 			</view>
 
-			<!-- 内容编辑区 -->
-			<view class="content-editor">
-				<textarea v-model="articleData.content" placeholder="请输入正文" class="editor-textarea" auto-height />
+			<!-- 富文本编辑器区域 -->
+			<view class="rich-editor-container">
+				<!-- 编辑器工具栏 -->
+				<view class="editor-format-toolbar" v-if="showFormattingToolbar">
+					<view class="format-btn" @click="applyFormat('bold')">
+						<uni-icons type="bold" size="20" color="#333"></uni-icons>
+					</view>
+					<view class="format-btn" @click="applyFormat('italic')">
+						<uni-icons type="italic" size="20" color="#333"></uni-icons>
+					</view>
+					<view class="format-btn" @click="applyFormat('underline')">
+						<uni-icons type="underline" size="20" color="#333"></uni-icons>
+					</view>
+					<view class="format-btn" @click="applyFormat('header')">
+						<text class="format-text">H</text>
+					</view>
+					<view class="format-btn" @click="applyFormat('list')">
+						<uni-icons type="list" size="20" color="#333"></uni-icons>
+					</view>
+					<view class="format-btn" @click="applyFormat('quote')">
+						<uni-icons type="sound" size="20" color="#333"></uni-icons>
+					</view>
+					<view class="format-btn" @click="applyFormat('link')">
+						<uni-icons type="link" size="20" color="#333"></uni-icons>
+					</view>
+					<view class="format-btn" @click="applyFormat('clear')">
+						<uni-icons type="trash" size="20" color="#333"></uni-icons>
+					</view>
+				</view>
+
+				<!-- 富文本编辑器 -->
+				<rich-text class="rich-display" :nodes="renderedContent" v-if="previewMode"></rich-text>
+				
+				<editor
+					v-else
+					id="editor"
+					class="rich-editor"
+					:class="{'editor-height': showFormattingToolbar}"
+					:placeholder="'请输入正文'"
+					@ready="onEditorReady"
+					@input="onEditorInput"
+					@paste="handlePaste"
+					@focus="editorFocus"
+					@blur="editorBlur"
+				></editor>
+				
+				<!-- 预览切换按钮 -->
+				<view class="preview-toggle" @click="togglePreview">
+					<text>{{ previewMode ? '编辑模式' : '预览模式' }}</text>
+				</view>
 			</view>
 		</view>
 
@@ -110,6 +157,23 @@
 				</view>
 			</view>
 		</uni-popup>
+		
+		<!-- 链接插入弹窗 -->
+		<uni-popup ref="linkPopup" type="dialog">
+			<uni-popup-dialog
+				title="插入链接"
+				:before-close="true"
+				@confirm="confirmInsertLink"
+				@close="closeLinkPopup"
+				confirmText="确认"
+				cancelText="取消"
+			>
+				<view class="link-input-container">
+					<input class="link-input" type="text" v-model="linkUrl" placeholder="请输入链接URL" />
+					<input class="link-text-input" type="text" v-model="linkText" placeholder="请输入链接文本" />
+				</view>
+			</uni-popup-dialog>
+		</uni-popup>
 	</view>
 </template>
 
@@ -118,23 +182,43 @@
 		ref,
 		reactive,
 		onBeforeUnmount,
-		onMounted
+		onMounted,
+		nextTick,
+		computed
 	} from 'vue';
-	import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup'
+	import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup';
+	import uniPopupDialog from '@/uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.vue';
 
 	// 引入uni-popup组件
 	const tagPopup = ref(null);
-
+	const linkPopup = ref(null);
+	
 	// 自定义标签输入
 	const customTagInput = ref('');
-
+	
+	// 链接相关
+	const linkUrl = ref('');
+	const linkText = ref('');
+	
 	// 是否已经确认离开
 	let isConfirmedExit = false;
+	
+	// 编辑器实例
+	let editorCtx = null;
+	const showFormattingToolbar = ref(false);
+	const previewMode = ref(false);
+	const editorContent = ref('');
+	
+	// 计算属性：渲染后的内容
+	const renderedContent = computed(() => {
+		return editorContent.value;
+	});
 
 	// 文章数据
 	const articleData = reactive({
 		title: '',
 		content: '',
+		htmlContent: '',
 		images: [],
 		tags: [] // 添加标签字段
 	});
@@ -148,6 +232,57 @@
 
 	// 已选标签
 	const selectedTags = ref([]);
+	
+	// 编辑器准备完成
+	const onEditorReady = () => {
+		// #ifdef MP-WEIXIN || H5
+		uni.createSelectorQuery()
+			.select('#editor')
+			.context(res => {
+				editorCtx = res.context;
+				// 设置初始内容
+				if (articleData.htmlContent) {
+					editorCtx.setContents({
+						html: articleData.htmlContent,
+						fail: err => {
+							console.error('设置内容失败:', err);
+						}
+					});
+				}
+			})
+			.exec();
+		// #endif
+	};
+	
+	// 编辑器内容变化
+	const onEditorInput = (e) => {
+		// 存储编辑器的最新内容
+		articleData.htmlContent = e.detail.html || '';
+		articleData.content = e.detail.text || '';
+		editorContent.value = e.detail.html || '';
+	};
+	
+	// 处理粘贴事件
+	const handlePaste = async (e) => {
+		// 粘贴内容处理逻辑
+		console.log('粘贴了内容', e);
+		// 可以在这里对粘贴内容进行额外处理，例如过滤、清理样式等
+	};
+	
+	// 编辑器获取焦点
+	const editorFocus = () => {
+		// 当编辑器获得焦点时可以做一些操作
+	};
+	
+	// 编辑器失去焦点
+	const editorBlur = () => {
+		// 当编辑器失去焦点时可以做一些操作
+	};
+	
+	// 切换预览模式
+	const togglePreview = () => {
+		previewMode.value = !previewMode.value;
+	};
 
 	// 添加自定义标签
 	const addCustomTag = () => {
@@ -235,12 +370,52 @@
 			icon: 'success'
 		});
 	};
+	
+	// 显示链接插入弹窗
+	const showLinkPopup = () => {
+		linkUrl.value = '';
+		linkText.value = '';
+		linkPopup.value.open();
+	};
+	
+	// 关闭链接插入弹窗
+	const closeLinkPopup = () => {
+		linkPopup.value.close();
+	};
+	
+	// 确认插入链接
+	const confirmInsertLink = () => {
+		if (!linkUrl.value.trim()) {
+			uni.showToast({
+				title: '请输入链接URL',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 如果没有输入链接文本，就使用URL作为文本
+		const text = linkText.value.trim() || linkUrl.value;
+		
+		if (editorCtx) {
+			editorCtx.insertLink({
+				text: text,
+				url: linkUrl.value
+			});
+		}
+		
+		closeLinkPopup();
+	};
 
 	// 清空内容并刷新页面
 	const clearAndRefresh = () => {
 		// 清空所有内容
 		articleData.title = '';
 		articleData.content = '';
+		articleData.htmlContent = '';
+		editorContent.value = '';
+		if (editorCtx) {
+			editorCtx.clear();
+		}
 		articleData.images = [];
 		articleData.tags = [];
 		selectedTags.value = [];
@@ -387,43 +562,91 @@
 				// 处理选中的图片
 				const tempFilePaths = res.tempFilePaths;
 
-				// 在这里应该上传图片到服务器，然后获取URL
-				// 这里仅做演示，将图片路径添加到内容中
-				articleData.images = [...articleData.images, ...tempFilePaths];
-
-				// 向内容中插入图片标记或URL
-				articleData.content += '\n[图片]\n';
-
-				uni.showToast({
-					title: '图片添加成功',
-					icon: 'success'
+				// 这里处理图片上传逻辑
+				uni.showLoading({
+					title: '正在处理图片...'
 				});
+				
+				// 模拟上传图片到服务器
+				setTimeout(() => {
+					uni.hideLoading();
+					
+					// 向编辑器中插入图片
+					tempFilePaths.forEach(path => {
+						if (editorCtx) {
+							editorCtx.insertImage({
+								src: path,
+								width: '100%',
+								success: () => {
+									console.log('图片插入成功');
+								}
+							});
+						}
+					});
+					
+					// 添加到图片数组
+					articleData.images = [...articleData.images, ...tempFilePaths];
+					
+					uni.showToast({
+						title: '图片添加成功',
+						icon: 'success'
+					});
+				}, 1000);
 			}
 		});
 	};
 
-	// 文本格式化工具
+	// 显示文本格式化工具
 	const showTextFormatting = () => {
-		uni.showToast({
-			title: '文本格式化功能',
-			icon: 'none'
-		});
+		showFormattingToolbar.value = !showFormattingToolbar.value;
+	};
+
+	// 应用格式化
+	const applyFormat = (format) => {
+		if (!editorCtx) return;
+		
+		switch (format) {
+			case 'bold':
+				editorCtx.bold();
+				break;
+			case 'italic':
+				editorCtx.italic();
+				break;
+			case 'underline':
+				editorCtx.underline();
+				break;
+			case 'header':
+				editorCtx.format('header', 'H2');
+				break;
+			case 'list':
+				editorCtx.list('bullet');
+				break;
+			case 'quote':
+				editorCtx.format('blockquote', true);
+				break;
+			case 'link':
+				showLinkPopup();
+				break;
+			case 'clear':
+				editorCtx.removeFormat();
+				break;
+			default:
+				break;
+		}
 	};
 
 	// 撤销操作
 	const undo = () => {
-		uni.showToast({
-			title: '撤销操作',
-			icon: 'none'
-		});
+		if (editorCtx) {
+			editorCtx.undo();
+		}
 	};
 
 	// 重做操作
 	const redo = () => {
-		uni.showToast({
-			title: '重做操作',
-			icon: 'none'
-		});
+		if (editorCtx) {
+			editorCtx.redo();
+		}
 	};
 </script>
 
@@ -486,16 +709,87 @@
 		padding: 20rpx 0;
 		border-bottom: 1px solid #eee;
 	}
-
-	.content-editor {
-		min-height: 300rpx;
-	}
-
-	.editor-textarea {
-		width: 100%;
-		font-size: 30rpx;
-		line-height: 1.6;
+	
+	/* 富文本编辑器容器 */
+	.rich-editor-container {
+		position: relative;
 		min-height: 500rpx;
+		display: flex;
+		flex-direction: column;
+	}
+	
+	/* 编辑器格式化工具栏 */
+	.editor-format-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		padding: 10rpx;
+		background-color: #f5f5f5;
+		border-radius: 8rpx;
+		margin-bottom: 10rpx;
+	}
+	
+	.format-btn {
+		width: 70rpx;
+		height: 70rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin: 5rpx;
+	}
+	
+	.format-text {
+		font-size: 30rpx;
+		font-weight: bold;
+	}
+	
+	/* 富文本编辑器 */
+	.rich-editor {
+		min-height: 500rpx;
+		width: 100%;
+		padding: 20rpx;
+		box-sizing: border-box;
+		border: 1px solid #eee;
+		border-radius: 8rpx;
+	}
+	
+	.editor-height {
+		min-height: 450rpx;
+	}
+	
+	.rich-display {
+		min-height: 500rpx;
+		width: 100%;
+		padding: 20rpx;
+		box-sizing: border-box;
+		border: 1px solid #eee;
+		border-radius: 8rpx;
+		background-color: #fafafa;
+	}
+	
+	.preview-toggle {
+		margin-top: 20rpx;
+		text-align: right;
+	}
+	
+	.preview-toggle text {
+		color: #4361ee;
+		font-size: 28rpx;
+	}
+	
+	/* 链接输入容器 */
+	.link-input-container {
+		display: flex;
+		flex-direction: column;
+		gap: 20rpx;
+		margin-top: 20rpx;
+	}
+	
+	.link-input, .link-text-input {
+		height: 80rpx;
+		padding: 0 20rpx;
+		border-radius: 8rpx;
+		border: 1px solid #eee;
+		background-color: #f8f8f8;
 	}
 
 	/* 文章标签展示区域 - 紧贴底部工具栏 */
