@@ -65,45 +65,47 @@
       <view class="comment-section">
         <text class="section-title">评论（{{ data.comments.length }}）</text>
         <view class="comment-list">
-          <view v-for="(comment, index) in data.comments" :key="index" class="comment-item">
-            <image :src="comment.avatar" class="comment-avatar"/>
-            <view class="comment-content">
-              <view class="comment-header">
-                <text class="comment-author">{{ comment.author }}</text>
-                <view class="comment-actions">
-                  <view class="like-action" @click="handleCommentLike(index)">
-                    <uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16" 
-                      :color="comment.isLiked ? '#ff6b6b' : '#999'"/>
-                    <text :class="{'liked': comment.isLiked}">{{ comment.likeCount || 0 }}</text>
+          <view v-for="(comment, index) in data.comments" :key="index" class="comment-card">
+            <view class="comment-item">
+              <image :src="comment.avatar" class="comment-avatar"/>
+              <view class="comment-content">
+                <view class="comment-header">
+                  <text class="comment-author">{{ comment.author }}</text>
+                  <view class="comment-actions">
+                    <view class="like-action" @click="handleCommentLike(index)">
+                      <uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16" 
+                        :color="comment.isLiked ? '#ff6b6b' : '#999'"/>
+                      <text :class="{'liked': comment.isLiked}">{{ comment.likeCount || 0 }}</text>
+                    </view>
                   </view>
                 </view>
+                <text class="comment-text">{{ comment.content }}</text>
+                <view class="comment-footer">
+                  <text class="comment-time">{{ comment.time }}</text>
+                  <text class="reply-btn" @click="replyToComment(index)">回复</text>
+                </view>
               </view>
-              <text class="comment-text">{{ comment.content }}</text>
-              <view class="comment-footer">
-                <text class="comment-time">{{ comment.time }}</text>
-                <text class="reply-btn" @click="replyToComment(index)">回复</text>
+            </view>
+            
+            <!-- 评论回复区域 -->
+            <view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
+              <view v-for="(reply, replyIndex) in comment.replies" :key="replyIndex" class="reply-item">
+                <view class="reply-content">
+                  <text class="reply-author">{{ reply.author }}</text>
+                  <text v-if="reply.replyTo" class="reply-to">回复</text>
+                  <text v-if="reply.replyTo" class="reply-to-author">@{{ reply.replyTo }}</text>
+                  <text class="reply-text">：{{ reply.content }}</text>
+                </view>
+                <view class="reply-footer">
+                  <text class="reply-time">{{ reply.time }}</text>
+                  <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
+                </view>
               </view>
               
-              <!-- 评论回复区域 -->
-              <view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
-                <view v-for="(reply, replyIndex) in comment.replies" :key="replyIndex" class="reply-item">
-                  <view class="reply-content">
-                    <text class="reply-author">{{ reply.author }}</text>
-                    <text v-if="reply.replyTo" class="reply-to">回复</text>
-                    <text v-if="reply.replyTo" class="reply-to-author">@{{ reply.replyTo }}</text>
-                    <text class="reply-text">：{{ reply.content }}</text>
-                  </view>
-                  <view class="reply-footer">
-                    <text class="reply-time">{{ reply.time }}</text>
-                    <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
-                  </view>
-                </view>
-                
-                <!-- 查看更多回复 -->
-                <view v-if="comment.replies.length > 2 && !comment.showAllReplies" class="more-replies" 
-                      @click="showAllReplies(index)">
-                  <text>查看更多回复</text>
-                </view>
+              <!-- 查看更多回复 -->
+              <view v-if="comment.replies.length > 2 && !comment.showAllReplies" class="more-replies" 
+                    @click="showAllReplies(index)">
+                <text>查看更多回复</text>
               </view>
             </view>
           </view>
@@ -510,163 +512,179 @@ const handleInputBlur = () => {
 }
 
 .comment-section {
-  padding: 30rpx;
-  margin-bottom: 140rpx; // 为评论输入框留出空间
-  
-  .section-title {
-    font-size: 32rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 30rpx;
-  }
-  
-  .comment-item {
-    display: flex;
-    margin-bottom: 30rpx;
-    padding-bottom: 20rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-    
-    .comment-avatar {
-      width: 80rpx;
-      height: 80rpx;
-      border-radius: 50%;
-      margin-right: 20rpx;
-    }
-    
-    .comment-content {
-      flex: 1;
-      
-      .comment-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10rpx;
-        
-        .comment-author {
-          font-size: 28rpx;
-          color: #333;
-          font-weight: bold;
-        }
-        
-        .comment-actions {
-          display: flex;
-          align-items: center;
-          
-          .like-action {
-            display: flex;
-            align-items: center;
-            
-            text {
-              font-size: 24rpx;
-              color: #999;
-              margin-left: 4rpx;
-              
-              &.liked {
-                color: #ff6b6b;
-              }
-            }
-          }
-        }
-      }
-      
-      .comment-text {
-        font-size: 30rpx;
-        color: #333;
-        line-height: 1.6;
-      }
-      
-      .comment-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 16rpx;
-        
-        .comment-time {
-          font-size: 24rpx;
-          color: #999;
-        }
-        
-        .reply-btn {
-          font-size: 24rpx;
-          color: #666;
-          padding: 4rpx 12rpx;
-        }
-      }
-      
-      .reply-list {
-        margin-top: 20rpx;
-        background-color: #f8f8f8;
-        border-radius: 12rpx;
-        padding: 16rpx;
-        
-        .reply-item {
-          margin-bottom: 16rpx;
-          
-          .reply-content {
-            font-size: 28rpx;
-            line-height: 1.5;
-            
-            .reply-author {
-              color: #1296db;
-              font-weight: bold;
-            }
-            
-            .reply-to {
-              color: #666;
-              margin: 0 4rpx;
-            }
-            
-            .reply-to-author {
-              color: #1296db;
-            }
-            
-            .reply-text {
-              color: #333;
-            }
-          }
-          
-          .reply-footer {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 8rpx;
-            
-            .reply-time {
-              font-size: 24rpx;
-              color: #999;
-            }
-            
-            .reply-btn {
-              font-size: 24rpx;
-              color: #666;
-            }
-          }
-        }
-        
-        .more-replies {
-          text-align: center;
-          padding: 10rpx 0;
-          
-          text {
-            font-size: 26rpx;
-            color: #1296db;
-          }
-        }
-      }
-    }
-  }
-  
-  .no-comment {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 60rpx 0;
-    
-    text {
-      margin-top: 20rpx;
-      color: #999;
-      font-size: 28rpx;
-    }
-  }
+  margin-top: 30rpx;
+  padding: 20rpx 0;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+.comment-list {
+  margin-bottom: 30rpx;
+}
+
+.comment-card {
+  background-color: #f9f9f9;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.comment-item {
+  display: flex;
+  margin-bottom: 16rpx;
+}
+
+.comment-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  margin-right: 20rpx;
+}
+
+.comment-content {
+  flex: 1;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+
+.comment-author {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.comment-actions {
+  display: flex;
+}
+
+.like-action {
+  display: flex;
+  align-items: center;
+}
+
+.like-action text {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 4rpx;
+}
+
+.like-action .liked {
+  color: #ff6b6b;
+}
+
+.comment-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.comment-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10rpx;
+}
+
+.comment-time {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.reply-btn {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.reply-list {
+  margin-left: 100rpx;
+  background-color: #f0f0f0;
+  border-radius: 12rpx;
+  padding: 16rpx;
+  margin-top: 10rpx;
+}
+
+.reply-item {
+  margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+}
+
+.reply-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.reply-content {
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
+.reply-author {
+  color: #6495ED;
+  font-weight: bold;
+}
+
+.reply-to {
+  color: #666;
+  margin: 0 4rpx;
+}
+
+.reply-to-author {
+  color: #6495ED;
+}
+
+.reply-text {
+  color: #333;
+  word-break: break-all;
+}
+
+.reply-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8rpx;
+}
+
+.reply-time {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.more-replies {
+  text-align: center;
+  margin-top: 10rpx;
+  padding-top: 10rpx;
+}
+
+.more-replies text {
+  font-size: 24rpx;
+  color: #6495ED;
+}
+
+.no-comment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40rpx 0;
+  color: #999;
+}
+
+.no-comment text {
+  margin-top: 20rpx;
+  font-size: 28rpx;
 }
 
 // 评论输入框
