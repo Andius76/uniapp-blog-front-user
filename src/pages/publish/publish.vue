@@ -394,10 +394,10 @@
 		// 判断是否有编辑内容，如果没有直接返回
 		if (!articleData.title.trim() && !articleData.content.trim() &&
 			articleData.images.length === 0 && articleData.tags.length === 0) {
+			// 清空内容并标记为已确认离开
 			clearAndRefresh();
-			uni.switchTab({
-				url: '/pages/index/index'
-			});
+			// 返回上一页面而不是跳转到首页
+			uni.navigateBack();
 			return;
 		}
 
@@ -411,9 +411,8 @@
 				if (res.confirm) {
 					// 用户点击确认，清空内容并退出
 					clearAndRefresh();
-					uni.switchTab({
-						url: '/pages/index/index'
-					});
+					// 返回上一页面而不是跳转到首页
+					uni.navigateBack();
 				}
 				// 用户点击取消，不做任何操作
 			}
