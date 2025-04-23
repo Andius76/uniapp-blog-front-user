@@ -4,18 +4,18 @@
     <view class="mask" @click="closeSettings" v-if="visible"></view>
     
     <!-- 设置面板 -->
-    <view class="settings-panel" :class="{ 'visible': visible }">
+    <view class="settings-panel" :class="{ 'visible': visible, 'fullscreen': true }">
       <view class="panel-header">
         <text class="panel-title">
-          {{ isConfirmingLogout ? '退出登录' : (isEditingNickname ? '修改昵称' : '用户设置') }}
+          {{ isConfirmingLogout ? '退出登录' : (isEditingNickname ? '修改昵称' : (isEditingBio ? '编辑个人简介' : '用户设置')) }}
         </text>
         <view class="close-btn" @click="handleBackOrClose">
-          <uni-icons :type="isEditingNickname || isConfirmingLogout ? 'left' : 'close'" size="24" color="#333"></uni-icons>
+          <uni-icons :type="isEditingNickname || isConfirmingLogout || isEditingBio ? 'left' : 'close'" size="24" color="#333"></uni-icons>
         </view>
       </view>
       
       <!-- 主设置面板 -->
-      <view class="panel-content" v-if="!isEditingNickname && !isConfirmingLogout">
+      <view class="panel-content" v-if="!isEditingNickname && !isConfirmingLogout && !isEditingBio">
         <!-- 头像设置 -->
         <view class="settings-item" @click="changeAvatar">
           <view class="item-label">
@@ -36,6 +36,18 @@
           </view>
           <view class="item-content">
             <text class="nickname-preview">{{ userInfo.nickname }}</text>
+            <uni-icons type="right" size="18" color="#999"></uni-icons>
+          </view>
+        </view>
+        
+        <!-- 个人简介设置 -->
+        <view class="settings-item" @click="showBioEdit">
+          <view class="item-label">
+            <uni-icons type="info" size="22" color="#666"></uni-icons>
+            <text>编辑个人简介</text>
+          </view>
+          <view class="item-content">
+            <text class="bio-preview">{{ userInfo.bio || '未设置' }}</text>
             <uni-icons type="right" size="18" color="#999"></uni-icons>
           </view>
         </view>
@@ -73,6 +85,28 @@
         </view>
       </view>
       
+      <!-- 个人简介编辑面板 -->
+      <view class="bio-edit-panel" v-else-if="isEditingBio">
+        <view class="bio-input-container">
+          <textarea 
+            class="bio-textarea"
+            v-model="newBio"
+            placeholder="请输入个人简介"
+            maxlength="100"
+          />
+          <text class="char-count">{{ newBio.length }}/100</text>
+        </view>
+        
+        <view class="bio-actions">
+          <view class="bio-action-btn cancel" @click="cancelEditBio">
+            取消
+          </view>
+          <view class="bio-action-btn confirm" @click="updateBio">
+            确认
+          </view>
+        </view>
+      </view>
+      
       <!-- 退出登录确认面板 -->
       <view class="logout-confirm-panel" v-else-if="isConfirmingLogout">
         <view class="logout-confirm-content">
@@ -91,7 +125,7 @@
       </view>
       
       <!-- 版本信息 -->
-      <view class="version-info" v-if="!isEditingNickname && !isConfirmingLogout">
+      <view class="version-info" v-if="!isEditingNickname && !isConfirmingLogout && !isEditingBio">
         <text>当前版本: v1.0.0</text>
       </view>
     </view>
@@ -112,18 +146,21 @@ const props = defineProps({
     type: Object,
     default: () => ({
       avatar: '/static/images/avatar.png',
-      nickname: '用户昵称'
+      nickname: '用户昵称',
+      bio: '这个人很懒，什么都没写'
     })
   }
 });
 
 // 定义事件
-const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 'logout']);
+const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 'bio-change', 'logout']);
 
 // 面板状态管理
 const isEditingNickname = ref(false);
 const isConfirmingLogout = ref(false);
+const isEditingBio = ref(false);
 const newNickname = ref('');
+const newBio = ref('');
 
 // 处理返回或关闭
 const handleBackOrClose = () => {
@@ -131,6 +168,8 @@ const handleBackOrClose = () => {
     cancelEditNickname();
   } else if (isConfirmingLogout.value) {
     cancelLogout();
+  } else if (isEditingBio.value) {
+    cancelEditBio();
   } else {
     closeSettings();
   }
@@ -212,6 +251,45 @@ const updateNickname = () => {
   }, 1000);
 };
 
+// 显示个人简介编辑界面
+const showBioEdit = () => {
+  newBio.value = props.userInfo.bio || '';
+  isEditingBio.value = true;
+};
+
+// 取消编辑个人简介
+const cancelEditBio = () => {
+  isEditingBio.value = false;
+};
+
+// 更新个人简介
+const updateBio = () => {
+  // 清理个人简介文本
+  const bioText = newBio.value.trim();
+  
+  // 如果简介为空，使用默认文本
+  const finalBio = bioText || '这个人很懒，什么都没写';
+  
+  // 模拟更新成功
+  uni.showLoading({
+    title: '更新中...'
+  });
+  
+  setTimeout(() => {
+    uni.hideLoading();
+    // 通知父组件简介已更改
+    emit('bio-change', finalBio);
+    
+    uni.showToast({
+      title: '个人简介更新成功',
+      icon: 'success'
+    });
+    
+    // 返回主设置界面
+    isEditingBio.value = false;
+  }, 1000);
+};
+
 // 显示退出登录确认
 const showLogoutConfirm = () => {
   isConfirmingLogout.value = true;
@@ -272,6 +350,16 @@ const logout = () => {
       transform: translateY(-800rpx);
     }
     
+    &.fullscreen {
+      height: 100vh;
+      bottom: -100vh;
+      border-radius: 0;
+      
+      &.visible {
+        transform: translateY(-100vh);
+      }
+    }
+    
     .panel-header {
       display: flex;
       justify-content: space-between;
@@ -325,7 +413,8 @@ const logout = () => {
             background-color: #eee;
           }
           
-          .nickname-preview {
+          .nickname-preview,
+          .bio-preview {
             font-size: 28rpx;
             color: #666;
             margin-right: 15rpx;
@@ -382,6 +471,63 @@ const logout = () => {
         margin-top: 80rpx;
         
         .nickname-action-btn {
+          width: 45%;
+          height: 80rpx;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8rpx;
+          font-size: 30rpx;
+          
+          &.cancel {
+            background-color: #f8f8f8;
+            color: #666;
+            border: 2rpx solid #eee;
+          }
+          
+          &.confirm {
+            background-color: #4361ee;
+            color: #fff;
+          }
+        }
+      }
+    }
+    
+    // 个人简介编辑面板
+    .bio-edit-panel {
+      flex: 1;
+      padding: 30rpx;
+      
+      .bio-input-container {
+        position: relative;
+        margin-top: 20rpx;
+        
+        .bio-textarea {
+          width: 100%;
+          height: 300rpx;
+          background-color: #f8f8f8;
+          border: 2rpx solid #eee;
+          border-radius: 8rpx;
+          padding: 20rpx;
+          font-size: 30rpx;
+          color: #333;
+        }
+        
+        .char-count {
+          position: absolute;
+          right: 20rpx;
+          bottom: -50rpx;
+          font-size: 24rpx;
+          color: #999;
+        }
+      }
+      
+      .bio-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 80rpx;
+        
+        .bio-action-btn {
           width: 45%;
           height: 80rpx;
           display: flex;

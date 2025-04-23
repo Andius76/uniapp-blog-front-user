@@ -50,7 +50,7 @@
 						<uni-icons type="person" size="20" color="#666"></uni-icons>
 						<text class="bio-text">个人简介：{{ data.userInfo.bio }}</text>
 					</view>
-					<view class="edit-profile-btn" @click="handleEditProfile">
+					<view class="edit-profile-btn" @click="openUserSettings">
 						编辑资料
 					</view>
 				</view>
@@ -188,6 +188,7 @@
 			@update:visible="data.showUserSettings = $event"
 			@avatar-change="handleAvatarChange"
 			@nickname-change="handleNicknameChange"
+			@bio-change="handleBioChange"
 			@logout="handleLogout"
 		/>
 	</view>
@@ -498,6 +499,13 @@
 	};
 
 	/**
+	 * 打开用户设置面板
+	 */
+	const openUserSettings = () => {
+		data.showUserSettings = true;
+	};
+
+	/**
 	 * 页面导航
 	 * @param {String} url - 导航地址
 	 */
@@ -578,6 +586,19 @@
 		// TODO: 保存到服务器
 		// api.updateUserInfo({ nickname: newNickname }).then(res => {
 		//   console.log('昵称更新成功');
+		// });
+	};
+	
+	/**
+	 * 修改用户个人简介
+	 * @param {String} newBio - 新个人简介
+	 */
+	const handleBioChange = (newBio) => {
+		data.userInfo.bio = newBio;
+		
+		// TODO: 保存到服务器
+		// api.updateUserInfo({ bio: newBio }).then(res => {
+		//   console.log('个人简介更新成功');
 		// });
 	};
 	
