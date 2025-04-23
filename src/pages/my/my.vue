@@ -104,6 +104,17 @@
 									:color="post.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
 								<text :class="{'liked': post.isLiked}">{{ post.likeCount }}</text>
 							</view>
+							<!-- 编辑和删除按钮（仅在"我的发表"选项卡中显示） -->
+							<template v-if="data.currentTab === 0">
+								<view class="action-item" @click.stop="handleEditPost(index)">
+									<uni-icons type="compose" size="20" color="#666"></uni-icons>
+									<text>编辑</text>
+								</view>
+								<view class="action-item" @click.stop="handleDeletePost(index)">
+									<uni-icons type="trash" size="20" color="#666"></uni-icons>
+									<text>删除</text>
+								</view>
+							</template>
 						</view>
 					</view>
 					<!-- 加载状态 -->
@@ -163,6 +174,17 @@
 								:color="post.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
 							<text :class="{'liked': post.isLiked}">{{ post.likeCount }}</text>
 						</view>
+						<!-- 编辑和删除按钮（仅在"我的发表"选项卡中显示） -->
+						<template v-if="data.currentTab === 0">
+							<view class="action-item" @click.stop="handleEditPost(index)">
+								<uni-icons type="compose" size="20" color="#666"></uni-icons>
+								<text>编辑</text>
+							</view>
+							<view class="action-item" @click.stop="handleDeletePost(index)">
+								<uni-icons type="trash" size="20" color="#666"></uni-icons>
+								<text>删除</text>
+							</view>
+						</template>
 					</view>
 				</view>
 
@@ -619,6 +641,91 @@
 		});
 	};
 
+	/**
+	 * 编辑文章
+	 * @param {Number} index - 文章索引
+	 */
+	const handleEditPost = (index) => {
+		const post = data.contentList[index];
+		
+		// 组装需要传递的文章数据
+		const articleData = {
+			id: post.id,
+			title: post.title,
+			content: post.summary, // 注意：这里只有摘要，实际应该传完整内容
+			tags: post.tags || [],
+			images: post.image ? [post.image] : []
+		};
+		
+		// 将文章数据转换为JSON字符串，并进行URI编码
+		const articleDataStr = encodeURIComponent(JSON.stringify(articleData));
+		
+		// 跳转到发布页面，带上文章数据
+		uni.navigateTo({
+			url: `/pages/publish/publish?mode=edit&articleData=${articleDataStr}`
+		});
+	};
+
+	/**
+	 * 删除文章
+	 * @param {Number} index - 文章索引
+	 */
+	const handleDeletePost = (index) => {
+		const post = data.contentList[index];
+		
+		// 显示确认对话框
+		uni.showModal({
+			title: '确认删除',
+			content: '确定要删除这篇文章吗？删除后将无法恢复。',
+			confirmText: '删除',
+			confirmColor: '#ff0000',
+			success: (res) => {
+				if (res.confirm) {
+					// 用户点击确认，执行删除
+					deletePost(post.id, index);
+				}
+			}
+		});
+	};
+
+	/**
+	 * 执行文章删除操作
+	 * @param {Number} postId - 文章ID
+	 * @param {Number} index - 文章在列表中的索引
+	 */
+	const deletePost = (postId, index) => {
+		// 显示加载提示
+		uni.showLoading({
+			title: '删除中...'
+		});
+		
+		// 模拟删除请求
+		setTimeout(() => {
+			// 从列表中移除文章
+			data.contentList.splice(index, 1);
+			
+			// 隐藏加载提示
+			uni.hideLoading();
+			
+			// 显示成功提示
+			uni.showToast({
+				title: '删除成功',
+				icon: 'success'
+			});
+			
+			// TODO: 实际删除API调用
+			// api.deleteArticle(postId).then(res => {
+			//   console.log('文章删除成功');
+			// }).catch(err => {
+			//   console.error('文章删除失败:', err);
+			//   uni.showToast({
+			//     title: '删除失败，请重试',
+			//     icon: 'none'
+			//   });
+			// });
+		}, 800);
+	};
+
 	// 页面初始化
 	onMounted(() => {
 		// 加载默认选项卡的内容
@@ -888,23 +995,26 @@
 				justify-content: space-around;
 				border-top: 2rpx solid #f0f0f0;
 				padding-top: 20rpx;
-
+				flex-wrap: wrap;
+				
 				.action-item {
 					display: flex;
 					align-items: center;
-
+					padding: 0 10rpx;
+					margin-bottom: 10rpx;
+					
 					.uni-icons {
 						margin-right: 10rpx;
 					}
-
+					
 					text {
 						font-size: 24rpx;
 						color: #666;
-
+						
 						&.liked {
 							color: #ff6b6b;
 						}
-
+						
 						&.collected {
 							color: #ffc107;
 						}

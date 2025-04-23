@@ -82,10 +82,10 @@
         <view class="comment-list">
           <view v-for="(comment, index) in data.comments" :key="index" class="comment-card">
             <view class="comment-item">
-              <image :src="comment.avatar" class="comment-avatar"/>
-              <view class="comment-content">
+            <image :src="comment.avatar" class="comment-avatar"/>
+            <view class="comment-content">
                 <view class="comment-header">
-                  <text class="comment-author">{{ comment.author }}</text>
+              <text class="comment-author">{{ comment.author }}</text>
                   <view class="comment-actions">
                     <view class="like-action" @click="handleCommentLike(index)">
                       <uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16" 
@@ -94,9 +94,9 @@
                     </view>
                   </view>
                 </view>
-                <text class="comment-text">{{ comment.content }}</text>
+              <text class="comment-text">{{ comment.content }}</text>
                 <view class="comment-footer">
-                  <text class="comment-time">{{ comment.time }}</text>
+              <text class="comment-time">{{ comment.time }}</text>
                   <text class="reply-btn" @click="replyToComment(index)">回复</text>
                 </view>
               </view>
@@ -652,17 +652,17 @@ const getMockComments = (page) => {
   margin-top: 30rpx;
   padding: 20rpx 0;
 }
-
-.section-title {
-  font-size: 32rpx;
-  font-weight: bold;
+  
+  .section-title {
+    font-size: 32rpx;
+    font-weight: bold;
   margin-bottom: 20rpx;
   display: block;
 }
 
 .comment-list {
-  margin-bottom: 30rpx;
-}
+    margin-bottom: 30rpx;
+  }
 
 .comment-card {
   background-color: #f9f9f9;
@@ -671,21 +671,21 @@ const getMockComments = (page) => {
   margin-bottom: 30rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
-
-.comment-item {
-  display: flex;
+  
+  .comment-item {
+    display: flex;
   margin-bottom: 16rpx;
 }
-
-.comment-avatar {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
-  margin-right: 20rpx;
-}
-
-.comment-content {
-  flex: 1;
+    
+    .comment-avatar {
+      width: 80rpx;
+      height: 80rpx;
+      border-radius: 50%;
+      margin-right: 20rpx;
+    }
+    
+    .comment-content {
+      flex: 1;
 }
 
 .comment-header {
@@ -694,9 +694,9 @@ const getMockComments = (page) => {
   align-items: center;
   margin-bottom: 10rpx;
 }
-
-.comment-author {
-  font-size: 28rpx;
+      
+      .comment-author {
+        font-size: 28rpx;
   font-weight: bold;
   color: #333;
 }
@@ -718,11 +718,11 @@ const getMockComments = (page) => {
 
 .like-action .liked {
   color: #ff6b6b;
-}
-
-.comment-text {
+      }
+      
+      .comment-text {
   font-size: 28rpx;
-  color: #333;
+        color: #333;
   line-height: 1.5;
   word-break: break-all;
 }
@@ -731,11 +731,11 @@ const getMockComments = (page) => {
   display: flex;
   justify-content: space-between;
   margin-top: 10rpx;
-}
-
-.comment-time {
-  font-size: 24rpx;
-  color: #999;
+      }
+      
+      .comment-time {
+        font-size: 24rpx;
+        color: #999;
 }
 
 .reply-btn {
@@ -748,8 +748,8 @@ const getMockComments = (page) => {
   background-color: #f0f0f0;
   border-radius: 12rpx;
   padding: 16rpx;
-  margin-top: 10rpx;
-}
+        margin-top: 10rpx;
+      }
 
 .reply-item {
   margin-bottom: 16rpx;
