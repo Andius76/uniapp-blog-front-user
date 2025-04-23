@@ -27,15 +27,6 @@
 			<view class="rich-editor-container">
 				<!-- 编辑器工具栏 -->
 				<view class="editor-format-toolbar" v-if="showFormattingToolbar">
-					<view class="format-btn" @click="applyFormat('bold')">
-						<uni-icons type="bold" size="20" color="#333"></uni-icons>
-					</view>
-					<view class="format-btn" @click="applyFormat('italic')">
-						<uni-icons type="italic" size="20" color="#333"></uni-icons>
-					</view>
-					<view class="format-btn" @click="applyFormat('underline')">
-						<uni-icons type="underline" size="20" color="#333"></uni-icons>
-					</view>
 					<view class="format-btn" @click="applyFormat('header')">
 						<text class="format-text">H</text>
 					</view>
