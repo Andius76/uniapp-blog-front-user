@@ -27,20 +27,11 @@
 			<view class="rich-editor-container">
 				<!-- 编辑器工具栏 -->
 				<view class="editor-format-toolbar" v-if="showFormattingToolbar">
-					<view class="format-btn" @click="applyFormat('header')">
-						<text class="format-text">H</text>
-					</view>
-					<view class="format-btn" @click="applyFormat('list')">
-						<uni-icons type="list" size="20" color="#333"></uni-icons>
-					</view>
-					<view class="format-btn" @click="applyFormat('quote')">
-						<uni-icons type="sound" size="20" color="#333"></uni-icons>
+					<view class="format-btn" @click="applyFormat('bold')">
+						<uni-icons type="bold" size="20" color="#333"></uni-icons>
 					</view>
 					<view class="format-btn" @click="applyFormat('link')">
 						<uni-icons type="link" size="20" color="#333"></uni-icons>
-					</view>
-					<view class="format-btn" @click="applyFormat('clear')">
-						<uni-icons type="trash" size="20" color="#333"></uni-icons>
 					</view>
 				</view>
 
@@ -578,26 +569,8 @@
 			case 'bold':
 				editorCtx.bold();
 				break;
-			case 'italic':
-				editorCtx.italic();
-				break;
-			case 'underline':
-				editorCtx.underline();
-				break;
-			case 'header':
-				editorCtx.format('header', 'H2');
-				break;
-			case 'list':
-				editorCtx.list('bullet');
-				break;
-			case 'quote':
-				editorCtx.format('blockquote', true);
-				break;
 			case 'link':
 				showLinkPopup();
-				break;
-			case 'clear':
-				editorCtx.removeFormat();
 				break;
 			default:
 				break;
