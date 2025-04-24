@@ -54,6 +54,19 @@
 			</view>
 		</view>
 
+		<!-- 显示图片预览区域 -->
+		<view v-if="articleData.images.length > 0" class="article-images-area">
+			<text class="images-title">已添加图片</text>
+			<view class="article-image-list">
+				<view v-for="(image, index) in articleData.images" :key="index" class="article-image-item">
+					<image :src="image" mode="aspectFill" class="preview-image"></image>
+					<view class="image-delete" @click.stop="removeImage(index)">
+						<uni-icons type="clear" size="16" color="#fff"></uni-icons>
+					</view>
+				</view>
+			</view>
+		</view>
+
 		<!-- 底部工具栏 -->
 		<view class="editor-toolbar">
 			<view class="toolbar-item" @click="showTextFormatting">
@@ -821,6 +834,46 @@
 			editorCtx.redo();
 		}
 	};
+
+	// 移除图片
+	const removeImage = (index) => {
+		// 确认删除对话框
+		uni.showModal({
+			title: '删除图片',
+			content: '确定要删除这张图片吗？',
+			success: (res) => {
+				if (res.confirm) {
+					// 从数组中移除图片
+					const removedImage = articleData.images[index];
+					articleData.images.splice(index, 1);
+					
+					// 更新富文本编辑器内容，从HTML中移除对应图片
+					if (editorCtx) {
+						// 获取当前HTML内容
+						editorCtx.getContents({
+							success: (res) => {
+								let currentHtml = res.html || '';
+								// 简单处理：替换包含该图片路径的img标签
+								// 注：这种方法不够精确，实际应用中可能需要更复杂的处理
+								const imgRegex = new RegExp(`<img[^>]*src=["']${removedImage}["'][^>]*>`, 'g');
+								currentHtml = currentHtml.replace(imgRegex, '');
+								
+								// 设置新的内容
+								editorCtx.setContents({
+									html: currentHtml
+								});
+							}
+						});
+					}
+					
+					uni.showToast({
+						title: '图片已删除',
+						icon: 'success'
+					});
+				}
+			}
+		});
+	};
 </script>
 
 <style lang="scss">
@@ -1127,5 +1180,54 @@
 		width: 60%;
 		border-radius: 40rpx;
 		font-size: 30rpx;
+	}
+
+	/* 文章图片展示区域 - 与标签区类似的样式 */
+	.article-images-area {
+		padding: 20rpx 30rpx;
+		border-top: 1px dashed #eee;
+		background-color: #f9f9f9;
+	}
+
+	.images-title {
+		font-size: 28rpx;
+		color: #666;
+		margin-bottom: 20rpx;
+	}
+
+	.article-image-list {
+		display: flex;
+		flex-wrap: wrap;
+		width: 100%;
+	}
+
+	.article-image-item {
+		position: relative;
+		width: 160rpx;
+		height: 160rpx;
+		margin-right: 20rpx;
+		margin-bottom: 20rpx;
+		border-radius: 8rpx;
+		overflow: hidden;
+	}
+
+	.preview-image {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.image-delete {
+		position: absolute;
+		top: 5rpx;
+		right: 5rpx;
+		width: 40rpx;
+		height: 40rpx;
+		background-color: rgba(0, 0, 0, 0.5);
+		border-radius: 50%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		z-index: 10;
 	}
 </style>
