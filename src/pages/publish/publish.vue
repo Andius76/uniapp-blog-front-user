@@ -651,7 +651,7 @@
 				// 处理选中的图片
 				const tempFilePaths = res.tempFilePaths;
 
-				// 这里处理图片上传逻辑
+				// 显示加载中提示
 				uni.showLoading({
 					title: '正在处理图片...'
 				});
@@ -660,16 +660,69 @@
 				setTimeout(() => {
 					uni.hideLoading();
 
-					// 向编辑器中插入图片
+					// 向编辑器中插入图片，针对不同平台做特殊处理
 					tempFilePaths.forEach(path => {
 						if (editorCtx) {
+							// #ifdef APP-PLUS
+							// 针对APP，需要先将临时文件保存为本地文件
+							plus?.io?.convertLocalFileSystemURL && plus.io.convertLocalFileSystemURL(path, (localUrl) => {
+								// 使用转换后的本地URL
+								editorCtx.insertImage({
+									src: localUrl || path,
+									width: '100%',
+									alt: '文章图片',
+									success: () => {
+										console.log('APP图片插入成功');
+									},
+									fail: (err) => {
+										console.error('APP图片插入失败', err);
+									}
+								});
+							});
+							// #endif
+							
+							// #ifdef MP-WEIXIN
+							// 微信小程序使用base64方式插入图片
+							uni.getFileSystemManager().readFile({
+								filePath: path,
+								encoding: 'base64',
+								success: (res) => {
+									const base64 = 'data:image/png;base64,' + res.data;
+									editorCtx.insertImage({
+										src: base64,
+										width: '100%',
+										alt: '文章图片',
+										success: () => {
+											console.log('小程序图片插入成功');
+										},
+										fail: (err) => {
+											console.error('小程序图片插入失败', err);
+										}
+									});
+								},
+								fail: (err) => {
+									console.error('读取图片文件失败', err);
+									// 失败时尝试直接使用路径
+									editorCtx.insertImage({
+										src: path,
+										width: '100%',
+										alt: '文章图片'
+									});
+								}
+							});
+							// #endif
+
+							// #ifdef H5
+							// 在H5中直接使用临时路径
 							editorCtx.insertImage({
 								src: path,
 								width: '100%',
+								alt: '文章图片',
 								success: () => {
-									console.log('图片插入成功');
+									console.log('H5图片插入成功');
 								}
 							});
+							// #endif
 						}
 					});
 
