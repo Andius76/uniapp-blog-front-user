@@ -203,11 +203,12 @@
 
 	// 编辑器准备完成
 	const onEditorReady = () => {
-		// #ifdef MP-WEIXIN || H5
+		// #ifdef MP-WEIXIN || H5 || APP-PLUS
 		uni.createSelectorQuery()
 			.select('#editor')
 			.context(res => {
 				editorCtx = res.context;
+				console.log('编辑器上下文已初始化', editorCtx ? '成功' : '失败');
 				// 设置初始内容
 				if (articleData.htmlContent) {
 					editorCtx.setContents({
@@ -645,6 +646,29 @@
 
 	// 插入图片
 	const insertImage = () => {
+		// 首先确认编辑器上下文是否已初始化
+		if (!editorCtx) {
+			console.error('编辑器上下文未初始化');
+			// 尝试重新获取编辑器上下文
+			uni.createSelectorQuery()
+				.select('#editor')
+				.context(res => {
+					editorCtx = res.context;
+					console.log('重新获取编辑器上下文', editorCtx ? '成功' : '失败');
+					if (editorCtx) {
+						// 递归调用，这次应该有编辑器上下文了
+						insertImage();
+					} else {
+						uni.showToast({
+							title: '编辑器初始化失败，请重试',
+							icon: 'none'
+						});
+					}
+				})
+				.exec();
+			return;
+		}
+
 		uni.chooseImage({
 			count: 9,
 			success: (res) => {
@@ -659,59 +683,52 @@
 				// 模拟上传图片到服务器
 				setTimeout(() => {
 					uni.hideLoading();
+					
+					// 添加到图片数组，提前添加以确保图片被记录
+					articleData.images = [...articleData.images, ...tempFilePaths];
 
-					// 向编辑器中插入图片，针对不同平台做特殊处理
-					tempFilePaths.forEach(path => {
-						if (editorCtx) {
-							// #ifdef APP-PLUS
-							// APP平台改用base64方式插入图片
-							uni.getFileSystemManager().readFile({
-								filePath: path,
-								encoding: 'base64',
-								success: (res) => {
-									const base64 = 'data:image/png;base64,' + res.data;
-									editorCtx.insertImage({
-										src: base64,
-										width: '100%',
-										alt: '文章图片',
-										success: () => {
-											console.log('APP图片插入成功(base64)');
-										},
-										fail: (err) => {
-											console.error('APP图片插入失败(base64)', err);
-											// 如果base64失败，尝试直接使用路径
-											editorCtx.insertImage({
-												src: path,
-												width: '100%',
-												alt: '文章图片'
-											});
-										}
-									});
+					// 针对APP平台的单独处理
+					// #ifdef APP-PLUS
+					try {
+						console.log('APP平台：开始处理图片');
+						tempFilePaths.forEach((path, index) => {
+							console.log(`处理第${index+1}张图片:`, path);
+							
+							// 直接使用本地路径
+							editorCtx.insertImage({
+								src: path,
+								width: '100%',
+								alt: `文章图片${index+1}`,
+								success: () => {
+									console.log(`APP图片${index+1}插入成功`);
 								},
 								fail: (err) => {
-									console.error('APP读取图片文件失败', err);
-									// 失败时尝试使用plus API，作为备选方案
+									console.error(`APP图片${index+1}插入失败:`, err);
+									
+									// 尝试使用plus API
 									if (plus && plus.io && plus.io.convertLocalFileSystemURL) {
+										console.log('尝试使用plus.io.convertLocalFileSystemURL');
 										plus.io.convertLocalFileSystemURL(path, (localUrl) => {
+											console.log('转换后的URL:', localUrl);
 											editorCtx.insertImage({
 												src: localUrl,
 												width: '100%',
-												alt: '文章图片'
+												alt: `文章图片${index+1}(转换后)`
 											});
-										});
-									} else {
-										// 如果plus API不可用，尝试直接使用路径
-										editorCtx.insertImage({
-											src: path,
-											width: '100%',
-											alt: '文章图片'
 										});
 									}
 								}
 							});
-							// #endif
+						});
+					} catch (err) {
+						console.error('APP处理图片异常:', err);
+					}
+					// #endif
 
-							// #ifdef MP-WEIXIN
+					// 针对微信小程序的处理
+					// #ifdef MP-WEIXIN
+					tempFilePaths.forEach((path, index) => {
+						if (editorCtx) {
 							// 微信小程序使用base64方式插入图片
 							uni.getFileSystemManager().readFile({
 								filePath: path,
@@ -740,9 +757,14 @@
 									});
 								}
 							});
-							// #endif
+						}
+					});
+					// #endif
 
-							// #ifdef H5
+					// 针对H5的处理
+					// #ifdef H5
+					tempFilePaths.forEach(path => {
+						if (editorCtx) {
 							// 在H5中直接使用临时路径
 							editorCtx.insertImage({
 								src: path,
@@ -752,18 +774,15 @@
 									console.log('H5图片插入成功');
 								}
 							});
-							// #endif
 						}
 					});
-
-					// 添加到图片数组
-					articleData.images = [...articleData.images, ...tempFilePaths];
+					// #endif
 
 					uni.showToast({
 						title: '图片添加成功',
 						icon: 'success'
 					});
-				}, 1000);
+				}, 500);
 			}
 		});
 	};
