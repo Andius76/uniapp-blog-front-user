@@ -664,23 +664,53 @@
 					tempFilePaths.forEach(path => {
 						if (editorCtx) {
 							// #ifdef APP-PLUS
-							// 针对APP，需要先将临时文件保存为本地文件
-							plus?.io?.convertLocalFileSystemURL && plus.io.convertLocalFileSystemURL(path, (localUrl) => {
-								// 使用转换后的本地URL
-								editorCtx.insertImage({
-									src: localUrl || path,
-									width: '100%',
-									alt: '文章图片',
-									success: () => {
-										console.log('APP图片插入成功');
-									},
-									fail: (err) => {
-										console.error('APP图片插入失败', err);
+							// APP平台改用base64方式插入图片
+							uni.getFileSystemManager().readFile({
+								filePath: path,
+								encoding: 'base64',
+								success: (res) => {
+									const base64 = 'data:image/png;base64,' + res.data;
+									editorCtx.insertImage({
+										src: base64,
+										width: '100%',
+										alt: '文章图片',
+										success: () => {
+											console.log('APP图片插入成功(base64)');
+										},
+										fail: (err) => {
+											console.error('APP图片插入失败(base64)', err);
+											// 如果base64失败，尝试直接使用路径
+											editorCtx.insertImage({
+												src: path,
+												width: '100%',
+												alt: '文章图片'
+											});
+										}
+									});
+								},
+								fail: (err) => {
+									console.error('APP读取图片文件失败', err);
+									// 失败时尝试使用plus API，作为备选方案
+									if (plus && plus.io && plus.io.convertLocalFileSystemURL) {
+										plus.io.convertLocalFileSystemURL(path, (localUrl) => {
+											editorCtx.insertImage({
+												src: localUrl,
+												width: '100%',
+												alt: '文章图片'
+											});
+										});
+									} else {
+										// 如果plus API不可用，尝试直接使用路径
+										editorCtx.insertImage({
+											src: path,
+											width: '100%',
+											alt: '文章图片'
+										});
 									}
-								});
+								}
 							});
 							// #endif
-							
+
 							// #ifdef MP-WEIXIN
 							// 微信小程序使用base64方式插入图片
 							uni.getFileSystemManager().readFile({
