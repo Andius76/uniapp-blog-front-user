@@ -33,7 +33,7 @@
 							<input 
 								type="text" 
 								class="input-field" 
-								v-model="data.formData.verificationCode" 
+								v-model="data.formData.email_code" 
 								placeholder="请输入验证码"
 								@input="validateVerificationCode" 
 							/>
@@ -42,9 +42,9 @@
 							</button>
 						</view>
 						<text 
-							v-if="data.errors.verificationCode"
+							v-if="data.errors.email_code"
 							class="validation-feedback show-feedback"
-						>{{ data.errors.verificationCode }}</text>
+						>{{ data.errors.email_code }}</text>
 					</view>
 
 					<view class="input-group">
@@ -98,13 +98,13 @@ const data = reactive({
 	// 表单数据
 	formData: {
 		username: '',
-		verificationCode: '',
+		email_code: '',
 		password: ''
 	},
 	// 错误信息
 	errors: {
 		username: '',
-		verificationCode: '',
+		email_code: '',
 		password: ''
 	},
 	// 界面状态
@@ -150,18 +150,18 @@ const validateUsername = () => {
  * @returns {boolean} 验证结果
  */
 const validateVerificationCode = () => {
-	const value = data.formData.verificationCode.trim();
+	const value = data.formData.email_code.trim();
 	if (!value) {
-		data.errors.verificationCode = '请输入验证码';
+		data.errors.email_code = '请输入验证码';
 		return false;
 	}
 
 	if (value.length !== 6) {
-		data.errors.verificationCode = '验证码必须为6位';
+		data.errors.email_code = '验证码必须为6位';
 		return false;
 	}
 
-	data.errors.verificationCode = '';
+	data.errors.email_code = '';
 	return true;
 };
 
@@ -279,7 +279,7 @@ const handleSubmit = () => {
 		// 调用注册API
 		register({
 			email: data.formData.username.trim(),
-			verificationCode: data.formData.verificationCode.trim(),
+			email_code: data.formData.email_code.trim(),
 			password: data.formData.password
 		}).then(res => {
 			if (res.code === 200) {
@@ -298,7 +298,7 @@ const handleSubmit = () => {
 				}, 1500);
 			} else if (res.code === 400 && res.message.includes('验证码')) {
 				// 验证码错误处理
-				data.errors.verificationCode = res.message || '验证码错误';
+				data.errors.email_code = res.message || '验证码错误';
 				uni.showToast({
 					title: res.message || '验证码错误，请重新获取',
 					icon: 'none',
