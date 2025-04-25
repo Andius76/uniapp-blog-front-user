@@ -16,14 +16,49 @@
 
 ## 1. 用户认证模块
 
-### 1.1 用户注册
+### 1.1 发送邮箱验证码
+- **POST** `/auth/send-verification-code`
+- 请求参数：
+  ```json
+  {
+    "email": "string"    // 邮箱地址
+  }
+  ```
+- 响应示例：
+  ```json
+  {
+    "code": 200,
+    "message": "验证码已发送"
+  }
+  ```
+- 说明：
+  - 验证码有效期为10分钟
+  - 同一邮箱60秒内只能请求一次验证码
+  - 验证码为6位数字
+- 错误响应：
+  ```json
+  {
+    "code": 400,
+    "message": "邮箱格式不正确"
+  }
+  ```
+  或
+  ```json
+  {
+    "code": 429,
+    "message": "请求过于频繁，请稍后再试"
+  }
+  ```
+
+### 1.2 用户注册
 - **POST** `/auth/register`
 - 请求参数：
   ```json
   {
-    "email": "string",      // 邮箱（作为登录账号）
-    "password": "string",    // 密码
-    "nickname": "string"    // 昵称
+    "email": "string",             // 邮箱（作为登录账号）
+    "verificationCode": "string",  // 邮箱验证码
+    "password": "string",          // 密码
+    "nickname": "string"          // 昵称（可选）
   }
   ```
 - 响应示例：
@@ -39,8 +74,33 @@
     }
   }
   ```
+- 说明：
+  - 密码长度至少6位
+  - 验证码必须是有效的且在有效期内（10分钟）
+  - 注册成功后会自动登录并返回token
+- 错误响应：
+  ```json
+  {
+    "code": 400,
+    "message": "验证码错误或已过期"
+  }
+  ```
+  或
+  ```json
+  {
+    "code": 400,
+    "message": "邮箱已被注册"
+  }
+  ```
+  或
+  ```json
+  {
+    "code": 400,
+    "message": "密码长度不足"
+  }
+  ```
 
-### 1.2 用户登录
+### 1.3 用户登录
 - **POST** `/auth/login`
 - 请求参数：
   ```json
@@ -64,7 +124,7 @@
   }
   ```
 
-### 1.3 忘记密码
+### 1.4 忘记密码
 - **POST** `/auth/forget-password`
 - 请求参数：
   ```json
@@ -80,7 +140,7 @@
   }
   ```
 
-### 1.4 重置密码
+### 1.5 重置密码
 - **POST** `/auth/reset-password`
 - 请求参数：
   ```json

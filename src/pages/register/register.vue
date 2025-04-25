@@ -90,6 +90,8 @@
 import { reactive } from 'vue';
 // 导入uni-icons组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+// 导入API服务
+import { sendVerificationCode, register } from '@/api/auth.js';
 
 // 使用reactive统一管理所有数据
 const data = reactive({
@@ -111,7 +113,13 @@ const data = reactive({
 	// 验证码按钮状态
 	codeBtnDisabled: false,
 	codeBtnText: '获取验证码',
-	countdown: 60
+	countdown: 60,
+	// 验证码状态
+	codeStatus: {
+		sent: false,
+		error: false,
+		message: ''
+	}
 });
 
 /**
@@ -212,40 +220,49 @@ const getVerificationCode = () => {
 		}
 	}, 1000);
 	
-	// 模拟发送验证码
-	uni.showToast({
-		title: '验证码已发送',
-		icon: 'success'
+	// 调用发送验证码API
+	sendVerificationCode({
+		email: data.formData.username.trim()
+	}).then(res => {
+		if (res.code === 200) {
+			data.codeStatus.sent = true;
+			data.codeStatus.error = false;
+			data.codeStatus.message = '';
+			
+			uni.showToast({
+				title: '验证码已发送，有效期10分钟',
+				icon: 'success',
+				duration: 2000
+			});
+		} else {
+			data.codeStatus.sent = false;
+			data.codeStatus.error = true;
+			data.codeStatus.message = res.message || '发送失败';
+			
+			uni.showToast({
+				title: res.message || '发送失败',
+				icon: 'none'
+			});
+			// 发送失败，重置按钮状态
+			clearInterval(timer);
+			data.codeBtnDisabled = false;
+			data.codeBtnText = '获取验证码';
+		}
+	}).catch(err => {
+		console.error('发送验证码失败', err);
+		data.codeStatus.sent = false;
+		data.codeStatus.error = true;
+		data.codeStatus.message = '网络错误，请稍后重试';
+		
+		uni.showToast({
+			title: '发送失败，请检查网络',
+			icon: 'none'
+		});
+		// 发送失败，重置按钮状态
+		clearInterval(timer);
+		data.codeBtnDisabled = false;
+		data.codeBtnText = '获取验证码';
 	});
-	
-	// TODO: 实际发送验证码API调用
-	// api.sendVerificationCode(data.formData.username).then(res => {
-	//   if (res.success) {
-	//     uni.showToast({
-	//       title: '验证码已发送',
-	//       icon: 'success'
-	//     });
-	//   } else {
-	//     uni.showToast({
-	//       title: res.message || '发送失败',
-	//       icon: 'none'
-	//     });
-	//     // 发送失败，重置按钮状态
-	//     clearInterval(timer);
-	//     data.codeBtnDisabled = false;
-	//     data.codeBtnText = '获取验证码';
-	//   }
-	// }).catch(err => {
-	//   console.error('发送验证码失败', err);
-	//   uni.showToast({
-	//     title: '发送失败，请检查网络',
-	//     icon: 'none'
-	//   });
-	//   // 发送失败，重置按钮状态
-	//   clearInterval(timer);
-	//   data.codeBtnDisabled = false;
-	//   data.codeBtnText = '获取验证码';
-	// });
 };
 
 /**
@@ -259,50 +276,52 @@ const handleSubmit = () => {
 	if (usernameValid && verificationCodeValid && passwordValid) {
 		data.loading = true;
 
-		// 模拟注册请求
-		setTimeout(() => {
+		// 调用注册API
+		register({
+			email: data.formData.username.trim(),
+			verificationCode: data.formData.verificationCode.trim(),
+			password: data.formData.password
+		}).then(res => {
+			if (res.code === 200) {
+				// 注册成功处理
+				uni.showToast({
+					title: '注册成功',
+					icon: 'success',
+					duration: 2000
+				});
+				
+				// 跳转到登录页面
+				setTimeout(() => {
+					uni.redirectTo({
+						url: '/pages/login/login'
+					});
+				}, 1500);
+			} else if (res.code === 400 && res.message.includes('验证码')) {
+				// 验证码错误处理
+				data.errors.verificationCode = res.message || '验证码错误';
+				uni.showToast({
+					title: res.message || '验证码错误，请重新获取',
+					icon: 'none',
+					duration: 2000
+				});
+			} else {
+				// 其他错误处理
+				uni.showToast({
+					title: res.message || '注册失败',
+					icon: 'none',
+					duration: 2000
+				});
+			}
 			data.loading = false;
-			// 注册成功处理
+		}).catch(err => {
+			console.error('注册失败', err);
 			uni.showToast({
-				title: '注册成功',
-				icon: 'success'
+				title: '注册失败，请检查网络',
+				icon: 'none',
+				duration: 2000
 			});
-
-			// 跳转到登录页面
-			uni.redirectTo({
-				url: '/pages/login/login'
-			});
-		}, 1500);
-		
-		// TODO: 实际注册API调用
-		// api.register({
-		//   username: data.formData.username.trim(),
-		//   verificationCode: data.formData.verificationCode,
-		//   password: data.formData.password
-		// }).then(res => {
-		//   if (res.success) {
-		//     uni.showToast({
-		//       title: '注册成功',
-		//       icon: 'success'
-		//     });
-		//     uni.redirectTo({
-		//       url: '/pages/login/login'
-		//     });
-		//   } else {
-		//     uni.showToast({
-		//       title: res.message || '注册失败',
-		//       icon: 'none'
-		//     });
-		//   }
-		//   data.loading = false;
-		// }).catch(err => {
-		//   uni.showToast({
-		//     title: '注册失败，请检查网络',
-		//     icon: 'none'
-		//   });
-		//   console.error('注册失败', err);
-		//   data.loading = false;
-		// });
+			data.loading = false;
+		});
 	}
 };
 
