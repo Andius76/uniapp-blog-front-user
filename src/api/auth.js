@@ -12,7 +12,7 @@ import http from '../utils/request';
  * @returns {Promise} - 返回Promise对象
  */
 export function sendVerificationCode(data) {
-  return http.post('/send-verification-code', data);
+  return http.post('/send-email-code', data);
 }
 
 /**
