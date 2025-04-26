@@ -3,7 +3,7 @@ import http from '@/utils/request.js';
 
 // 导出API服务
 export const sendVerificationCode = (params) => {
-  return http.post('/send-email-code', params);
+  return http.post('/api/auth/send-email-code', params);
 };
 
 export const register = (params) => {
