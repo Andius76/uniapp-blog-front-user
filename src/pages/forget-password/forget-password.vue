@@ -121,14 +121,14 @@ const data = reactive({
 const validateUsername = () => {
 	const value = data.formData.username.trim();
 	if (!value) {
-		data.errors.username = '请输入手机号或邮箱';
+		data.errors.username = '请输入邮箱';
 		return false;
 	}
 
-	// 验证邮箱或手机号格式
+	// 验证邮箱格式
 	const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 	if (!isEmail) {
-		data.errors.username = '请输入有效的邮箱';
+		data.errors.username = '请输入有效的邮箱格式';
 		return false;
 	}
 
@@ -189,7 +189,7 @@ const togglePasswordVisibility = () => {
 const getVerificationCode = () => {
 	if (!validateUsername()) {
 		uni.showToast({
-			title: '请先输入有效的手机号或邮箱',
+			title: '请先输入有效的邮箱',
 			icon: 'none'
 		});
 		return;
@@ -211,40 +211,42 @@ const getVerificationCode = () => {
 		}
 	}, 1000);
 	
-	// 模拟发送验证码
-	uni.showToast({
-		title: '验证码已发送',
-		icon: 'success'
+	// 发送验证码API调用
+	uni.request({
+		url: 'http://localhost:8080/api/auth/send-email-code',
+		method: 'POST',
+		data: {
+			email: data.formData.username
+		},
+		success: (res) => {
+			if (res.data.code === 200) {
+				uni.showToast({
+					title: '验证码已发送',
+					icon: 'success'
+				});
+			} else {
+				uni.showToast({
+					title: res.data.message || '发送失败',
+					icon: 'none'
+				});
+				// 发送失败，重置按钮状态
+				clearInterval(timer);
+				data.codeBtnDisabled = false;
+				data.codeBtnText = '获取验证码';
+			}
+		},
+		fail: (err) => {
+			console.error('发送验证码失败', err);
+			uni.showToast({
+				title: '发送失败，请检查网络',
+				icon: 'none'
+			});
+			// 发送失败，重置按钮状态
+			clearInterval(timer);
+			data.codeBtnDisabled = false;
+			data.codeBtnText = '获取验证码';
+		}
 	});
-	
-	// TODO: 实际发送验证码API调用
-	// api.sendVerificationCode(data.formData.username).then(res => {
-	//   if (res.success) {
-	//     uni.showToast({
-	//       title: '验证码已发送',
-	//       icon: 'success'
-	//     });
-	//   } else {
-	//     uni.showToast({
-	//       title: res.message || '发送失败',
-	//       icon: 'none'
-	//     });
-	//     // 发送失败，重置按钮状态
-	//     clearInterval(timer);
-	//     data.codeBtnDisabled = false;
-	//     data.codeBtnText = '获取验证码';
-	//   }
-	// }).catch(err => {
-	//   console.error('发送验证码失败', err);
-	//   uni.showToast({
-	//     title: '发送失败，请检查网络',
-	//     icon: 'none'
-	//   });
-	//   // 发送失败，重置按钮状态
-	//   clearInterval(timer);
-	//   data.codeBtnDisabled = false;
-	//   data.codeBtnText = '获取验证码';
-	// });
 };
 
 /**
@@ -258,42 +260,45 @@ const handleSubmit = () => {
 	if (usernameValid && verificationCodeValid && newPasswordValid) {
 		data.loading = true;
 
-		// 模拟重置密码请求
-		setTimeout(() => {
-			data.loading = false;
-			// 重置成功处理
-			uni.showToast({
-				title: '密码重置成功',
-				icon: 'success'
-			});
-
-			// 跳转到登录页面
-			uni.navigateBack();
-		}, 1500);
-		
-		// TODO: 实际重置密码API调用
-		// api.resetPassword(data.formData).then(res => {
-		//   if (res.success) {
-		//     uni.showToast({
-		//       title: '密码重置成功',
-		//       icon: 'success'
-		//     });
-		//     uni.navigateBack();
-		//   } else {
-		//     uni.showToast({
-		//       title: res.message || '重置密码失败',
-		//       icon: 'none'
-		//     });
-		//   }
-		//   data.loading = false;
-		// }).catch(err => {
-		//   console.error('重置密码失败', err);
-		//   uni.showToast({
-		//     title: '重置密码失败，请检查网络',
-		//     icon: 'none'
-		//   });
-		//   data.loading = false;
-		// });
+		// 调用重置密码API
+		uni.request({
+			url: 'http://localhost:8080/api/auth/reset-password',
+			method: 'POST',
+			data: {
+				email: data.formData.username,
+				email_code: data.formData.verificationCode,
+				new_password: data.formData.newPassword
+			},
+			success: (res) => {
+				if (res.data.code === 200) {
+					uni.showToast({
+						title: '密码重置成功',
+						icon: 'success'
+					});
+					setTimeout(() => {
+						// 跳转到登录页面
+						uni.navigateTo({
+							url: '/pages/login/login'
+						});
+					}, 1500);
+				} else {
+					uni.showToast({
+						title: res.data.message || '重置密码失败',
+						icon: 'none'
+					});
+				}
+			},
+			fail: (err) => {
+				console.error('重置密码失败', err);
+				uni.showToast({
+					title: '重置密码失败，请检查网络',
+					icon: 'none'
+				});
+			},
+			complete: () => {
+				data.loading = false;
+			}
+		});
 	}
 };
 
