@@ -2,8 +2,10 @@
 import http from '@/utils/request.js';
 
 // 导出API服务
-export const sendVerificationCode = (params) => {
-  return http.post('/send-email-code', params);
+export const sendVerificationCode = (email) => {
+  return http.post('/send-email-code', null, {
+    params: { email }
+  });
 };
 
 export const register = (params) => {
