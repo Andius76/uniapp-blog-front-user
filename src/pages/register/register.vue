@@ -342,30 +342,32 @@ const handleSubmit = () => {
 						url: '/pages/login/login'
 					});
 				}, 1500);
-			} else if (res.code === 400 && res.message.includes('验证码')) {
-				// 验证码错误处理
-				data.errors.email_code = res.message || '验证码错误';
-				uni.showToast({
-					title: res.message || '验证码错误，请重新获取',
-					icon: 'none',
-					duration: 2000
-				});
-			} else {
-				// 其他错误处理
-				uni.showToast({
-					title: res.message || '注册失败',
-					icon: 'none',
-					duration: 2000
-				});
 			}
 			data.loading = false;
 		}).catch(err => {
 			console.error('注册失败', err);
+			
+			// 根据错误码处理不同情况
+			if (err.code === 400) {
+				// 参数错误或验证码错误
+				if (err.message.includes('验证码')) {
+					data.errors.email_code = err.message;
+				} else if (err.message.includes('邮箱')) {
+					data.errors.username = err.message;
+				} else if (err.message.includes('密码')) {
+					data.errors.password = err.message;
+				}
+			} else if (err.code === 409) {
+				// 邮箱已被注册
+				data.errors.username = '该邮箱已被注册';
+			}
+			
 			uni.showToast({
-				title: '注册失败，请检查网络',
+				title: err.message || '注册失败，请稍后重试',
 				icon: 'none',
 				duration: 2000
 			});
+			
 			data.loading = false;
 		});
 	}

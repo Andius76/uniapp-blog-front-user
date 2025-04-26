@@ -1,31 +1,14 @@
-/**
- * 认证相关API服务
- */
-
 // 导入请求工具
-import http from '../utils/request';
+import http from '@/utils/request.js';
 
-/**
- * 发送邮箱验证码
- * @param {Object} data - 请求数据
- * @param {string} data.email - 邮箱地址
- * @returns {Promise} - 返回Promise对象
- */
-export function sendVerificationCode(data) {
-  return http.post('/send-email-code', data);
-}
+// 导出API服务
+export const sendVerificationCode = (params) => {
+  return http.post('/send-email-code', params);
+};
 
-/**
- * 用户注册
- * @param {Object} data - 请求数据
- * @param {string} data.email - 邮箱地址
- * @param {string} data.email_code - 验证码
- * @param {string} data.password - 密码
- * @returns {Promise} - 返回Promise对象
- */
-export function register(data) {
-  return http.post('/register', data);
-}
+export const register = (params) => {
+  return http.post('/register', params);
+};
 
 /**
  * 用户登录
