@@ -36,8 +36,9 @@ export function forgetPassword(data) {
 /**
  * 重置密码
  * @param {Object} data - 请求数据
- * @param {string} data.token - 重置令牌
- * @param {string} data.newPassword - 新密码
+ * @param {string} data.email - 邮箱地址
+ * @param {string} data.email_code - 验证码
+ * @param {string} data.new_password - 新密码
  * @returns {Promise} - 返回Promise对象
  */
 export function resetPassword(data) {

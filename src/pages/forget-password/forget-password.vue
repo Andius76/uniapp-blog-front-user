@@ -19,6 +19,13 @@
 								placeholder="请输入注册邮箱"
 								@input="validateUsername" 
 							/>
+							<uni-icons 
+								v-if="data.formData.username"
+								type="clear" 
+								size="20" 
+								color="#999"
+								@click="clearUsername"
+							></uni-icons>
 						</view>
 						<text 
 							v-if="data.errors.username"
@@ -37,6 +44,13 @@
 								placeholder="请输入验证码"
 								@input="validateVerificationCode" 
 							/>
+							<uni-icons 
+								v-if="data.formData.verificationCode"
+								type="clear" 
+								size="20" 
+								color="#999"
+								@click="clearVerificationCode"
+							></uni-icons>
 							<button class="get-code-btn" @click="getVerificationCode" :disabled="data.codeBtnDisabled">
 								{{ data.codeBtnText }}
 							</button>
@@ -58,6 +72,14 @@
 								placeholder="请输入新密码" 
 								@input="validateNewPassword" 
 							/>
+							<uni-icons 
+								v-if="data.formData.newPassword"
+								type="clear" 
+								size="20" 
+								color="#999"
+								@click="clearNewPassword"
+								style="margin-right: 10rpx;"
+							></uni-icons>
 							<uni-icons 
 								:type="data.showPassword ? 'eye-slash' : 'eye'" 
 								size="20" 
@@ -90,6 +112,8 @@
 import { reactive } from 'vue';
 // 导入uni-icons组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+// 导入API服务
+import { sendVerificationCode, resetPassword } from '@/api/auth.js';
 
 // 使用reactive统一管理所有数据
 const data = reactive({
@@ -111,7 +135,13 @@ const data = reactive({
 	// 验证码按钮状态
 	codeBtnDisabled: false,
 	codeBtnText: '获取验证码',
-	countdown: 60
+	countdown: 60,
+	// 验证码状态
+	codeStatus: {
+		sent: false,
+		error: false,
+		message: ''
+	}
 });
 
 /**
@@ -184,6 +214,30 @@ const togglePasswordVisibility = () => {
 };
 
 /**
+ * 清空用户名输入框
+ */
+const clearUsername = () => {
+	data.formData.username = '';
+	data.errors.username = '';
+};
+
+/**
+ * 清空验证码输入框
+ */
+const clearVerificationCode = () => {
+	data.formData.verificationCode = '';
+	data.errors.verificationCode = '';
+};
+
+/**
+ * 清空新密码输入框
+ */
+const clearNewPassword = () => {
+	data.formData.newPassword = '';
+	data.errors.newPassword = '';
+};
+
+/**
  * 获取验证码
  */
 const getVerificationCode = () => {
@@ -211,34 +265,27 @@ const getVerificationCode = () => {
 		}
 	}, 1000);
 	
-	// 发送验证码API调用
-	uni.request({
-		url: 'http://localhost:8080/api/auth/send-email-code',
-		method: 'POST',
-		data: {
-			email: data.formData.username
-		},
-		success: (res) => {
-			if (res.data.code === 200) {
-				uni.showToast({
-					title: '验证码已发送',
-					icon: 'success'
-				});
-			} else {
-				uni.showToast({
-					title: res.data.message || '发送失败',
-					icon: 'none'
-				});
-				// 发送失败，重置按钮状态
-				clearInterval(timer);
-				data.codeBtnDisabled = false;
-				data.codeBtnText = '获取验证码';
-			}
-		},
-		fail: (err) => {
-			console.error('发送验证码失败', err);
+	// 调用发送验证码API
+	sendVerificationCode({
+		email: data.formData.username.trim()
+	}).then(res => {
+		if (res.code === 200) {
+			data.codeStatus.sent = true;
+			data.codeStatus.error = false;
+			data.codeStatus.message = '';
+			
 			uni.showToast({
-				title: '发送失败，请检查网络',
+				title: '验证码已发送，有效期10分钟',
+				icon: 'success',
+				duration: 2000
+			});
+		} else {
+			data.codeStatus.sent = false;
+			data.codeStatus.error = true;
+			data.codeStatus.message = res.message || '发送失败';
+			
+			uni.showToast({
+				title: res.message || '发送失败',
 				icon: 'none'
 			});
 			// 发送失败，重置按钮状态
@@ -246,6 +293,20 @@ const getVerificationCode = () => {
 			data.codeBtnDisabled = false;
 			data.codeBtnText = '获取验证码';
 		}
+	}).catch(err => {
+		console.error('发送验证码失败', err);
+		data.codeStatus.sent = false;
+		data.codeStatus.error = true;
+		data.codeStatus.message = '网络错误，请稍后重试';
+		
+		uni.showToast({
+			title: err.message || '发送失败，请检查网络',
+			icon: 'none'
+		});
+		// 发送失败，重置按钮状态
+		clearInterval(timer);
+		data.codeBtnDisabled = false;
+		data.codeBtnText = '获取验证码';
 	});
 };
 
@@ -261,43 +322,53 @@ const handleSubmit = () => {
 		data.loading = true;
 
 		// 调用重置密码API
-		uni.request({
-			url: 'http://localhost:8080/api/auth/reset-password',
-			method: 'POST',
-			data: {
-				email: data.formData.username,
-				email_code: data.formData.verificationCode,
-				new_password: data.formData.newPassword
-			},
-			success: (res) => {
-				if (res.data.code === 200) {
-					uni.showToast({
-						title: '密码重置成功',
-						icon: 'success'
-					});
-					setTimeout(() => {
-						// 跳转到登录页面
-						uni.navigateTo({
-							url: '/pages/login/login'
-						});
-					}, 1500);
-				} else {
-					uni.showToast({
-						title: res.data.message || '重置密码失败',
-						icon: 'none'
-					});
-				}
-			},
-			fail: (err) => {
-				console.error('重置密码失败', err);
+		resetPassword({
+			email: data.formData.username.trim(),
+			email_code: data.formData.verificationCode.trim(),
+			new_password: data.formData.newPassword
+		}).then(res => {
+			if (res.code === 200) {
 				uni.showToast({
-					title: '重置密码失败，请检查网络',
-					icon: 'none'
+					title: '密码重置成功',
+					icon: 'success',
+					duration: 2000
 				});
-			},
-			complete: () => {
-				data.loading = false;
+				setTimeout(() => {
+					// 跳转到登录页面
+					uni.navigateTo({
+						url: '/pages/login/login'
+					});
+				}, 1500);
 			}
+			data.loading = false;
+		}).catch(err => {
+			console.error('重置密码失败', err);
+			
+			// 根据错误码处理不同情况
+			if (err.code === 400) {
+				// 参数错误或验证码错误
+				if (err.message && err.message.includes('验证码')) {
+					data.errors.verificationCode = err.message;
+				} else if (err.message && err.message.includes('邮箱')) {
+					data.errors.username = err.message;
+				} else if (err.message && err.message.includes('密码')) {
+					data.errors.newPassword = err.message;
+				}
+			} else if (err.code === 404) {
+				// 用户不存在
+				data.errors.username = '该邮箱未注册';
+			} else if (err.code === 409) {
+				// 新密码与原密码相同
+				data.errors.newPassword = '新密码不能与原密码相同';
+			}
+			
+			uni.showToast({
+				title: err.message || '重置密码失败，请稍后重试',
+				icon: 'none',
+				duration: 2000
+			});
+			
+			data.loading = false;
 		});
 	}
 };
