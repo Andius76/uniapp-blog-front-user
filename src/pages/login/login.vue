@@ -56,6 +56,7 @@
 								@change="handleRememberChange" 
 								color="#4361ee"
 								scale="0.7" 
+								value="true"
 							/>
 							<text>保持登录</text>
 						</label>
