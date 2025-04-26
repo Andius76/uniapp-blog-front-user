@@ -102,13 +102,13 @@ const data = reactive({
 });
 
 /**
- * 验证用户名（邮箱或手机号）
+ * 验证用户名（邮箱）
  * @returns {boolean} 验证结果
  */
 const validateUsername = () => {
 	const value = data.formData.username.trim();
 	if (!value) {
-		data.errors.username = '请输入手机号或邮箱';
+		data.errors.username = '请输入邮箱';
 		return false;
 	}
 
