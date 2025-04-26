@@ -50,16 +50,15 @@
 					</view>
 
 					<view class="form-options">
-						<label class="remember-me">
-							<checkbox 
-								:checked="data.formData.remember" 
-								@change="handleRememberChange" 
+						<view class="remember-me">
+							<switch 
+								:checked="data.formData.remember"
+								@change="handleSwitchChange"
 								color="#4361ee"
-								scale="0.7" 
-								value="true"
+								style="transform: scale(0.8); margin-right: 5px;"
 							/>
 							<text>保持登录</text>
-						</label>
+						</view>
 						<text @click="goToForgotPassword" class="forgot-password">忘记密码</text>
 					</view>
 
@@ -151,11 +150,12 @@ const togglePasswordVisibility = () => {
 };
 
 /**
- * checkbox状态变化处理函数
+ * switch开关状态变化处理函数
  */
-const handleRememberChange = (e) => {
-	// 在uniapp中，checkbox的值需要从事件对象中获取
-	data.formData.remember = e.detail.value.length > 0;
+const handleSwitchChange = (e) => {
+	// switch组件的值直接从e.detail.value获取布尔值
+	data.formData.remember = e.detail.value;
+	console.log('switch值变更为:', data.formData.remember);
 };
 
 /**
@@ -167,10 +167,13 @@ const handleSubmit = () => {
 
 	if (usernameValid && passwordValid) {
 		data.loading = true;
+		
+		// 打印提交前的remember值
+		console.log('提交前remember值:', data.formData.remember);
 
 		// 调用登录API
 		uni.request({
-			url: '/api/auth/login',
+			url: 'http://localhost:8080/api/auth/login', // 使用完整的URL，指向后端服务地址
 			method: 'POST',
 			data: {
 				email: data.formData.username,
