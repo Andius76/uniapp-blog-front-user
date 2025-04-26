@@ -6,8 +6,8 @@
  * 请求配置
  */
 const config = {
-  // 基础URL，实际开发中可能会根据环境变量来设置
-  baseUrl: '',
+  // 基础URL
+  baseUrl: '/api/auth',
   // 请求头
   header: {
     'Content-Type': 'application/json'
@@ -32,14 +32,25 @@ function getToken() {
  * @returns {Object} 处理后的请求配置
  */
 function requestInterceptor(options) {
+  // 处理请求URL
+  if (!options.url.startsWith('http')) {
+    options.url = `${config.baseUrl}${options.url}`;
+  }
+
+  // 处理请求方法
+  options.method = (options.method || 'GET').toUpperCase();
+
+  // 处理请求头
+  options.header = { ...config.header, ...options.header };
+
   // 如果需要携带token且本地有token，则添加到请求头
   if (config.withToken) {
     const token = getToken();
     if (token) {
-      options.header = options.header || {};
       options.header['Authorization'] = `Bearer ${token}`;
     }
   }
+
   return options;
 }
 
@@ -49,12 +60,22 @@ function requestInterceptor(options) {
  * @returns {Object|Promise} 处理后的响应数据或Promise.reject
  */
 function responseInterceptor(response) {
-  // 这里可以根据后端的响应格式进行统一处理
   const { statusCode, data } = response;
   
-  // 请求成功
+  // HTTP状态码处理
   if (statusCode >= 200 && statusCode < 300) {
-    return data;
+    // 处理业务状态码
+    if (data.code === 200) {
+      return data;
+    } else {
+      // 处理业务错误
+      uni.showToast({
+        title: data.message || '请求失败',
+        icon: 'none',
+        duration: 2000
+      });
+      return Promise.reject(data);
+    }
   }
   
   // 401: 未授权，token过期或无效
@@ -76,6 +97,16 @@ function responseInterceptor(response) {
     
     return Promise.reject(new Error('登录已过期，请重新登录'));
   }
+
+  // 429: 请求频率限制
+  if (statusCode === 429) {
+    uni.showToast({
+      title: '请求过于频繁，请稍后再试',
+      icon: 'none',
+      duration: 2000
+    });
+    return Promise.reject(data);
+  }
   
   // 其他错误
   uni.showToast({
@@ -96,7 +127,6 @@ function request(options) {
   // 合并请求配置
   const mergedOptions = {
     ...options,
-    header: { ...config.header, ...options.header },
     timeout: options.timeout || config.timeout
   };
   
@@ -128,4 +158,40 @@ function request(options) {
   });
 }
 
-export default request;
+// 请求方法的快捷调用
+const http = {
+  get(url, data, options = {}) {
+    return request({
+      url,
+      method: 'GET',
+      data,
+      ...options
+    });
+  },
+  post(url, data, options = {}) {
+    return request({
+      url,
+      method: 'POST',
+      data,
+      ...options
+    });
+  },
+  put(url, data, options = {}) {
+    return request({
+      url,
+      method: 'PUT',
+      data,
+      ...options
+    });
+  },
+  delete(url, data, options = {}) {
+    return request({
+      url,
+      method: 'DELETE',
+      data,
+      ...options
+    });
+  }
+};
+
+export default http;
