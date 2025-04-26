@@ -113,6 +113,8 @@ import { reactive } from 'vue';
 // 导入uni-icons组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 // 导入API服务
+// 从/src/api/auth.js中导入验证码发送和密码重置方法
+// 这些方法封装了相关API请求，处理了不同平台的URL适配和统一的错误处理
 import { sendVerificationCode, resetPassword } from '@/api/auth.js';
 
 // 使用reactive统一管理所有数据

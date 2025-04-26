@@ -1,13 +1,39 @@
+/**
+ * 认证相关API接口封装
+ * 文件位置: /src/api/auth.js
+ * 
+ * 该文件封装了所有与用户认证相关的API请求，包括：
+ * - 发送验证码
+ * - 用户注册
+ * - 用户登录
+ * - 重置密码
+ * 
+ * 所有API都基于/src/utils/request.js中的请求工具，
+ * 该工具处理了不同平台(APP/H5/小程序)的基础URL、请求拦截和响应拦截。
+ */
+
 // 导入请求工具
 import http from '@/utils/request.js';
 
-// auth.js
+/**
+ * 发送邮箱验证码
+ * @param {Object|string} params - 请求参数或邮箱字符串
+ * @returns {Promise} - 返回Promise对象
+ */
 export const sendVerificationCode = (params) => {
   // 确保从params中获取email字符串
   const email = typeof params === 'object' ? params.email : params;
   return http.post(`/send-email-code?email=${encodeURIComponent(email)}`);
 };
 
+/**
+ * 用户注册
+ * @param {Object} params - 注册参数
+ * @param {string} params.email - 邮箱
+ * @param {string} params.email_code - 邮箱验证码
+ * @param {string} params.password - 密码
+ * @returns {Promise} - 返回Promise对象
+ */
 export const register = (params) => {
   return http.post('/register', params);
 };
@@ -17,6 +43,7 @@ export const register = (params) => {
  * @param {Object} data - 请求数据
  * @param {string} data.email - 邮箱
  * @param {string} data.password - 密码
+ * @param {boolean} data.remember - 是否记住登录状态
  * @returns {Promise} - 返回Promise对象
  */
 export function login(data) {
