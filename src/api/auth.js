@@ -1,11 +1,11 @@
 // 导入请求工具
 import http from '@/utils/request.js';
 
-// 导出API服务
-export const sendVerificationCode = (email) => {
-  return http.post('/send-email-code', null, {
-    params: { email }
-  });
+// auth.js
+export const sendVerificationCode = (params) => {
+  // 确保从params中获取email字符串
+  const email = typeof params === 'object' ? params.email : params;
+  return http.post(`/send-email-code?email=${encodeURIComponent(email)}`);
 };
 
 export const register = (params) => {
