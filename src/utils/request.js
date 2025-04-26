@@ -7,7 +7,7 @@
  */
 const config = {
   // 基础URL
-  baseUrl: '/api/auth',
+  baseUrl: 'http://localhost:8080/api/auth',
   // 请求头
   header: {
     'Content-Type': 'application/json'
