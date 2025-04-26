@@ -167,34 +167,56 @@ const handleSubmit = () => {
 	if (usernameValid && passwordValid) {
 		data.loading = true;
 
-		// 模拟登录请求
-		setTimeout(() => {
-			data.loading = false;
-			// 登录成功处理
-			uni.showToast({
-				title: '登录成功',
-				icon: 'success'
-			});
-
-			// 跳转到首页
-			uni.switchTab({
-				url: '/pages/index/index'
-			});
-		}, 1500);
-		
-		// TODO: 实际登录API调用
-		// api.login(data.formData).then(res => {
-		//   if (res.success) {
-		//     uni.setStorageSync('token', res.token);
-		//     uni.switchTab({ url: '/pages/index/index' });
-		//   } else {
-		//     uni.showToast({ title: res.message, icon: 'none' });
-		//   }
-		//   data.loading = false;
-		// }).catch(err => {
-		//   uni.showToast({ title: '登录失败，请检查网络', icon: 'none' });
-		//   data.loading = false;
-		// });
+		// 调用登录API
+		uni.request({
+			url: '/api/auth/login',
+			method: 'POST',
+			data: {
+				email: data.formData.username,
+				password: data.formData.password,
+				remember: data.formData.remember
+			},
+			success: (res) => {
+				if (res.data.code === 200) {
+					// 登录成功，保存token到本地存储
+					uni.setStorageSync('token', res.data.data.token);
+					// 如果用户信息存在，也保存到本地
+					if (res.data.data.user) {
+						uni.setStorageSync('userInfo', res.data.data.user);
+					}
+					
+					// 提示登录成功
+					uni.showToast({
+						title: '登录成功',
+						icon: 'success'
+					});
+					
+					// 跳转到首页
+					setTimeout(() => {
+						uni.switchTab({
+							url: '/pages/index/index'
+						});
+					}, 1500);
+				} else {
+					// 登录失败，显示错误信息
+					uni.showToast({
+						title: res.data.message || '登录失败',
+						icon: 'none'
+					});
+				}
+			},
+			fail: (err) => {
+				// 网络错误或其他错误
+				uni.showToast({
+					title: '登录失败，请检查网络连接',
+					icon: 'none'
+				});
+				console.error('登录请求失败:', err);
+			},
+			complete: () => {
+				data.loading = false;
+			}
+		});
 	}
 };
 

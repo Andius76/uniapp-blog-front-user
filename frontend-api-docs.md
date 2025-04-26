@@ -88,3 +88,73 @@
   - 邮箱格式必须符合标准邮箱格式
   - 验证码必须是6位数字
   - 验证码有效期为10分钟
+
+### 3. 用户登录
+
+**接口说明：** 用户登录接口
+
+- **请求URL：** `/api/auth/login`
+- **请求方式：** POST
+- **请求参数：**
+
+| 参数名   | 类型    | 必选 | 说明                |
+|----------|---------|------|---------------------|
+| email    | string  | 是   | 用户邮箱            |
+| password | string  | 是   | 用户密码            |
+| remember | boolean | 否   | 是否保持登录状态    |
+
+- **响应参数：**
+
+| 参数名  | 类型   | 说明                                |
+|---------|--------|-------------------------------------|
+| code    | number | 状态码                              |
+| message | string | 提示信息                            |
+| data    | object | 返回的数据，包含token和用户基本信息 |
+
+- **data对象结构：**
+
+| 参数名 | 类型   | 说明                 |
+|--------|--------|----------------------|
+| token  | string | 用户身份令牌         |
+| user   | object | 用户基本信息         |
+
+- **user对象结构：**
+
+| 参数名      | 类型    | 说明               |
+|-------------|---------|-------------------|
+| id          | number  | 用户ID            |
+| email       | string  | 用户邮箱          |
+| nickname    | string  | 用户昵称          |
+| avatar      | string  | 用户头像URL       |
+
+- **响应示例：**
+
+```json
+{
+    "code": 200,
+    "message": "登录成功",
+    "data": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "user": {
+            "id": 1,
+            "email": "user@example.com",
+            "nickname": "示例用户",
+            "avatar": "https://example.com/avatars/default.png"
+        }
+    }
+}
+```
+
+- **错误码说明：**
+
+| 错误码 | 说明                           |
+|--------|--------------------------------|
+| 200    | 成功                           |
+| 400    | 参数错误                       |
+| 401    | 账号或密码错误                 |
+| 403    | 账号已被禁用                   |
+| 500    | 服务器错误                     |
+
+- **其他说明：**
+  - token使用JWT格式，需要在后续请求的header中添加：`Authorization: Bearer {token}`
+  - remember为true时，token有效期为30天；为false时，token有效期为24小时
