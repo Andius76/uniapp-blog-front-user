@@ -18,6 +18,13 @@
 								placeholder="请输入邮箱"
 								@input="validateUsername" 
 							/>
+							<uni-icons 
+								v-if="data.formData.username"
+								type="clear" 
+								size="20" 
+								color="#999"
+								@click="clearUsername"
+							></uni-icons>
 						</view>
 						<text 
 							v-if="data.errors.username"
@@ -36,6 +43,14 @@
 								placeholder="请输入密码" 
 								@input="validatePassword" 
 							/>
+							<uni-icons 
+								v-if="data.formData.password"
+								type="clear" 
+								size="20" 
+								color="#999"
+								@click="clearPassword"
+								style="margin-right: 10rpx;"
+							></uni-icons>
 							<uni-icons 
 								:type="data.showPassword ? 'eye-slash' : 'eye'" 
 								size="20" 
@@ -81,6 +96,8 @@
 import { reactive } from 'vue';
 // 导入uni-icons组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+// 导入API服务
+import { login } from '@/api/auth.js';
 
 // 使用reactive统一管理所有数据
 const data = reactive({
@@ -150,6 +167,22 @@ const togglePasswordVisibility = () => {
 };
 
 /**
+ * 清空用户名输入框
+ */
+const clearUsername = () => {
+	data.formData.username = '';
+	data.errors.username = '';
+};
+
+/**
+ * 清空密码输入框
+ */
+const clearPassword = () => {
+	data.formData.password = '';
+	data.errors.password = '';
+};
+
+/**
  * switch开关状态变化处理函数
  */
 const handleSwitchChange = (e) => {
@@ -172,54 +205,52 @@ const handleSubmit = () => {
 		console.log('提交前remember值:', data.formData.remember);
 
 		// 调用登录API
-		uni.request({
-			url: 'http://localhost:8080/api/auth/login', // 使用完整的URL，指向后端服务地址
-			method: 'POST',
-			data: {
-				email: data.formData.username,
-				password: data.formData.password,
-				remember: data.formData.remember
-			},
-			success: (res) => {
-				if (res.data.code === 200) {
-					// 登录成功，保存token到本地存储
-					uni.setStorageSync('token', res.data.data.token);
-					// 如果用户信息存在，也保存到本地
-					if (res.data.data.user) {
-						uni.setStorageSync('userInfo', res.data.data.user);
-					}
-					
-					// 提示登录成功
-					uni.showToast({
-						title: '登录成功',
-						icon: 'success'
-					});
-					
-					// 跳转到首页
-					setTimeout(() => {
-						uni.switchTab({
-							url: '/pages/index/index'
-						});
-					}, 1500);
-				} else {
-					// 登录失败，显示错误信息
-					uni.showToast({
-						title: res.data.message || '登录失败',
-						icon: 'none'
-					});
+		login({
+			email: data.formData.username.trim(),
+			password: data.formData.password,
+			remember: data.formData.remember
+		}).then(res => {
+			if (res.code === 200) {
+				// 登录成功，保存token到本地存储
+				uni.setStorageSync('token', res.data.token);
+				// 如果用户信息存在，也保存到本地
+				if (res.data.user) {
+					uni.setStorageSync('userInfo', res.data.user);
 				}
-			},
-			fail: (err) => {
-				// 网络错误或其他错误
+				
+				// 提示登录成功
 				uni.showToast({
-					title: '登录失败，请检查网络连接',
-					icon: 'none'
+					title: '登录成功',
+					icon: 'success',
+					duration: 2000
 				});
-				console.error('登录请求失败:', err);
-			},
-			complete: () => {
-				data.loading = false;
+				
+				// 跳转到首页
+				setTimeout(() => {
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
+				}, 1500);
 			}
+			data.loading = false;
+		}).catch(err => {
+			console.error('登录失败:', err);
+			
+			// 错误处理
+			if (err.code === 401) {
+				data.errors.password = '账号或密码错误';
+			} else if (err.code === 403) {
+				data.errors.username = '账号已被禁用';
+			}
+			
+			// 显示错误提示
+			uni.showToast({
+				title: err.message || '登录失败，请稍后重试',
+				icon: 'none',
+				duration: 2000
+			});
+			
+			data.loading = false;
 		});
 	}
 };
