@@ -6,7 +6,7 @@
 
 **接口说明：** 用于注册、找回密码等场景发送邮箱验证码
 
-- **请求URL：** `/api/auth/send-verification-code`
+- **请求URL：** `/api/auth/send-email-code`
 - **请求方式：** POST
 - **请求参数：**
 
