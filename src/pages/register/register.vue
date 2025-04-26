@@ -19,6 +19,13 @@
 								placeholder="请输入邮箱"
 								@input="validateUsername" 
 							/>
+							<uni-icons 
+								v-if="data.formData.username"
+								type="clear" 
+								size="20" 
+								color="#999"
+								@click="clearUsername"
+							></uni-icons>
 						</view>
 						<text 
 							v-if="data.errors.username"
@@ -37,6 +44,13 @@
 								placeholder="请输入验证码"
 								@input="validateVerificationCode" 
 							/>
+							<uni-icons 
+								v-if="data.formData.email_code"
+								type="clear" 
+								size="20" 
+								color="#999"
+								@click="clearEmailCode"
+							></uni-icons>
 							<button class="get-code-btn" @click="getVerificationCode" :disabled="data.codeBtnDisabled">
 								{{ data.codeBtnText }}
 							</button>
@@ -58,6 +72,14 @@
 								placeholder="请输入密码" 
 								@input="validatePassword" 
 							/>
+							<uni-icons 
+								v-if="data.formData.password"
+								type="clear" 
+								size="20" 
+								color="#999"
+								@click="clearPassword"
+								style="margin-right: 10rpx;"
+							></uni-icons>
 							<uni-icons 
 								:type="data.showPassword ? 'eye-slash' : 'eye'" 
 								size="20" 
@@ -190,6 +212,30 @@ const validatePassword = () => {
  */
 const togglePasswordVisibility = () => {
 	data.showPassword = !data.showPassword;
+};
+
+/**
+ * 清空用户名输入框
+ */
+const clearUsername = () => {
+	data.formData.username = '';
+	data.errors.username = '';
+};
+
+/**
+ * 清空验证码输入框
+ */
+const clearEmailCode = () => {
+	data.formData.email_code = '';
+	data.errors.email_code = '';
+};
+
+/**
+ * 清空密码输入框
+ */
+const clearPassword = () => {
+	data.formData.password = '';
+	data.errors.password = '';
 };
 
 /**
