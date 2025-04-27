@@ -202,7 +202,7 @@
 			@nickname-change="handleNicknameChange" @bio-change="handleBioChange" @logout="handleLogout" />
 
 		<!-- 新增个人简介编辑弹窗 -->
-		<uni-popup :ref="(el) => bioPopup = el" type="dialog">
+		<uni-popup ref="bioPopup" type="dialog" @change="popupChange">
 			<view class="bio-edit-popup">
 				<view class="popup-header">
 					<text class="popup-title">编辑个人简介</text>
@@ -234,7 +234,8 @@
 	import {
 		reactive,
 		onMounted,
-		ref
+		ref,
+		onUnmounted
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
@@ -248,9 +249,6 @@
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
-
-	// 定义bioPopup引用
-	const bioPopup = ref(null);
 
 	// 使用reactive统一管理数据
 	const data = reactive({
@@ -291,6 +289,9 @@
 
 		// 添加编辑个人简介相关状态
 		editingBio: '',
+
+		// 新增个人简介编辑弹窗状态
+		showBioPopup: false,
 	});
 
 	// 模拟内容数据
@@ -818,15 +819,15 @@
 	const toggleBioEdit = () => {
 		// 初始化编辑框的值为当前简介
 		data.editingBio = data.userInfo.bio || '';
-		// 显示弹窗
-		bioPopup.value.open();
+		// 使用uni.$emit触发自定义事件
+		uni.$emit('open-bio-popup');
 	};
 
 	/**
 	 * 关闭个人简介编辑弹窗
 	 */
 	const closeBioPopup = () => {
-		bioPopup.value.close();
+		uni.$emit('close-bio-popup');
 	};
 
 	/**
@@ -950,6 +951,43 @@
 		}
 		
 		// 正常页面逻辑...
+	});
+
+	// 在onMounted中添加事件监听
+	onMounted(() => {
+		// 添加自定义事件监听
+		uni.$on('open-bio-popup', () => {
+			// 使用nextTick确保DOM更新后再操作
+			setTimeout(() => {
+				const popup = uni.createSelectorQuery().select('.uni-popup');
+				if (popup) {
+					uni.showToast({
+						title: '打开弹窗',
+						icon: 'none'
+					});
+				}
+			}, 100);
+			
+			// 使用组件名称调用
+			const bioPopupEl = uni.requireNativePlugin('popup');
+			if (bioPopupEl) {
+				bioPopupEl.open();
+			} else {
+				// 直接改变组件内部状态
+				data.showBioPopup = true;
+			}
+		});
+		
+		uni.$on('close-bio-popup', () => {
+			// 同理关闭弹窗
+			data.showBioPopup = false;
+		});
+	});
+
+	// 在onUnmounted中移除事件监听
+	onUnmounted(() => {
+		uni.$off('open-bio-popup');
+		uni.$off('close-bio-popup');
 	});
 </script>
 

@@ -249,9 +249,9 @@ const handleSubmit = () => {
 						});
 					} else {
 						// 默认跳转到首页或个人中心
-						uni.switchTab({
-							url: '/pages/index/index'
-						});
+					uni.switchTab({
+						url: '/pages/index/index'
+					});
 					}
 				}, 1500);
 			}
