@@ -1101,6 +1101,15 @@
 			console.log('页面显示，保持手势锁定');
 		}
 	});
+	
+	// 页面隐藏时(切换选项卡)
+	onHide(() => {
+		// 页面隐藏时，如果设置面板是打开状态，关闭它
+		if (data.showUserSettings) {
+			console.log('页面切换，自动关闭设置面板');
+			data.showUserSettings = false;
+		}
+	});
 </script>
 
 <style lang="scss">
