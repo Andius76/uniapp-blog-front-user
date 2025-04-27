@@ -235,30 +235,26 @@
 | avatar         | string | 用户头像URL         |
 | bio            | string | 个人简介            |
 | followCount    | number | 关注数量            |
-| followerCount  | number | 粉丝数量            |
-| collectionCount| number | 收藏数量            |
+| fansCount      | number | 粉丝数量            |
+| articleCount   | number | 文章数量            |
 | createTime     | string | 注册时间            |
-| updateTime     | string | 更新时间            |
-| status         | number | 账号状态：0-禁用，1-正常 |
 
 - **响应示例：**
 
 ```json
 {
     "code": 200,
-    "message": "success",
+    "message": "操作成功",
     "data": {
         "id": 1,
         "email": "user@example.com",
         "nickname": "示例用户",
-        "avatar": "https://example.com/avatars/1.png",
+        "avatar": "https://example.com/avatars/default.jpg",
         "bio": "这是我的个人简介",
         "followCount": 10,
-        "followerCount": 5,
-        "collectionCount": 20,
-        "createTime": "2023-01-01 12:00:00",
-        "updateTime": "2023-05-01 15:30:00",
-        "status": 1
+        "fansCount": 5,
+        "articleCount": 8,
+        "createTime": "2023-05-01 12:00:00"
     }
 }
 ```
@@ -276,6 +272,7 @@
   - 用于个人主页信息展示
   - 前端"我的"页面会先使用本地存储的基本用户信息（来自登录响应），然后调用此接口获取完整用户信息
   - 若接口调用失败，前端会使用本地存储的信息作为降级处理
+  - 注意：后端返回的字段为`fansCount`，前端使用`followerCount`，需要在代码中进行适配
 
 ### 2. 更新用户个人资料
 
