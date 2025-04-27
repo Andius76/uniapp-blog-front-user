@@ -1,7 +1,7 @@
 <template>
   <view class="user-settings-wrapper">
     <!-- 弹出层背景蒙版 -->
-    <view class="mask" @click="closeSettings" v-if="visible"></view>
+    <view class="mask" @click="handleBackOrClose" v-if="visible"></view>
     
     <!-- 设置面板 -->
     <view class="settings-panel" :class="{ 'visible': visible, 'fullscreen': true }">
@@ -106,12 +106,27 @@
         <text>当前版本: v1.0.0</text>
       </view>
     </view>
+    
+    <!-- 确认放弃修改弹窗 -->
+    <uni-popup ref="confirmPopup" type="dialog">
+      <uni-popup-dialog 
+        type="warning"
+        title="提示" 
+        content="您有未保存的修改，确定放弃吗？" 
+        @confirm="confirmAbandonChanges" 
+        @close="cancelAbandonChanges"
+        confirmText="放弃修改"
+        cancelText="继续编辑"
+      ></uni-popup-dialog>
+    </uni-popup>
   </view>
 </template>
 
 <script setup>
-import { ref, reactive, defineProps, defineEmits, watch } from 'vue';
+import { ref, reactive, defineProps, defineEmits, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
+import uniPopupDialog from '@/uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.vue';
 
 // 定义组件属性
 const props = defineProps({
@@ -141,6 +156,10 @@ const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 
 const isEditingNickname = ref(false);
 const isConfirmingLogout = ref(false);
 const newNickname = ref('');
+const confirmPopup = ref(null);
+const hasUnsavedChanges = ref(false);
+const originalNickname = ref('');
+const isBackConfirming = ref(false);
 
 // 监听面板显示状态，显示时根据初始视图参数决定显示哪个界面
 watch(() => props.visible, (newVal) => {
@@ -149,22 +168,68 @@ watch(() => props.visible, (newVal) => {
     if (props.initialView === 'nickname') {
       showNicknameEdit();
     }
+    // 注册返回按键监听和TabBar点击拦截
+    registerBackButtonListener();
+    registerTabBarInterceptor();
   } else {
     // 面板隐藏时重置所有状态
     isEditingNickname.value = false;
     isConfirmingLogout.value = false;
+    hasUnsavedChanges.value = false;
+    
+    // 移除返回按键监听和TabBar点击拦截
+    unregisterBackButtonListener();
+    unregisterTabBarInterceptor();
+  }
+});
+
+// 监听昵称输入变化，判断是否有未保存的修改
+watch(() => newNickname.value, (newVal) => {
+  if (isEditingNickname.value) {
+    hasUnsavedChanges.value = newVal !== originalNickname.value;
   }
 });
 
 // 处理返回或关闭
 const handleBackOrClose = () => {
-  if (isEditingNickname.value) {
+  if (isEditingNickname.value && hasUnsavedChanges.value) {
+    // 如果有未保存的修改，显示确认弹窗
+    showConfirmAbandonDialog();
+  } else if (isEditingNickname.value) {
     cancelEditNickname();
   } else if (isConfirmingLogout.value) {
     cancelLogout();
   } else {
     closeSettings();
   }
+};
+
+// 显示确认放弃修改弹窗
+const showConfirmAbandonDialog = () => {
+  isBackConfirming.value = true;
+  nextTick(() => {
+    confirmPopup.value.open();
+  });
+};
+
+// 确认放弃修改
+const confirmAbandonChanges = () => {
+  if (isEditingNickname.value) {
+    cancelEditNickname();
+  }
+  
+  isBackConfirming.value = false;
+  hasUnsavedChanges.value = false;
+  
+  // 如果是在主设置面板，则关闭整个设置
+  if (!isEditingNickname.value && !isConfirmingLogout.value) {
+    closeSettings();
+  }
+};
+
+// 取消放弃修改
+const cancelAbandonChanges = () => {
+  isBackConfirming.value = false;
 };
 
 // 关闭设置面板
@@ -203,13 +268,16 @@ const changeAvatar = () => {
 
 // 显示昵称编辑界面
 const showNicknameEdit = () => {
+  originalNickname.value = props.userInfo.nickname;
   newNickname.value = props.userInfo.nickname;
   isEditingNickname.value = true;
+  hasUnsavedChanges.value = false;
 };
 
 // 取消编辑昵称
 const cancelEditNickname = () => {
   isEditingNickname.value = false;
+  hasUnsavedChanges.value = false;
 };
 
 // 更新昵称
@@ -237,6 +305,10 @@ const updateNickname = () => {
       title: '昵称更新成功',
       icon: 'success'
     });
+    
+    // 更新原始昵称，清除未保存标记
+    originalNickname.value = newNickname.value;
+    hasUnsavedChanges.value = false;
     
     // 返回主设置界面
     isEditingNickname.value = false;
@@ -272,6 +344,97 @@ const logout = () => {
     });
   }, 1000);
 };
+
+// 注册返回按钮监听
+const registerBackButtonListener = () => {
+  // #ifdef APP-PLUS || MP-WEIXIN
+  plus?.key?.addEventListener('backbutton', handleBackButton);
+  uni.addInterceptor('navigateBack', {
+    success: handleBackButtonInterceptor
+  });
+  // #endif
+};
+
+// 移除返回按钮监听
+const unregisterBackButtonListener = () => {
+  // #ifdef APP-PLUS || MP-WEIXIN
+  plus?.key?.removeEventListener('backbutton', handleBackButton);
+  uni.removeInterceptor('navigateBack');
+  // #endif
+};
+
+// 处理返回按钮
+const handleBackButton = () => {
+  // 如果设置面板可见，拦截返回事件
+  if (props.visible) {
+    handleBackOrClose();
+    return true; // 返回true表示已拦截处理
+  }
+  return false; // 未拦截，交由系统处理
+};
+
+// 拦截返回导航
+const handleBackButtonInterceptor = (e) => {
+  if (props.visible) {
+    // 阻止默认返回行为
+    e.cancel = true;
+    // 自定义处理
+    handleBackOrClose();
+  }
+  return e;
+};
+
+// 注册TabBar点击拦截器
+const registerTabBarInterceptor = () => {
+  // #ifdef MP-WEIXIN || APP-PLUS
+  uni.addInterceptor('switchTab', {
+    invoke: interceptTabBarClick
+  });
+  // #endif
+};
+
+// 移除TabBar点击拦截器
+const unregisterTabBarInterceptor = () => {
+  // #ifdef MP-WEIXIN || APP-PLUS
+  uni.removeInterceptor('switchTab');
+  // #endif
+};
+
+// 拦截TabBar点击
+const interceptTabBarClick = (e) => {
+  if (props.visible) {
+    // 如果有未保存的修改，显示确认弹窗
+    if (hasUnsavedChanges.value) {
+      showConfirmAbandonDialog();
+      return false; // 拦截点击
+    } else {
+      // 直接关闭设置面板
+      closeSettings();
+    }
+  }
+  return e; // 不拦截
+};
+
+// 组件挂载时
+onMounted(() => {
+  // 监听页面路由变化，确保关闭设置面板
+  uni.onTabBarMidButtonTap(() => {
+    if (props.visible) {
+      if (hasUnsavedChanges.value) {
+        showConfirmAbandonDialog();
+      } else {
+        closeSettings();
+      }
+    }
+  });
+});
+
+// 组件卸载时
+onUnmounted(() => {
+  // 确保移除所有事件监听器
+  unregisterBackButtonListener();
+  unregisterTabBarInterceptor();
+});
 </script>
 
 <style lang="scss">
