@@ -45,7 +45,7 @@
 						<uni-icons type="person" size="20" color="#666"></uni-icons>
 						<text class="bio-text">个人简介：{{ data.userInfo.bio || DEFAULT_BIO }}</text>
 					</view>
-					<view class="edit-profile-btn" @click="openUserSettings">
+					<view class="edit-profile-btn" @click="toggleBioEdit">
 						编辑资料
 					</view>
 				</view>
@@ -200,6 +200,33 @@
 		<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo" :initialView="data.settingsInitialView"
 			@update:visible="data.showUserSettings = $event" @avatar-change="handleAvatarChange"
 			@nickname-change="handleNicknameChange" @bio-change="handleBioChange" @logout="handleLogout" />
+
+		<!-- 新增个人简介编辑弹窗 -->
+		<uni-popup :ref="(el) => bioPopup = el" type="dialog">
+			<view class="bio-edit-popup">
+				<view class="popup-header">
+					<text class="popup-title">编辑个人简介</text>
+					<view class="popup-close" @click="closeBioPopup">
+						<uni-icons type="close" size="22" color="#666"></uni-icons>
+					</view>
+				</view>
+				<view class="popup-content">
+					<textarea 
+						class="bio-textarea" 
+						v-model="data.editingBio" 
+						placeholder="请输入您的个人简介..."
+						maxlength="200"
+					></textarea>
+					<view class="char-counter">
+						<text>{{ data.editingBio.length }}/200</text>
+					</view>
+				</view>
+				<view class="popup-footer">
+					<button class="btn-cancel" @click="closeBioPopup">取消</button>
+					<button class="btn-save" @click="saveUserBio">保存</button>
+				</view>
+			</view>
+		</uni-popup>
 	</view>
 </template>
 
@@ -216,9 +243,14 @@
 	// 导入API接口
 	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
 	import { onLoad } from '@dcloudio/uni-app';
+	// 导入uni-popup组件
+	import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
+
+	// 定义bioPopup引用
+	const bioPopup = ref(null);
 
 	// 使用reactive统一管理数据
 	const data = reactive({
@@ -255,7 +287,10 @@
 
 		// 用户设置面板显示状态
 		showUserSettings: false,
-		settingsInitialView: 'main' // 设置面板初始视图
+		settingsInitialView: 'main', // 设置面板初始视图
+
+		// 添加编辑个人简介相关状态
+		editingBio: '',
 	});
 
 	// 模拟内容数据
@@ -777,6 +812,61 @@
 		}, 800);
 	};
 
+	/**
+	 * 显示个人简介编辑弹窗
+	 */
+	const toggleBioEdit = () => {
+		// 初始化编辑框的值为当前简介
+		data.editingBio = data.userInfo.bio || '';
+		// 显示弹窗
+		bioPopup.value.open();
+	};
+
+	/**
+	 * 关闭个人简介编辑弹窗
+	 */
+	const closeBioPopup = () => {
+		bioPopup.value.close();
+	};
+
+	/**
+	 * 保存个人简介
+	 */
+	const saveUserBio = async () => {
+		try {
+			uni.showLoading({ title: '保存中...' });
+			
+			// 如果用户提交空简介，则使用默认值
+			const bioToSubmit = data.editingBio.trim() ? data.editingBio.trim() : DEFAULT_BIO;
+			
+			// 调用更新用户资料API
+			const response = await updateUserProfile({ bio: bioToSubmit });
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.bio = bioToSubmit;
+				
+				uni.showToast({
+					title: '个人简介已更新',
+					icon: 'success'
+				});
+				
+				// 关闭弹窗
+				closeBioPopup();
+			} else {
+				throw new Error(response.message || '个人简介更新失败');
+			}
+		} catch (error) {
+			console.error('个人简介更新失败:', error);
+			uni.showToast({
+				title: '更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
 	// 页面初始化
 	onMounted(async () => {
 		try {
@@ -1208,6 +1298,78 @@
 					.stat-label {
 						font-size: 22rpx;
 					}
+				}
+			}
+		}
+	}
+
+	/* 新增个人简介编辑弹窗样式 */
+	.bio-edit-popup {
+		width: 650rpx;
+		background-color: #fff;
+		border-radius: 16rpx;
+		overflow: hidden;
+		
+		.popup-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 30rpx;
+			border-bottom: 1rpx solid #eee;
+			
+			.popup-title {
+				font-size: 32rpx;
+				font-weight: bold;
+				color: #333;
+			}
+			
+			.popup-close {
+				padding: 10rpx;
+			}
+		}
+		
+		.popup-content {
+			padding: 30rpx;
+			
+			.bio-textarea {
+				width: 100%;
+				height: 240rpx;
+				background-color: #f8f8f8;
+				border: 1rpx solid #eee;
+				border-radius: 10rpx;
+				padding: 20rpx;
+				font-size: 28rpx;
+				color: #333;
+			}
+			
+			.char-counter {
+				text-align: right;
+				font-size: 24rpx;
+				color: #999;
+				margin-top: 10rpx;
+			}
+		}
+		
+		.popup-footer {
+			display: flex;
+			border-top: 1rpx solid #eee;
+			
+			button {
+				flex: 1;
+				margin: 0;
+				height: 90rpx;
+				line-height: 90rpx;
+				font-size: 32rpx;
+				border-radius: 0;
+				
+				&.btn-cancel {
+					background-color: #f5f5f5;
+					color: #666;
+				}
+				
+				&.btn-save {
+					background-color: #4361ee;
+					color: #fff;
 				}
 			}
 		}
