@@ -37,18 +37,13 @@
 						<text class="stat-num">{{ data.userInfo.collectionCount }}</text>
 						<text class="stat-label">收藏</text>
 					</view>
-					<view class="stat-divider">|</view>
-					<view class="stat-item" @click="navigateTo('/pages/history/history')">
-						<text class="stat-num">{{ data.userInfo.historyCount }}</text>
-						<text class="stat-label">最近浏览</text>
-					</view>
 				</view>
 
 				<!-- 个人简介区域 -->
 				<view class="user-bio">
 					<view class="bio-content">
 						<uni-icons type="person" size="20" color="#666"></uni-icons>
-						<text class="bio-text">个人简介：{{ data.userInfo.bio }}</text>
+						<text class="bio-text">个人简介：{{ data.userInfo.bio || DEFAULT_BIO }}</text>
 					</view>
 					<view class="edit-profile-btn" @click="openUserSettings">
 						编辑资料
@@ -218,18 +213,22 @@
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	// 导入用户设置组件
 	import UserSettings from '@/components/user-settings/user-settings.vue';
+	// 导入API接口
+	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
+
+	// 默认个人简介
+	const DEFAULT_BIO = "这个人很懒，什么都没写";
 
 	// 使用reactive统一管理数据
 	const data = reactive({
 		// 用户信息
 		userInfo: {
-			nickname: '用户asdf',
+			nickname: '',
 			avatar: '/static/images/avatar.png',
-			followCount: 1,
+			followCount: 0,
 			followerCount: 0,
-			collectionCount: 1,
-			historyCount: 55,
-			bio: '简单介绍一下自己'
+			collectionCount: 0,
+			bio: ''
 		},
 
 		// 标签页数据
@@ -557,12 +556,6 @@
 				icon: 'none'
 			});
 			return;
-		} else if (url.includes('history')) {
-			uni.showToast({
-				title: '查看浏览历史',
-				icon: 'none'
-			});
-			return;
 		} else if (url.includes('edit-profile')) {
 			uni.showToast({
 				title: '编辑个人资料',
@@ -585,39 +578,102 @@
 	 * 修改用户头像
 	 * @param {String} newAvatar - 新头像地址
 	 */
-	const handleAvatarChange = (newAvatar) => {
-		data.userInfo.avatar = newAvatar;
-
-		// TODO: 保存到服务器
-		// api.updateUserInfo({ avatar: newAvatar }).then(res => {
-		//   console.log('头像更新成功');
-		// });
+	const handleAvatarChange = async (newAvatar) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 调用上传头像API
+			const response = await uploadUserAvatar(newAvatar);
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.avatar = response.data.avatarUrl;
+				
+				uni.showToast({
+					title: '头像更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '头像更新失败');
+			}
+		} catch (error) {
+			console.error('头像更新失败:', error);
+			uni.showToast({
+				title: '头像更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
 	};
 
 	/**
 	 * 修改用户昵称
 	 * @param {String} newNickname - 新昵称
 	 */
-	const handleNicknameChange = (newNickname) => {
-		data.userInfo.nickname = newNickname;
-
-		// TODO: 保存到服务器
-		// api.updateUserInfo({ nickname: newNickname }).then(res => {
-		//   console.log('昵称更新成功');
-		// });
+	const handleNicknameChange = async (newNickname) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 调用更新用户资料API
+			const response = await updateUserProfile({ nickname: newNickname });
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.nickname = newNickname;
+				
+				uni.showToast({
+					title: '昵称更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '昵称更新失败');
+			}
+		} catch (error) {
+			console.error('昵称更新失败:', error);
+			uni.showToast({
+				title: '昵称更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
 	};
 
 	/**
 	 * 修改用户个人简介
 	 * @param {String} newBio - 新个人简介
 	 */
-	const handleBioChange = (newBio) => {
-		data.userInfo.bio = newBio;
-
-		// TODO: 保存到服务器
-		// api.updateUserInfo({ bio: newBio }).then(res => {
-		//   console.log('个人简介更新成功');
-		// });
+	const handleBioChange = async (newBio) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 如果用户提交空简介，则使用默认值
+			const bioToSubmit = newBio.trim() ? newBio : DEFAULT_BIO;
+			
+			// 调用更新用户资料API
+			const response = await updateUserProfile({ bio: bioToSubmit });
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.bio = bioToSubmit;
+				
+				uni.showToast({
+					title: '个人简介更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '个人简介更新失败');
+			}
+		} catch (error) {
+			console.error('个人简介更新失败:', error);
+			uni.showToast({
+				title: '个人简介更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
 	};
 
 	/**
@@ -720,14 +776,37 @@
 	};
 
 	// 页面初始化
-	onMounted(() => {
-		// 加载默认选项卡的内容
-		loadContent();
-
-		// TODO: 获取用户信息
-		// api.getUserInfo().then(res => {
-		//   data.userInfo = res.data;
-		// });
+	onMounted(async () => {
+		try {
+			// 显示加载提示
+			uni.showLoading({
+				title: '加载中...'
+			});
+			
+			// 获取用户信息
+			const response = await getUserInfo();
+			
+			if (response.code === 200) {
+				// 处理空的个人简介，使用默认值
+				if (!response.data.bio) {
+					response.data.bio = DEFAULT_BIO;
+				}
+				data.userInfo = response.data;
+			} else {
+				throw new Error(response.message || '获取用户信息失败');
+			}
+			
+			// 加载默认选项卡的内容
+			loadContent();
+		} catch (error) {
+			console.error('初始化失败:', error);
+			uni.showToast({
+				title: '获取用户信息失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
 	});
 </script>
 
