@@ -8,6 +8,7 @@ const whiteList = [
   '/pages/login/login', 
   '/pages/register/register',
   '/pages/forget-password/forget-password',
+  '/pages/index/index',
 ];
 
 /**
