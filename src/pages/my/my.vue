@@ -223,12 +223,6 @@
 					<view class="char-counter">
 						<text>{{ data.editingBio.length }}/200</text>
 					</view>
-					
-					<!-- 添加一个头像预览canvas -->
-					<view class="avatar-preview">
-						<text class="preview-title">个人头像预览</text>
-						<canvas canvas-id="avatarCanvas" id="avatarCanvas" class="avatar-canvas"></canvas>
-					</view>
 				</view>
 				<view class="popup-footer">
 					<button class="btn-cancel" @click="closeBioPopup">取消</button>
@@ -362,9 +356,6 @@
 			}
 		]
 	};
-
-	// canvas上下文
-	let canvasContext = null;
 
 	/**
 	 * 加载内容列表
@@ -831,12 +822,6 @@
 		data.editingBio = data.userInfo.bio || '';
 		// 显示弹窗
 		data.showBioPopup = true;
-		
-		// 延迟绘制canvas，等待弹窗渲染完成
-		setTimeout(() => {
-			// 调用绘制头像的函数
-			drawAvatarOnCanvas();
-		}, 300); // 等待300ms确保canvas已经渲染
 	};
 
 	/**
@@ -844,93 +829,6 @@
 	 */
 	const closeBioPopup = () => {
 		data.showBioPopup = false;
-	};
-	
-	/**
-	 * 在canvas上绘制头像
-	 */
-	const drawAvatarOnCanvas = async () => {
-		try {
-			// 获取canvas上下文
-			const query = uni.createSelectorQuery();
-			query.select('#avatarCanvas')
-				.fields({ node: true, size: true })
-				.exec((res) => {
-					if (res && res[0]) {
-						// 在不同平台获取canvas上下文的方式可能不同
-						// #ifdef APP-PLUS || MP-WEIXIN
-						const canvas = res[0].node;
-						canvasContext = canvas.getContext('2d');
-						// 设置canvas尺寸
-						const dpr = uni.getSystemInfoSync().pixelRatio;
-						canvas.width = res[0].width * dpr;
-						canvas.height = res[0].height * dpr;
-						canvasContext.scale(dpr, dpr);
-						// #endif
-						
-						// #ifdef H5
-						canvasContext = uni.createCanvasContext('avatarCanvas');
-						// #endif
-						
-						// 如果获取到上下文，开始绘制
-						if (canvasContext) {
-							// 清空画布
-							// #ifdef APP-PLUS || MP-WEIXIN
-							canvasContext.clearRect(0, 0, canvas.width, canvas.height);
-							// #endif
-							
-							// #ifdef H5
-							canvasContext.clearRect(0, 0, 100, 100);
-							// #endif
-							
-							// 加载头像图片
-							const avatarSrc = data.userInfo.avatar || '/static/images/avatar.png';
-							
-							// #ifdef APP-PLUS || MP-WEIXIN
-							// 创建图片对象
-							const img = canvas.createImage();
-							img.onload = () => {
-								// 绘制圆形头像
-								canvasContext.save();
-								canvasContext.beginPath();
-								canvasContext.arc(50, 50, 40, 0, Math.PI * 2, false);
-								canvasContext.clip();
-								canvasContext.drawImage(img, 10, 10, 80, 80);
-								canvasContext.restore();
-								
-								// 添加边框
-								canvasContext.beginPath();
-								canvasContext.arc(50, 50, 42, 0, Math.PI * 2, false);
-								canvasContext.lineWidth = 2;
-								canvasContext.strokeStyle = '#4361ee';
-								canvasContext.stroke();
-							};
-							img.src = avatarSrc;
-							// #endif
-							
-							// #ifdef H5
-							// H5环境下直接绘制
-							// 先绘制圆形裁剪区域
-							canvasContext.beginPath();
-							canvasContext.arc(50, 50, 40, 0, Math.PI * 2, false);
-							canvasContext.clip();
-							// 绘制图片
-							canvasContext.drawImage(avatarSrc, 10, 10, 80, 80);
-							// 添加边框
-							canvasContext.beginPath();
-							canvasContext.arc(50, 50, 42, 0, Math.PI * 2, false);
-							canvasContext.lineWidth = 2;
-							canvasContext.strokeStyle = '#4361ee';
-							canvasContext.stroke();
-							// 在H5环境下需要手动调用draw方法
-							canvasContext.draw();
-							// #endif
-						}
-					}
-				});
-		} catch (error) {
-			console.error('绘制头像失败:', error);
-		}
 	};
 
 	/**
@@ -1508,26 +1406,6 @@
 				font-size: 24rpx;
 				color: #999;
 				margin-top: 10rpx;
-			}
-			
-			// 添加一个头像预览canvas
-			.avatar-preview {
-				margin-top: 20rpx;
-				text-align: center;
-				
-				.preview-title {
-					font-size: 28rpx;
-					font-weight: bold;
-					color: #333;
-					margin-bottom: 10rpx;
-				}
-				
-				.avatar-canvas {
-					width: 100rpx;
-					height: 100rpx;
-					border-radius: 50%;
-					background-color: #eee;
-				}
 			}
 		}
 		
