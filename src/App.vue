@@ -1,4 +1,5 @@
 <script>
+	import routeGuard from '@/utils/routeGuard.js';
 	export default {
 		onLaunch: function() {
 			console.log('App Launch')
