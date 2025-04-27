@@ -1,22 +1,33 @@
-<script>
-	import routeGuard from '@/utils/routeGuard.js';
-	export default {
-		globalData: {
-			routeGuard
-		},
-		onLaunch: function() {
-			console.log('App Launch')
-		},
-		onShow: function() {
-			console.log('App Show')
-		},
-		onHide: function() {
-			console.log('App Hide')
-		},
-	}
+<script setup>
+import { onLaunch, onShow } from '@dcloudio/uni-app';
+import routeGuard from '@/utils/routeGuard.js';
+
+// 提供给全局访问
+uni.$routeGuard = routeGuard;
+
+// 全局页面拦截
+const checkLoginStatus = () => {
+  // 检查当前路径是否需要登录
+  const pages = getCurrentPages();
+  if (pages.length === 0) return;
+  
+  const currentPage = pages[pages.length - 1];
+  const currentPath = `/${currentPage.route}`;
+  
+  // 应用路由守卫
+  routeGuard();
+};
+
+onLaunch(() => {
+  console.log('App Launch');
+});
+
+onShow(() => {
+  // 每次切回应用时检查登录状态
+  checkLoginStatus();
+});
 </script>
 
 <style>
-	/*每个页面公共css */
-	@import url("~@/static/icon/iconfont.css");
+@import "@/static/icon/iconfont.css";
 </style>

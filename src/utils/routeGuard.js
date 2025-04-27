@@ -8,7 +8,6 @@ const whiteList = [
   '/pages/login/login', 
   '/pages/register/register',
   '/pages/forget-password/forget-password',
-  '/pages/index/index' // 首页可以不登录访问
 ];
 
 /**
