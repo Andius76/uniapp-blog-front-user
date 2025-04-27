@@ -93,13 +93,14 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue';
+import { reactive, onMounted, ref } from 'vue';
 // 导入uni-icons组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 // 导入API服务
 // 从/src/api/auth.js中导入login方法
 // 该方法封装了登录API请求，处理了不同平台的URL适配和统一的错误处理
 import { login } from '@/api/auth.js';
+import http from '@/utils/request.js';
 
 // 使用reactive统一管理所有数据
 const data = reactive({
@@ -117,6 +118,15 @@ const data = reactive({
 	// 界面状态
 	loading: false,
 	showPassword: false
+});
+
+// 保存重定向URL
+const redirectUrl = ref('');
+
+onMounted(() => {
+	if (options.redirect) {
+		redirectUrl.value = decodeURIComponent(options.redirect);
+	}
 });
 
 /**
@@ -227,11 +237,18 @@ const handleSubmit = () => {
 					duration: 2000
 				});
 				
-				// 跳转到首页
+				// 根据是否有重定向URL决定跳转位置
 				setTimeout(() => {
-					uni.switchTab({
-						url: '/pages/index/index'
-					});
+					if (redirectUrl.value) {
+						uni.redirectTo({
+							url: redirectUrl.value
+						});
+					} else {
+						// 默认跳转到首页或个人中心
+						uni.switchTab({
+							url: '/pages/index/index'
+						});
+					}
 				}, 1500);
 			}
 			data.loading = false;
