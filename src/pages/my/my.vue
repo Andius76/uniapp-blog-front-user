@@ -784,17 +784,37 @@
 				title: '加载中...'
 			});
 			
-			// 获取用户信息
-			const response = await getUserInfo();
+			// 先从本地存储获取基本用户信息
+			const localUserInfo = uni.getStorageSync('userInfo');
+			if (localUserInfo) {
+				// 初始化用户基本信息
+				data.userInfo = {
+					...data.userInfo,
+					nickname: localUserInfo.nickname || '',
+					avatar: localUserInfo.avatar || '/static/images/avatar.png',
+					email: localUserInfo.email || '',
+					id: localUserInfo.id || 0
+				};
+			}
 			
-			if (response.code === 200) {
-				// 处理空的个人简介，使用默认值
-				if (!response.data.bio) {
-					response.data.bio = DEFAULT_BIO;
+			// 再尝试从API获取完整用户信息（包括关注数、粉丝数等）
+			try {
+				const response = await getUserInfo();
+				
+				if (response.code === 200) {
+					// 处理空的个人简介，使用默认值
+					if (!response.data.bio) {
+						response.data.bio = DEFAULT_BIO;
+					}
+					// 更新用户完整信息
+					data.userInfo = response.data;
 				}
-				data.userInfo = response.data;
-			} else {
-				throw new Error(response.message || '获取用户信息失败');
+			} catch (apiError) {
+				console.error('获取API用户信息失败:', apiError);
+				// API请求失败，但已有基本信息，继续使用
+				if (!data.userInfo.bio) {
+					data.userInfo.bio = DEFAULT_BIO;
+				}
 			}
 			
 			// 加载默认选项卡的内容
