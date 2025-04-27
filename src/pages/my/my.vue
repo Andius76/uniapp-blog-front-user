@@ -215,6 +215,7 @@
 	import UserSettings from '@/components/user-settings/user-settings.vue';
 	// 导入API接口
 	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
+	import { onLoad } from '@dcloudio/uni-app';
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
@@ -838,6 +839,27 @@
 		} finally {
 			uni.hideLoading();
 		}
+	});
+
+	onLoad((options) => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			
+			setTimeout(() => {
+				uni.redirectTo({
+					url: `/pages/login/login?redirect=${encodeURIComponent('/pages/my/my')}`
+				});
+			}, 1500);
+			
+			return false;
+		}
+		
+		// 正常页面逻辑...
 	});
 </script>
 
