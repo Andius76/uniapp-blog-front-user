@@ -228,7 +228,8 @@
 			followCount: 0,
 			followerCount: 0,
 			collectionCount: 0,
-			bio: ''
+			bio: '',
+			email: ''
 		},
 
 		// 标签页数据

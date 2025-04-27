@@ -16,6 +16,17 @@
       
       <!-- 主设置面板 -->
       <view class="panel-content" v-if="!isEditingNickname && !isConfirmingLogout && !isEditingBio">
+        <!-- 账号信息（邮箱）- 不可更改 -->
+        <view class="settings-item non-clickable">
+          <view class="item-label">
+            <uni-icons type="email" size="22" color="#666"></uni-icons>
+            <text>账号</text>
+          </view>
+          <view class="item-content">
+            <text class="email-preview">{{ userInfo.email || '未绑定邮箱' }}</text>
+          </view>
+        </view>
+        
         <!-- 头像设置 -->
         <view class="settings-item" @click="changeAvatar">
           <view class="item-label">
@@ -147,7 +158,8 @@ const props = defineProps({
     default: () => ({
       avatar: '/static/images/avatar.png',
       nickname: '用户昵称',
-      bio: '这个人很懒，什么都没写'
+      bio: '这个人很懒，什么都没写',
+      email: ''
     })
   },
   initialView: {
@@ -411,6 +423,10 @@ const logout = () => {
         padding: 30rpx;
         border-bottom: 2rpx solid #f5f5f5;
         
+        &.non-clickable {
+          background-color: #fafafa;
+        }
+        
         .item-label {
           display: flex;
           align-items: center;
@@ -435,7 +451,8 @@ const logout = () => {
           }
           
           .nickname-preview,
-          .bio-preview {
+          .bio-preview,
+          .email-preview {
             font-size: 28rpx;
             color: #666;
             margin-right: 15rpx;
@@ -443,6 +460,10 @@ const logout = () => {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+          }
+          
+          .email-preview {
+            color: #999;
           }
         }
         
