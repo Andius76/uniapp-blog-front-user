@@ -200,9 +200,12 @@
 		<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo" :initialView="data.settingsInitialView"
 			@update:visible="data.showUserSettings = $event" @avatar-change="handleAvatarChange"
 			@nickname-change="handleNicknameChange" @bio-change="handleBioChange" @logout="handleLogout" />
-
-		<!-- 新增个人简介编辑弹窗 -->
-		<uni-popup ref="bioPopup" type="dialog" @change="popupChange">
+	</view>
+	
+	<!-- 使用原生方法实现的弹窗 -->
+	<view v-if="data.showBioPopup" class="native-popup-container" @click.self="closeBioPopup">
+		<view class="native-popup-mask" @click.stop></view>
+		<view class="native-popup-body" @click.stop>
 			<view class="bio-edit-popup">
 				<view class="popup-header">
 					<text class="popup-title">编辑个人简介</text>
@@ -220,13 +223,19 @@
 					<view class="char-counter">
 						<text>{{ data.editingBio.length }}/200</text>
 					</view>
+					
+					<!-- 添加一个头像预览canvas -->
+					<view class="avatar-preview">
+						<text class="preview-title">个人头像预览</text>
+						<canvas canvas-id="avatarCanvas" id="avatarCanvas" class="avatar-canvas"></canvas>
+					</view>
 				</view>
 				<view class="popup-footer">
 					<button class="btn-cancel" @click="closeBioPopup">取消</button>
 					<button class="btn-save" @click="saveUserBio">保存</button>
 				</view>
 			</view>
-		</uni-popup>
+		</view>
 	</view>
 </template>
 
@@ -235,7 +244,9 @@
 		reactive,
 		onMounted,
 		ref,
-		onUnmounted
+		onUnmounted,
+		nextTick,
+		watch
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
@@ -244,8 +255,6 @@
 	// 导入API接口
 	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
 	import { onLoad } from '@dcloudio/uni-app';
-	// 导入uni-popup组件
-	import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
@@ -287,11 +296,9 @@
 		showUserSettings: false,
 		settingsInitialView: 'main', // 设置面板初始视图
 
-		// 添加编辑个人简介相关状态
-		editingBio: '',
-
-		// 新增个人简介编辑弹窗状态
+		// 修改为使用原生弹窗的状态控制
 		showBioPopup: false,
+		editingBio: '',
 	});
 
 	// 模拟内容数据
@@ -355,6 +362,9 @@
 			}
 		]
 	};
+
+	// canvas上下文
+	let canvasContext = null;
 
 	/**
 	 * 加载内容列表
@@ -819,15 +829,108 @@
 	const toggleBioEdit = () => {
 		// 初始化编辑框的值为当前简介
 		data.editingBio = data.userInfo.bio || '';
-		// 使用uni.$emit触发自定义事件
-		uni.$emit('open-bio-popup');
+		// 显示弹窗
+		data.showBioPopup = true;
+		
+		// 延迟绘制canvas，等待弹窗渲染完成
+		setTimeout(() => {
+			// 调用绘制头像的函数
+			drawAvatarOnCanvas();
+		}, 300); // 等待300ms确保canvas已经渲染
 	};
 
 	/**
 	 * 关闭个人简介编辑弹窗
 	 */
 	const closeBioPopup = () => {
-		uni.$emit('close-bio-popup');
+		data.showBioPopup = false;
+	};
+	
+	/**
+	 * 在canvas上绘制头像
+	 */
+	const drawAvatarOnCanvas = async () => {
+		try {
+			// 获取canvas上下文
+			const query = uni.createSelectorQuery();
+			query.select('#avatarCanvas')
+				.fields({ node: true, size: true })
+				.exec((res) => {
+					if (res && res[0]) {
+						// 在不同平台获取canvas上下文的方式可能不同
+						// #ifdef APP-PLUS || MP-WEIXIN
+						const canvas = res[0].node;
+						canvasContext = canvas.getContext('2d');
+						// 设置canvas尺寸
+						const dpr = uni.getSystemInfoSync().pixelRatio;
+						canvas.width = res[0].width * dpr;
+						canvas.height = res[0].height * dpr;
+						canvasContext.scale(dpr, dpr);
+						// #endif
+						
+						// #ifdef H5
+						canvasContext = uni.createCanvasContext('avatarCanvas');
+						// #endif
+						
+						// 如果获取到上下文，开始绘制
+						if (canvasContext) {
+							// 清空画布
+							// #ifdef APP-PLUS || MP-WEIXIN
+							canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+							// #endif
+							
+							// #ifdef H5
+							canvasContext.clearRect(0, 0, 100, 100);
+							// #endif
+							
+							// 加载头像图片
+							const avatarSrc = data.userInfo.avatar || '/static/images/avatar.png';
+							
+							// #ifdef APP-PLUS || MP-WEIXIN
+							// 创建图片对象
+							const img = canvas.createImage();
+							img.onload = () => {
+								// 绘制圆形头像
+								canvasContext.save();
+								canvasContext.beginPath();
+								canvasContext.arc(50, 50, 40, 0, Math.PI * 2, false);
+								canvasContext.clip();
+								canvasContext.drawImage(img, 10, 10, 80, 80);
+								canvasContext.restore();
+								
+								// 添加边框
+								canvasContext.beginPath();
+								canvasContext.arc(50, 50, 42, 0, Math.PI * 2, false);
+								canvasContext.lineWidth = 2;
+								canvasContext.strokeStyle = '#4361ee';
+								canvasContext.stroke();
+							};
+							img.src = avatarSrc;
+							// #endif
+							
+							// #ifdef H5
+							// H5环境下直接绘制
+							// 先绘制圆形裁剪区域
+							canvasContext.beginPath();
+							canvasContext.arc(50, 50, 40, 0, Math.PI * 2, false);
+							canvasContext.clip();
+							// 绘制图片
+							canvasContext.drawImage(avatarSrc, 10, 10, 80, 80);
+							// 添加边框
+							canvasContext.beginPath();
+							canvasContext.arc(50, 50, 42, 0, Math.PI * 2, false);
+							canvasContext.lineWidth = 2;
+							canvasContext.strokeStyle = '#4361ee';
+							canvasContext.stroke();
+							// 在H5环境下需要手动调用draw方法
+							canvasContext.draw();
+							// #endif
+						}
+					}
+				});
+		} catch (error) {
+			console.error('绘制头像失败:', error);
+		}
 	};
 
 	/**
@@ -955,39 +1058,13 @@
 
 	// 在onMounted中添加事件监听
 	onMounted(() => {
-		// 添加自定义事件监听
-		uni.$on('open-bio-popup', () => {
-			// 使用nextTick确保DOM更新后再操作
-			setTimeout(() => {
-				const popup = uni.createSelectorQuery().select('.uni-popup');
-				if (popup) {
-					uni.showToast({
-						title: '打开弹窗',
-						icon: 'none'
-					});
-				}
-			}, 100);
-			
-			// 使用组件名称调用
-			const bioPopupEl = uni.requireNativePlugin('popup');
-			if (bioPopupEl) {
-				bioPopupEl.open();
-			} else {
-				// 直接改变组件内部状态
-				data.showBioPopup = true;
-			}
-		});
-		
-		uni.$on('close-bio-popup', () => {
-			// 同理关闭弹窗
-			data.showBioPopup = false;
-		});
+		// 加载用户数据等其他初始化操作
+		// 不再需要自定义事件监听
 	});
 
 	// 在onUnmounted中移除事件监听
 	onUnmounted(() => {
-		uni.$off('open-bio-popup');
-		uni.$off('close-bio-popup');
+		// 其他清理操作
 	});
 </script>
 
@@ -1341,7 +1418,53 @@
 		}
 	}
 
-	/* 新增个人简介编辑弹窗样式 */
+	/* 原生弹窗样式 */
+	.native-popup-container {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		z-index: 9999;
+		
+		.native-popup-mask {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background-color: rgba(0, 0, 0, 0.5);
+			animation: fadeIn 0.3s ease;
+		}
+		
+		.native-popup-body {
+			position: relative;
+			z-index: 10000;
+			animation: scaleIn 0.3s ease;
+		}
+	}
+	
+	/* 弹窗动画 */
+	@keyframes fadeIn {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+	
+	@keyframes scaleIn {
+		from { 
+			transform: scale(0.8);
+			opacity: 0;
+		}
+		to { 
+			transform: scale(1);
+			opacity: 1;
+		}
+	}
+	
+	/* 编辑个人简介弹窗样式 */
 	.bio-edit-popup {
 		width: 650rpx;
 		background-color: #fff;
@@ -1385,6 +1508,26 @@
 				font-size: 24rpx;
 				color: #999;
 				margin-top: 10rpx;
+			}
+			
+			// 添加一个头像预览canvas
+			.avatar-preview {
+				margin-top: 20rpx;
+				text-align: center;
+				
+				.preview-title {
+					font-size: 28rpx;
+					font-weight: bold;
+					color: #333;
+					margin-bottom: 10rpx;
+				}
+				
+				.avatar-canvas {
+					width: 100rpx;
+					height: 100rpx;
+					border-radius: 50%;
+					background-color: #eee;
+				}
 			}
 		}
 		
