@@ -1,6 +1,9 @@
 <script>
 	import routeGuard from '@/utils/routeGuard.js';
 	export default {
+		globalData: {
+			routeGuard
+		},
 		onLaunch: function() {
 			console.log('App Launch')
 		},
