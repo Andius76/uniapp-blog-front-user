@@ -29,13 +29,13 @@ export function updateUserProfile(data) {
 export function uploadUserAvatar(filePath) {
   return new Promise((resolve, reject) => {
     // 获取基础URL，与request.js保持一致
-    const baseUrl = request.config ? request.config.baseUrl : 'http://localhost:8080/api/auth';
+    const baseUrl = request.config ? request.config.baseUrl : 'http://localhost:8080';
     
     // 获取token
     const token = uni.getStorageSync('token');
     
     uni.uploadFile({
-      url: baseUrl.replace('/api/auth', '/api/user/avatar'), // 替换URL路径
+      url: `${baseUrl}/api/user/avatar`,
       filePath: filePath,
       name: 'avatar',
       header: {

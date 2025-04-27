@@ -21,16 +21,16 @@ function getBaseUrl() {
   // 获取当前运行的平台
   // #ifdef APP-PLUS
   // APP端不能使用localhost/127.0.0.1，需要使用本机IP地址
-  return 'http://10.9.69.193:8080/api/auth'; // 请替换为开发服务器的IP地址
+  return 'http://10.9.69.193:8080'; // 请替换为开发服务器的IP地址
   // #endif
   
   // #ifdef H5 || MP-WEIXIN
   // H5和微信小程序可以使用localhost
-  return 'http://localhost:8080/api/auth';
+  return 'http://localhost:8080';
   // #endif
   
   // 其他平台默认配置
-  return 'http://localhost:8080/api/auth';
+  return 'http://localhost:8080';
 }
 
 /**

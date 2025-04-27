@@ -806,8 +806,18 @@
 					if (!response.data.bio) {
 						response.data.bio = DEFAULT_BIO;
 					}
+					
+					// 适配后端返回的字段名称
+					const userData = {
+						...response.data,
+						// 后端返回fansCount，前端使用followerCount
+						followerCount: response.data.fansCount || 0,
+						// 后端没有收藏数，默认为0
+						collectionCount: response.data.collectionCount || 0,
+					};
+					
 					// 更新用户完整信息
-					data.userInfo = response.data;
+					data.userInfo = userData;
 				}
 			} catch (apiError) {
 				console.error('获取API用户信息失败:', apiError);

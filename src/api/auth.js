@@ -23,7 +23,7 @@ import http from '@/utils/request.js';
 export const sendVerificationCode = (params) => {
   // 确保从params中获取email字符串
   const email = typeof params === 'object' ? params.email : params;
-  return http.post(`/send-email-code?email=${encodeURIComponent(email)}`);
+  return http.post(`/api/auth/send-email-code?email=${encodeURIComponent(email)}`);
 };
 
 /**
@@ -35,7 +35,7 @@ export const sendVerificationCode = (params) => {
  * @returns {Promise} - 返回Promise对象
  */
 export const register = (params) => {
-  return http.post('/register', params);
+  return http.post('/api/auth/register', params);
 };
 
 /**
@@ -47,7 +47,7 @@ export const register = (params) => {
  * @returns {Promise} - 返回Promise对象
  */
 export function login(data) {
-  return http.post('/login', data);
+  return http.post('/api/auth/login', data);
 }
 
 /**
@@ -57,7 +57,7 @@ export function login(data) {
  * @returns {Promise} - 返回Promise对象
  */
 export function forgetPassword(data) {
-  return http.post('/forget-password', data);
+  return http.post('/api/auth/forget-password', data);
 }
 
 /**
@@ -69,5 +69,5 @@ export function forgetPassword(data) {
  * @returns {Promise} - 返回Promise对象
  */
 export function resetPassword(data) {
-  return http.post('/reset-password', data);
+  return http.post('/api/auth/reset-password', data);
 }
