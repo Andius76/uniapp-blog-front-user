@@ -30,7 +30,7 @@
 					<view class="stat-divider">|</view>
 					<view class="stat-item" @click="navigateTo('/pages/followers/followers')">
 						<text class="stat-num">{{ data.userInfo.followerCount }}</text>
-						<text class="stat-label">被关注</text>
+						<text class="stat-label">粉丝</text>
 					</view>
 					<view class="stat-divider">|</view>
 					<view class="stat-item" @click="navigateTo('/pages/collection/collection')">
