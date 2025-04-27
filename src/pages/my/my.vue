@@ -248,10 +248,19 @@
 	import UserSettings from '@/components/user-settings/user-settings.vue';
 	// 导入API接口
 	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
-	import { onLoad } from '@dcloudio/uni-app';
+	import { onLoad, onShow, onHide, onBackPress } from '@dcloudio/uni-app';
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
+	
+	// 添加返回拦截状态控制
+	const isBackGestureLocked = ref(false);
+	// 存储当前页面的webview对象
+	let currentWebview = null;
+	// 保存原始的手势配置
+	let originalGestureConfig = null;
+	// 存储定时器ID
+	let lockTimeoutId = null;
 
 	// 使用reactive统一管理数据
 	const data = reactive({
@@ -869,9 +878,123 @@
 		}
 	};
 
+	/**
+	 * 禁用系统返回手势
+	 */
+	const disableBackGesture = () => {
+		// #ifdef APP-PLUS
+		try {
+			// 确保获取到当前webview
+			if (!currentWebview) {
+				currentWebview = plus.webview.currentWebview();
+			}
+			
+			// 保存原始配置（如果还没保存）
+			if (!originalGestureConfig && currentWebview) {
+				originalGestureConfig = currentWebview.getStyle().popGesture;
+			}
+			
+			// 设置返回手势为none（禁用）
+			if (currentWebview) {
+				currentWebview.setStyle({
+					popGesture: "none"
+				});
+				console.log('已禁用返回手势');
+				return true;
+			}
+		} catch (e) {
+			console.error('禁用返回手势失败:', e);
+		}
+		// #endif
+		return false;
+	};
+
+	/**
+	 * 恢复系统返回手势
+	 */
+	const restoreBackGesture = () => {
+		// #ifdef APP-PLUS
+		try {
+			if (currentWebview) {
+				currentWebview.setStyle({
+					popGesture: originalGestureConfig || "close"
+				});
+				console.log('已恢复返回手势');
+				return true;
+			}
+		} catch (e) {
+			console.error('恢复返回手势失败:', e);
+		}
+		// #endif
+		return false;
+	};
+
+	/**
+	 * 临时锁定返回手势
+	 * @param {Number} duration - 锁定时长（毫秒）
+	 */
+	const temporaryLockBackGesture = (duration = 800) => {
+		isBackGestureLocked.value = true;
+		disableBackGesture();
+		
+		// 清除之前的定时器
+		if (lockTimeoutId) {
+			clearTimeout(lockTimeoutId);
+		}
+		
+		// 设置新的定时器
+		lockTimeoutId = setTimeout(() => {
+			isBackGestureLocked.value = false;
+			restoreBackGesture();
+		}, duration);
+	};
+
+	/**
+	 * 监听用户设置面板显示状态变化
+	 */
+	watch(() => data.showUserSettings, (newVal) => {
+		if (newVal) {
+			// 设置面板显示，禁用返回手势
+			disableBackGesture();
+		} else {
+			// 设置面板隐藏，临时锁定返回手势
+			temporaryLockBackGesture(800);
+		}
+	});
+
+	/**
+	 * 拦截物理返回键
+	 */
+	onBackPress((e) => {
+		// 如果返回手势被锁定，则拦截物理返回键
+		if (isBackGestureLocked.value) {
+			return true; // 拦截返回
+		}
+		
+		// 如果设置面板正在显示，则关闭它而不是退出页面
+		if (data.showUserSettings) {
+			data.showUserSettings = false;
+			return true; // 拦截返回
+		}
+		
+		// 默认不拦截
+		return false;
+	});
+
 	// 页面初始化
 	onMounted(async () => {
 		try {
+			// 初始化webview
+			// #ifdef APP-PLUS
+			setTimeout(() => {
+				currentWebview = plus.webview.currentWebview();
+				if (currentWebview) {
+					originalGestureConfig = currentWebview.getStyle().popGesture;
+					console.log('初始化webview完成，原始手势配置:', originalGestureConfig);
+				}
+			}, 200);
+			// #endif
+			
 			// 显示加载提示
 			uni.showLoading({
 				title: '加载中...'
@@ -960,9 +1083,23 @@
 		// 不再需要自定义事件监听
 	});
 
-	// 在onUnmounted中移除事件监听
 	onUnmounted(() => {
-		// 其他清理操作
+		// 清理定时器
+		if (lockTimeoutId) {
+			clearTimeout(lockTimeoutId);
+			lockTimeoutId = null;
+		}
+		
+		// 恢复原始手势设置
+		restoreBackGesture();
+	});
+	
+	// 页面显示时
+	onShow(() => {
+		// 如果从设置页面返回，确保临时锁定手势
+		if (data.showUserSettings === false && isBackGestureLocked.value) {
+			console.log('页面显示，保持手势锁定');
+		}
 	});
 </script>
 

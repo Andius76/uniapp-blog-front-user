@@ -1,10 +1,10 @@
 <template>
-  <view class="user-settings-wrapper">
+  <view class="user-settings-wrapper" @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
     <!-- 弹出层背景蒙版 -->
     <view class="mask" @click="handleBackOrClose" v-if="visible"></view>
     
     <!-- 设置面板 -->
-    <view class="settings-panel" :class="{ 'visible': visible, 'fullscreen': true }">
+    <view class="settings-panel" :class="{ 'visible': visible, 'fullscreen': true, 'sliding': isSliding }">
       <view class="panel-header">
         <text class="panel-title">
           {{ isConfirmingLogout ? '退出登录' : (isEditingNickname ? '修改昵称' : '用户设置') }}
@@ -150,7 +150,7 @@ const props = defineProps({
 });
 
 // 定义事件
-const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 'logout']);
+const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 'bio-change', 'logout']);
 
 // 面板状态管理
 const isEditingNickname = ref(false);
@@ -161,16 +161,36 @@ const hasUnsavedChanges = ref(false);
 const originalNickname = ref('');
 const isBackConfirming = ref(false);
 
+// 滑动相关状态
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+const isSliding = ref(false);
+const panelWidth = ref(0);
+const touchThreshold = 50; // 滑动阈值，超过这个值才认为是有效滑动
+const gestureLocked = ref(false); // 防止连续触发滑动关闭
+
 // 监听面板显示状态，显示时根据初始视图参数决定显示哪个界面
 watch(() => props.visible, (newVal) => {
   if (newVal) {
     // 如果面板显示，根据初始视图设置显示哪个界面
     if (props.initialView === 'nickname') {
       showNicknameEdit();
+    } else if (props.initialView === 'bio') {
+      // 如果需要处理bio编辑初始视图
     }
     // 注册返回按键监听和TabBar点击拦截
     registerBackButtonListener();
     registerTabBarInterceptor();
+    // 重置滑动状态
+    isSliding.value = false;
+    gestureLocked.value = false;
+    
+    // 获取屏幕宽度
+    uni.getSystemInfo({
+      success: (res) => {
+        panelWidth.value = res.windowWidth;
+      }
+    });
   } else {
     // 面板隐藏时重置所有状态
     isEditingNickname.value = false;
@@ -180,6 +200,12 @@ watch(() => props.visible, (newVal) => {
     // 移除返回按键监听和TabBar点击拦截
     unregisterBackButtonListener();
     unregisterTabBarInterceptor();
+    
+    // 添加延时锁定滑动手势，防止连续两次滑动导致退出程序
+    gestureLocked.value = true;
+    setTimeout(() => {
+      gestureLocked.value = false;
+    }, 800); // 设置一个合理的延迟时间，避免连续滑动触发
   }
 });
 
@@ -234,7 +260,14 @@ const cancelAbandonChanges = () => {
 
 // 关闭设置面板
 const closeSettings = () => {
+  // 锁定手势一段时间，防止连续滑动
+  gestureLocked.value = true;
   emit('update:visible', false);
+  
+  // 添加延时解锁，时间要长于面板关闭动画
+  setTimeout(() => {
+    gestureLocked.value = false;
+  }, 800);
 };
 
 // 修改头像
@@ -415,6 +448,72 @@ const interceptTabBarClick = (e) => {
   return e; // 不拦截
 };
 
+// 处理触摸开始事件
+const handleTouchStart = (e) => {
+  if (!props.visible || gestureLocked.value) return;
+  
+  // 记录触摸起始点
+  touchStartX.value = e.touches[0].clientX;
+  touchStartY.value = e.touches[0].clientY;
+};
+
+// 处理触摸移动事件
+const handleTouchMove = (e) => {
+  if (!props.visible || gestureLocked.value) return;
+  
+  // 仅在全屏模式下处理左右滑动
+  if (!e.touches[0] || !touchStartX.value) return;
+  
+  const currentX = e.touches[0].clientX;
+  const currentY = e.touches[0].clientY;
+  
+  // 计算水平和垂直滑动距离
+  const diffX = currentX - touchStartX.value;
+  const diffY = currentY - touchStartY.value;
+  
+  // 判断是否为水平滑动（水平位移大于垂直位移）
+  if (Math.abs(diffX) > Math.abs(diffY)) {
+    // 在iOS设备上，从左边缘向右滑动通常是返回手势
+    // #ifdef APP-PLUS
+    if (diffX > touchThreshold) {
+      // 检查是否有未保存的更改
+      if (isEditingNickname.value && hasUnsavedChanges.value) {
+        showConfirmAbandonDialog();
+        touchStartX.value = 0; // 重置触摸起始点
+        return;
+      } else if (isEditingNickname.value) {
+        cancelEditNickname();
+        touchStartX.value = 0; // 重置触摸起始点
+        return;
+      } else if (isConfirmingLogout.value) {
+        cancelLogout();
+        touchStartX.value = 0; // 重置触摸起始点
+        return;
+      } else {
+        // 标记为正在滑动
+        isSliding.value = true;
+        e.preventDefault(); // 阻止默认行为
+      }
+    }
+    // #endif
+  }
+};
+
+// 处理触摸结束事件
+const handleTouchEnd = (e) => {
+  if (!props.visible || gestureLocked.value) return;
+  
+  // 如果正在滑动，则关闭设置面板
+  if (isSliding.value) {
+    closeSettings();
+    isSliding.value = false;
+  }
+  
+  // 重置触摸起始点
+  touchStartX.value = 0;
+  touchStartY.value = 0;
+};
+
 // 组件挂载时
 onMounted(() => {
   // 监听页面路由变化，确保关闭设置面板
@@ -425,6 +524,13 @@ onMounted(() => {
       } else {
         closeSettings();
       }
+    }
+  });
+  
+  // 获取系统信息
+  uni.getSystemInfo({
+    success: (res) => {
+      panelWidth.value = res.windowWidth;
     }
   });
 });
@@ -474,6 +580,10 @@ onUnmounted(() => {
       &.visible {
         transform: translateY(-100vh);
       }
+    }
+    
+    &.sliding {
+      transition: none; // 滑动时禁用过渡效果
     }
     
     .panel-header {
