@@ -94,6 +94,7 @@
 
 <script setup>
 import { reactive, onMounted, ref } from 'vue';
+import { onLoad } from '@dcloudio/uni-app'; // 添加onLoad导入
 // 导入uni-icons组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 // 导入API服务
@@ -123,9 +124,12 @@ const data = reactive({
 // 保存重定向URL
 const redirectUrl = ref('');
 
-onMounted(() => {
-	if (options.redirect) {
+// 使用onLoad而不是onMounted来获取页面参数
+onLoad((options) => {
+	console.log('登录页面参数:', options);
+	if (options && options.redirect) {
 		redirectUrl.value = decodeURIComponent(options.redirect);
+		console.log('重定向URL:', redirectUrl.value);
 	}
 });
 
