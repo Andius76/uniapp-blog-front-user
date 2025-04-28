@@ -623,6 +623,45 @@
 	};
 
 	/**
+	 * 处理获取到的用户信息，处理头像URL
+	 * @param {Object} userInfo - 用户信息对象
+	 */
+	const processUserInfo = (userInfo) => {
+		// 深拷贝，避免直接修改原对象
+		const processedInfo = { ...userInfo };
+		
+		// 处理头像URL
+		if (processedInfo.avatar) {
+			// 如果是相对路径且不是以http开头，需要拼接基础URL
+			if (processedInfo.avatar.startsWith('/') && !processedInfo.avatar.startsWith('http')) {
+				// 获取基础URL
+				const baseUrl = getBaseUrl();
+				processedInfo.avatar = baseUrl + processedInfo.avatar;
+			}
+		} else {
+			// 使用默认头像
+			processedInfo.avatar = '/static/images/avatar.png';
+		}
+		
+		return processedInfo;
+	};
+
+	/**
+	 * 获取基础URL
+	 */
+	const getBaseUrl = () => {
+		// #ifdef APP-PLUS
+		return 'http://10.9.248.114:8080'; // 替换为实际服务器IP
+		// #endif
+		
+		// #ifdef H5 || MP-WEIXIN
+		return 'http://localhost:8080';
+		// #endif
+		
+		return 'http://localhost:8080';
+	};
+
+	/**
 	 * 修改用户头像
 	 * @param {String} newAvatar - 新头像地址
 	 */
@@ -1023,17 +1062,28 @@
 						response.data.bio = DEFAULT_BIO;
 					}
 					
+					// 处理头像URL
+					const processedUserInfo = processUserInfo(response.data);
+					
 					// 适配后端返回的字段名称
 					const userData = {
-						...response.data,
+						...processedUserInfo,
 						// 后端返回fansCount，前端使用followerCount
-						followerCount: response.data.fansCount || 0,
+						followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
 						// 后端没有收藏数，默认为0
-						collectionCount: response.data.collectionCount || 0,
+						collectionCount: processedUserInfo.collectionCount || 0,
 					};
 					
 					// 更新用户完整信息
 					data.userInfo = userData;
+					
+					// 更新本地存储
+					uni.setStorageSync('userInfo', {
+						id: userData.id,
+						nickname: userData.nickname,
+						avatar: userData.avatar,
+						email: userData.email
+					});
 				}
 			} catch (apiError) {
 				console.error('获取API用户信息失败:', apiError);

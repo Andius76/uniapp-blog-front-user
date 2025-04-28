@@ -48,6 +48,21 @@ export function uploadUserAvatar(filePath) {
           
           // 处理业务状态码
           if (result.code === 200) {
+            // 确保头像URL是完整的
+            if (result.data && result.data.avatarUrl) {
+              // 如果返回的avatarUrl是相对路径，则拼接基础URL
+              if (result.data.avatarUrl.startsWith('/')) {
+                result.data.avatarUrl = baseUrl + result.data.avatarUrl;
+              }
+            }
+            
+            // 存储头像URL到本地，更新用户信息
+            const userInfo = uni.getStorageSync('userInfo') || {};
+            if (result.data && result.data.avatarUrl) {
+              userInfo.avatar = result.data.avatarUrl;
+              uni.setStorageSync('userInfo', userInfo);
+            }
+            
             resolve(result);
           } else {
             // 显示错误提示

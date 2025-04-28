@@ -34,7 +34,7 @@
             <text>修改头像</text>
           </view>
           <view class="item-content">
-            <image class="avatar-preview" :src="userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+            <image class="avatar-preview" :src="processImageUrl(userInfo.avatar)" mode="aspectFill"></image>
             <uni-icons type="right" size="18" color="#999"></uni-icons>
           </view>
         </view>
@@ -268,6 +268,47 @@ const closeSettings = () => {
   setTimeout(() => {
     gestureLocked.value = false;
   }, 800);
+};
+
+/**
+ * 处理图片URL，确保能正确显示
+ * @param {String} imageUrl - 图片URL
+ * @returns {String} 处理后的URL
+ */
+const processImageUrl = (imageUrl) => {
+  if (!imageUrl) {
+    return '/static/images/avatar.png';
+  }
+  
+  // 如果已经是完整URL或本地路径，直接返回
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('/static/')) {
+    return imageUrl;
+  }
+  
+  // 如果是后端返回的相对路径，拼接基础URL
+  if (imageUrl.startsWith('/uploads/')) {
+    // 获取基础URL
+    const baseUrl = getBaseUrl();
+    return baseUrl + imageUrl;
+  }
+  
+  // 其他情况，可能是文件名，拼接完整路径
+  return '/static/images/avatar.png';
+};
+
+/**
+ * 获取基础URL
+ */
+const getBaseUrl = () => {
+  // #ifdef APP-PLUS
+  return 'http://10.9.248.114:8080'; // 替换为实际服务器IP
+  // #endif
+  
+  // #ifdef H5 || MP-WEIXIN
+  return 'http://localhost:8080';
+  // #endif
+  
+  return 'http://localhost:8080';
 };
 
 // 修改头像
