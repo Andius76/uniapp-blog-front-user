@@ -13,7 +13,7 @@
 			<view class="search-input">
 				<uni-icons type="search" size="20" color="#999"></uni-icons>
 				<input type="text" v-model="searchKeyword" placeholder="搜索关注的人" @input="handleSearch"
-					confirm-type="search" />
+					confirm-type="search" @confirm="handleConfirmSearch" />
 				<uni-icons v-if="searchKeyword" type="clear" size="18" color="#999" @click="clearSearch"></uni-icons>
 			</view>
 		</view>
@@ -39,6 +39,13 @@
 						{{ user.isFollowedByMe ? '已关注' : '+ 关注' }}
 					</button>
 				</view>
+			</view>
+
+			<!-- 搜索结果为空时的提示 -->
+			<view v-else-if="searchKeyword.trim() && !isLoading" class="empty-state">
+				<uni-icons type="search" size="50" color="#ddd"></uni-icons>
+				<text>未找到匹配"{{ searchKeyword }}"的关注</text>
+				<view class="action-btn" @click="clearSearch">清除搜索</view>
 			</view>
 
 			<!-- 无内容提示 -->
@@ -87,8 +94,10 @@
 	const isLoading = ref(false);
 	const isRefreshing = ref(false);
 	const noMoreData = ref(false);
+	const isSearching = ref(false); // 新增：标记是否处于搜索状态
 	let currentPage = 1;
 	const pageSize = 10;
+	let searchTimer = null; // 用于防抖处理
 
 	// 用户信息
 	const userInfo = reactive({
@@ -123,7 +132,7 @@
 		http.get('/api/user/follows', {
 			page: currentPage,
 			pageSize: pageSize,
-			keyword: searchKeyword.value
+			keyword: searchKeyword.value.trim() // 搜索前去除前后空格
 		}).then(res => {
 			if (res.code !== 200) {
 				throw new Error(res.message || '获取关注列表失败');
@@ -161,6 +170,24 @@
 					icon: 'none',
 					duration: 1000
 				});
+			}
+			
+			// 如果是搜索操作，显示搜索结果数量
+			if (isSearching.value && searchKeyword.value.trim()) {
+				if (total > 0) {
+					uni.showToast({
+						title: `找到${total}位相关用户`,
+						icon: 'none',
+						duration: 1500
+					});
+				} else {
+					uni.showToast({
+						title: '未找到相关用户',
+						icon: 'none',
+						duration: 1500
+					});
+				}
+				isSearching.value = false;
 			}
 		}).catch(err => {
 			console.error('获取关注列表失败', err);
@@ -208,16 +235,70 @@
 	};
 
 	/**
-	 * 处理搜索
+	 * 处理搜索（添加防抖处理）
 	 */
 	const handleSearch = () => {
+		// 清除之前的定时器
+		if (searchTimer) {
+			clearTimeout(searchTimer);
+		}
+		
+		// 设置防抖延迟，300毫秒后执行搜索
+		searchTimer = setTimeout(() => {
+			isSearching.value = true;
+			
+			// 显示搜索中提示
+			if (searchKeyword.value.trim()) {
+				uni.showLoading({ title: '搜索中...' });
+			}
+			
+			// 重置数据
+			followList.value = [];
+			currentPage = 1;
+			noMoreData.value = false;
+
+			// 重新加载
+			loadFollowList();
+			
+			// 隐藏加载提示
+			setTimeout(() => {
+				uni.hideLoading();
+			}, 500);
+		}, 300);
+	};
+	
+	/**
+	 * 处理确认搜索（回车键触发）
+	 */
+	const handleConfirmSearch = () => {
+		// 清除定时器，避免重复搜索
+		if (searchTimer) {
+			clearTimeout(searchTimer);
+		}
+		
+		// 如果输入为空，则重置搜索
+		if (!searchKeyword.value.trim()) {
+			return clearSearch();
+		}
+		
+		isSearching.value = true;
+		uni.showLoading({ title: '搜索中...' });
+		
 		// 重置数据
 		followList.value = [];
 		currentPage = 1;
 		noMoreData.value = false;
-
+		
 		// 重新加载
 		loadFollowList();
+		
+		// 隐藏键盘
+		uni.hideKeyboard();
+		
+		// 延迟隐藏加载提示
+		setTimeout(() => {
+			uni.hideLoading();
+		}, 500);
 	};
 
 	/**
@@ -225,7 +306,15 @@
 	 */
 	const clearSearch = () => {
 		searchKeyword.value = '';
-		handleSearch();
+		isSearching.value = true;
+		
+		// 重置数据
+		followList.value = [];
+		currentPage = 1;
+		noMoreData.value = false;
+
+		// 重新加载
+		loadFollowList();
 	};
 
 	/**
@@ -401,6 +490,7 @@
 	.search-box {
 		padding: 20rpx 30rpx;
 		background-color: #fff;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 
 		.search-input {
 			display: flex;
@@ -510,6 +600,8 @@
 			color: #999;
 			margin-top: 20rpx;
 			margin-bottom: 30rpx;
+			text-align: center;
+			padding: 0 40rpx;
 		}
 
 		.action-btn {
