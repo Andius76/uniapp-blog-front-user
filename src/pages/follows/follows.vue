@@ -20,7 +20,7 @@
 
 		<!-- 关注列表 -->
 		<scroll-view scroll-y class="follow-list" @scrolltolower="loadMore" refresher-enabled
-			:refresher-triggered="isRefreshing" @refresherrefresh="refreshList">
+			:refresher-triggered="isRefreshing" @refresherrefresh="refreshList" refresher-background="#f5f5f5">
 			<!-- 列表内容 -->
 			<view v-if="followList.length > 0">
 				<view v-for="(user, index) in followList" :key="index" class="follow-item">
@@ -35,7 +35,7 @@
 					</view>
 
 					<!-- 关注按钮 -->
-					<view class="follow-btn" :class="{'followed': user.isFollowedByMe}" @click="toggleFollow(index)">
+					<view class="follow-btn" :class="{'followed': user.isFollowedByMe}" @click.stop="toggleFollow(index)">
 						<text>{{ user.isFollowedByMe ? '已关注' : '关注' }}</text>
 					</view>
 				</view>
@@ -73,6 +73,11 @@
 	const getAvatarUrl = (avatar) => {
 		if (!avatar) return '/static/images/avatar.png';
 		if (avatar.startsWith('http')) return avatar;
+		// 如果是完整的相对路径（以/uploads开头）
+		if (avatar.startsWith('/uploads')) {
+			return `${baseURL}${avatar}`;
+		}
+		// 如果只是文件名
 		return `${baseURL}/uploads/avatars/${avatar}`;
 	};
 
@@ -120,6 +125,10 @@
 			pageSize: pageSize,
 			keyword: searchKeyword.value
 		}).then(res => {
+			if (res.code !== 200) {
+				throw new Error(res.message || '获取关注列表失败');
+			}
+			
 			const { list, total, pages } = res.data;
 
 			// 添加到关注列表
@@ -136,8 +145,23 @@
 			if (list.length < pageSize || followList.value.length >= total) {
 				noMoreData.value = true;
 			}
+			
+			// 刷新成功提示
+			if (isRefreshing.value) {
+				uni.showToast({
+					title: '刷新成功',
+					icon: 'none',
+					duration: 1000
+				});
+			}
 		}).catch(err => {
 			console.error('获取关注列表失败', err);
+			
+			// 显示错误提示
+			uni.showToast({
+				title: '获取关注列表失败',
+				icon: 'none'
+			});
 		}).finally(() => {
 			isLoading.value = false;
 			// 如果是刷新状态，结束刷新
@@ -210,23 +234,46 @@
 				content: `确定不再关注"${user.nickname}"吗？`,
 				success: (res) => {
 					if (res.confirm) {
+						// 显示加载中
+						uni.showLoading({ title: '取消关注中...' });
+						
 						// 调用取消关注API
 						http.delete(`/api/user/follow/${user.id}`).then(res => {
+							if (res.code !== 200) {
+								throw new Error(res.message || '取消关注失败');
+							}
+							
 							// 更新UI状态
 							user.isFollowedByMe = false;
 							uni.showToast({
 								title: '已取消关注',
 								icon: 'none'
 							});
+							
+							// 可选：从列表中移除该用户
+							// followList.value.splice(index, 1);
 						}).catch(err => {
 							console.error('取消关注失败', err);
+							uni.showToast({
+								title: '取消关注失败，请重试',
+								icon: 'none'
+							});
+						}).finally(() => {
+							uni.hideLoading();
 						});
 					}
 				}
 			});
 		} else {
+			// 显示加载中
+			uni.showLoading({ title: '关注中...' });
+			
 			// 调用关注API
 			http.post(`/api/user/follow/${user.id}`).then(res => {
+				if (res.code !== 200) {
+					throw new Error(res.message || '关注失败');
+				}
+				
 				// 更新UI状态
 				user.isFollowedByMe = true;
 				uni.showToast({
@@ -235,6 +282,12 @@
 				});
 			}).catch(err => {
 				console.error('关注失败', err);
+				uni.showToast({
+					title: '关注失败，请重试',
+					icon: 'none'
+				});
+			}).finally(() => {
+				uni.hideLoading();
 			});
 		}
 	};
@@ -458,5 +511,10 @@
 		font-size: 24rpx;
 		color: #999;
 		padding: 20rpx 0;
+	}
+	
+	// 自定义刷新区域样式
+	:deep(.uni-scroll-view-refresh) {
+		background-color: #f5f5f5 !important;
 	}
 </style>
