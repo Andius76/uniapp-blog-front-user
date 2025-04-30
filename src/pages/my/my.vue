@@ -623,6 +623,23 @@
 	};
 
 	/**
+	 * 获取基础URL
+	 */
+	const getBaseUrl = () => {
+		// #ifdef APP-PLUS
+		return 'http:// 10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
+		// #endif
+		
+		// #ifdef H5
+		return 'http://localhost:8080';
+		// #endif
+		
+		// #ifdef MP-WEIXIN
+		return 'http://localhost:8080';
+		// #endif
+	};
+
+	/**
 	 * 处理获取到的用户信息，处理头像URL
 	 * @param {Object} userInfo - 用户信息对象
 	 */
@@ -632,33 +649,30 @@
 		
 		// 处理头像URL
 		if (processedInfo.avatar) {
-			// 如果是相对路径且不是以http开头，需要拼接基础URL
-			if (processedInfo.avatar.startsWith('/') && !processedInfo.avatar.startsWith('http')) {
-				// 获取基础URL
-				const baseUrl = getBaseUrl();
-				processedInfo.avatar = baseUrl + processedInfo.avatar;
+			// 如果已经是完整的URL，直接使用
+			if (processedInfo.avatar.startsWith('http')) {
+				return processedInfo;
+			}
+			
+			// 如果是相对路径，需要拼接基础URL
+			if (processedInfo.avatar.startsWith('/')) {
+				processedInfo.avatar = getBaseUrl() + processedInfo.avatar;
+			} else {
+				// 如果既不是http开头也不是/开头，添加/
+				processedInfo.avatar = getBaseUrl() + '/' + processedInfo.avatar;
 			}
 		} else {
 			// 使用默认头像
+			// #ifdef APP-PLUS
 			processedInfo.avatar = '/static/images/avatar.png';
+			// #endif
+			
+			// #ifdef H5 || MP-WEIXIN
+			processedInfo.avatar = '/static/images/avatar.png';
+			// #endif
 		}
 		
 		return processedInfo;
-	};
-
-	/**
-	 * 获取基础URL
-	 */
-	const getBaseUrl = () => {
-		// #ifdef APP-PLUS
-		return 'http://10.9.248.114:8080'; // 替换为实际服务器IP
-		// #endif
-		
-		// #ifdef H5 || MP-WEIXIN
-		return 'http://localhost:8080';
-		// #endif
-		
-		return 'http://localhost:8080';
 	};
 
 	/**
