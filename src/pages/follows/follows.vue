@@ -37,8 +37,8 @@
 					</view>
 
 					<!-- 关注按钮 -->
-					<view class="follow-btn" :class="{'followed': user.isFollowing}" @click="toggleFollow(index)">
-						<text>{{ user.isFollowing ? '已关注' : '关注' }}</text>
+					<view class="follow-btn" :class="{'followed': user.isFollowedByMe}" @click="toggleFollow(index)">
+						<text>{{ user.isFollowedByMe ? '已关注' : '关注' }}</text>
 					</view>
 				</view>
 			</view>
@@ -66,6 +66,7 @@
 		onMounted
 	} from 'vue';
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+	import http from '@/utils/request.js'; // 导入封装的请求工具
 
 	// 关注列表数据
 	const followList = ref([]);
@@ -86,55 +87,34 @@
 		isLoading.value = true;
 
 		// 调用后端API获取关注列表
-		uni.request({
-			url: '/api/user/follows',
-			method: 'GET',
-			data: {
-				page: currentPage,
-				pageSize: pageSize,
-				keyword: searchKeyword.value
-			},
-			header: {
-				'Authorization': `Bearer ${uni.getStorageSync('token')}`
-			},
-			success: (res) => {
-				if (res.data.code === 200) {
-					const { list, total, pageNum } = res.data.data;
+		http.get('/api/user/follows', {
+			page: currentPage,
+			pageSize: pageSize,
+			keyword: searchKeyword.value
+		}).then(res => {
+			const { list, total, pages } = res.data;
 
-					// 添加到关注列表
-					if (currentPage === 1) {
-						followList.value = [...list];
-					} else {
-						followList.value.push(...list);
-					}
+			// 添加到关注列表
+			if (currentPage === 1) {
+				followList.value = [...list];
+			} else {
+				followList.value.push(...list);
+			}
 
-					// 更新页码
-					currentPage++;
+			// 更新页码
+			currentPage++;
 
-					// 如果获取的数据不足一页，标记为没有更多数据
-					if (list.length < pageSize || followList.value.length >= total) {
-						noMoreData.value = true;
-					}
-				} else {
-					uni.showToast({
-						title: res.data.message || '获取关注列表失败',
-						icon: 'none'
-					});
-				}
-			},
-			fail: (err) => {
-				console.error('获取关注列表失败', err);
-				uni.showToast({
-					title: '获取关注列表失败',
-					icon: 'none'
-				});
-			},
-			complete: () => {
-				isLoading.value = false;
-				// 如果是刷新状态，结束刷新
-				if (isRefreshing.value) {
-					isRefreshing.value = false;
-				}
+			// 如果获取的数据不足一页，标记为没有更多数据
+			if (list.length < pageSize || followList.value.length >= total) {
+				noMoreData.value = true;
+			}
+		}).catch(err => {
+			console.error('获取关注列表失败', err);
+		}).finally(() => {
+			isLoading.value = false;
+			// 如果是刷新状态，结束刷新
+			if (isRefreshing.value) {
+				isRefreshing.value = false;
 			}
 		});
 	};
@@ -196,75 +176,37 @@
 		const user = followList.value[index];
 
 		// 如果取消关注，显示确认对话框
-		if (user.isFollowing) {
+		if (user.isFollowedByMe) {
 			uni.showModal({
 				title: '取消关注',
 				content: `确定不再关注"${user.nickname}"吗？`,
 				success: (res) => {
 					if (res.confirm) {
 						// 调用取消关注API
-						uni.request({
-							url: `/api/user/follow/${user.id}`,
-							method: 'DELETE',
-							header: {
-								'Authorization': `Bearer ${uni.getStorageSync('token')}`
-							},
-							success: (res) => {
-								if (res.data.code === 200) {
-									// 更新UI状态
-									user.isFollowing = false;
-									uni.showToast({
-										title: '已取消关注',
-										icon: 'none'
-									});
-								} else {
-									uni.showToast({
-										title: res.data.message || '操作失败',
-										icon: 'none'
-									});
-								}
-							},
-							fail: (err) => {
-								console.error('取消关注失败', err);
-								uni.showToast({
-									title: '操作失败',
-									icon: 'none'
-								});
-							}
+						http.delete(`/api/user/follow/${user.id}`).then(res => {
+							// 更新UI状态
+							user.isFollowedByMe = false;
+							uni.showToast({
+								title: '已取消关注',
+								icon: 'none'
+							});
+						}).catch(err => {
+							console.error('取消关注失败', err);
 						});
 					}
 				}
 			});
 		} else {
 			// 调用关注API
-			uni.request({
-				url: `/api/user/follow/${user.id}`,
-				method: 'POST',
-				header: {
-					'Authorization': `Bearer ${uni.getStorageSync('token')}`
-				},
-				success: (res) => {
-					if (res.data.code === 200) {
-						// 更新UI状态
-						user.isFollowing = true;
-						uni.showToast({
-							title: '关注成功',
-							icon: 'success'
-						});
-					} else {
-						uni.showToast({
-							title: res.data.message || '操作失败',
-							icon: 'none'
-						});
-					}
-				},
-				fail: (err) => {
-					console.error('关注失败', err);
-					uni.showToast({
-						title: '操作失败',
-						icon: 'none'
-					});
-				}
+			http.post(`/api/user/follow/${user.id}`).then(res => {
+				// 更新UI状态
+				user.isFollowedByMe = true;
+				uni.showToast({
+					title: '关注成功',
+					icon: 'success'
+				});
+			}).catch(err => {
+				console.error('关注失败', err);
 			});
 		}
 	};
