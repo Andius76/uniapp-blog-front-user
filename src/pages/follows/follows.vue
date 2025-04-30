@@ -34,10 +34,10 @@
 						</view>
 					</view>
 
-					<!-- 关注按钮 -->
-					<view class="follow-btn" :class="{'followed': user.isFollowedByMe}" @click.stop="toggleFollow(index)">
-						<text>{{ user.isFollowedByMe ? '已关注' : '关注' }}</text>
-					</view>
+					<!-- 关注按钮 - 参考index.vue中的样式 -->
+					<button class="follow-btn" :class="{'followed': user.isFollowedByMe}" @click.stop="toggleFollow(index)">
+						{{ user.isFollowedByMe ? '已关注' : '+ 关注' }}
+					</button>
 				</view>
 			</view>
 
@@ -130,12 +130,20 @@
 			}
 			
 			const { list, total, pages } = res.data;
+			
+			// 确保列表中的所有用户都设置为已关注状态
+			const processedList = list.map(user => {
+				return {
+					...user,
+					isFollowedByMe: true  // 默认为已关注状态
+				};
+			});
 
 			// 添加到关注列表
 			if (currentPage === 1) {
-				followList.value = [...list];
+				followList.value = [...processedList];
 			} else {
-				followList.value.push(...list);
+				followList.value.push(...processedList);
 			}
 
 			// 更新页码
@@ -226,9 +234,11 @@
 	 */
 	const toggleFollow = (index) => {
 		const user = followList.value[index];
+		const currentFollowState = user.isFollowedByMe;
 
-		// 如果取消关注，显示确认对话框
-		if (user.isFollowedByMe) {
+		// 如果当前是已关注状态，执行取消关注操作
+		if (currentFollowState) {
+			// 显示确认对话框
 			uni.showModal({
 				title: '取消关注',
 				content: `确定不再关注"${user.nickname}"吗？`,
@@ -249,9 +259,6 @@
 								title: '已取消关注',
 								icon: 'none'
 							});
-							
-							// 可选：从列表中移除该用户
-							// followList.value.splice(index, 1);
 						}).catch(err => {
 							console.error('取消关注失败', err);
 							uni.showToast({
@@ -265,12 +272,22 @@
 				}
 			});
 		} else {
-			// 显示加载中
+			// 当前是未关注状态，执行关注操作
 			uni.showLoading({ title: '关注中...' });
 			
 			// 调用关注API
 			http.post(`/api/user/follow/${user.id}`).then(res => {
 				if (res.code !== 200) {
+					// 处理409已关注的情况，不作为错误处理
+					if (res.code === 409) {
+						// 如果后端返回已关注，直接更新UI状态为已关注
+						user.isFollowedByMe = true;
+						uni.showToast({
+							title: '已关注该用户',
+							icon: 'none'
+						});
+						return;
+					}
 					throw new Error(res.message || '关注失败');
 				}
 				
@@ -461,21 +478,20 @@
 			}
 
 			.follow-btn {
-				min-width: 140rpx;
-				height: 60rpx;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				background-color: #4361ee;
-				color: #fff;
-				border-radius: 30rpx;
-				font-size: 28rpx;
+				height: 50rpx;
+				line-height: 50rpx;
+				background-color: #fff;
+				color: #4361ee;
+				font-size: 24rpx;
+				border: 2rpx solid #4361ee;
+				border-radius: 25rpx;
+				padding: 0 20rpx;
+				min-width: 120rpx;
 				flex-shrink: 0;
 
 				&.followed {
-					background-color: #f2f2f2;
-					color: #666;
-					border: 1rpx solid #ddd;
+					color: #999;
+					border-color: #999;
 				}
 			}
 		}

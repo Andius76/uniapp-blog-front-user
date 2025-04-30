@@ -9,7 +9,7 @@
 					<view class="bio-container">
 						<text class="bio-label">个人简介：</text>
 						<text class="bio">{{ userInfo.bio || '这个人很懒，什么都没写~' }}</text>
-					</view>
+				</view>
 				</view>
 			</view>
 
@@ -143,8 +143,8 @@
 					}
 					
 					.bio {
-						font-size: 24rpx;
-						color: #999;
+					font-size: 24rpx;
+					color: #999;
 						flex: 1; /* 内容自适应宽度 */
 						max-width: 100%; /* 限制最大宽度 */
 						line-height: 1.4; /* 保留合适的行高 */
