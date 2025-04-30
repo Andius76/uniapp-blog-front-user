@@ -37,8 +37,8 @@
 					</view>
 
 					<!-- 关注按钮 -->
-					<view class="follow-btn" :class="{'followed': user.isFollowed}" @click="toggleFollow(index)">
-						<text>{{ user.isFollowed ? '已关注' : '关注' }}</text>
+					<view class="follow-btn" :class="{'followed': user.isFollowing}" @click="toggleFollow(index)">
+						<text>{{ user.isFollowing ? '已关注' : '关注' }}</text>
 					</view>
 				</view>
 			</view>
@@ -76,37 +76,6 @@
 	let currentPage = 1;
 	const pageSize = 10;
 
-	// 模拟关注数据
-	const mockFollowData = [{
-			id: 1,
-			nickname: '前端开发者',
-			avatar: '/static/images/avatar.png',
-			bio: '分享前端开发技术和经验',
-			isFollowed: true
-		},
-		{
-			id: 2,
-			nickname: 'UI设计师',
-			avatar: '/static/images/avatar.png',
-			bio: '专注UI/UX设计，热爱创造美好的用户体验',
-			isFollowed: true
-		},
-		{
-			id: 3,
-			nickname: '全栈工程师',
-			avatar: '/static/images/avatar.png',
-			bio: '全栈开发，偶尔写写技术文章',
-			isFollowed: true
-		},
-		{
-			id: 4,
-			nickname: '产品经理',
-			avatar: '/static/images/avatar.png',
-			bio: '关注用户体验与产品设计',
-			isFollowed: true
-		}
-	];
-
 	/**
 	 * 加载关注列表
 	 */
@@ -116,56 +85,58 @@
 
 		isLoading.value = true;
 
-		// 模拟API请求延迟
-		setTimeout(() => {
-			// 模拟分页数据
-			const startIndex = (currentPage - 1) * pageSize;
-			const endIndex = startIndex + pageSize;
-			const pageData = mockFollowData.slice(startIndex, endIndex);
+		// 调用后端API获取关注列表
+		uni.request({
+			url: '/api/user/follows',
+			method: 'GET',
+			data: {
+				page: currentPage,
+				pageSize: pageSize,
+				keyword: searchKeyword.value
+			},
+			header: {
+				'Authorization': `Bearer ${uni.getStorageSync('token')}`
+			},
+			success: (res) => {
+				if (res.data.code === 200) {
+					const { list, total, pageNum } = res.data.data;
 
-			// 如果没有获取到数据，说明已经没有更多数据了
-			if (pageData.length === 0) {
-				noMoreData.value = true;
+					// 添加到关注列表
+					if (currentPage === 1) {
+						followList.value = [...list];
+					} else {
+						followList.value.push(...list);
+					}
+
+					// 更新页码
+					currentPage++;
+
+					// 如果获取的数据不足一页，标记为没有更多数据
+					if (list.length < pageSize || followList.value.length >= total) {
+						noMoreData.value = true;
+					}
+				} else {
+					uni.showToast({
+						title: res.data.message || '获取关注列表失败',
+						icon: 'none'
+					});
+				}
+			},
+			fail: (err) => {
+				console.error('获取关注列表失败', err);
+				uni.showToast({
+					title: '获取关注列表失败',
+					icon: 'none'
+				});
+			},
+			complete: () => {
 				isLoading.value = false;
-
 				// 如果是刷新状态，结束刷新
 				if (isRefreshing.value) {
 					isRefreshing.value = false;
 				}
-				return;
 			}
-
-			// 添加到关注列表
-			if (currentPage === 1) {
-				followList.value = [...pageData];
-			} else {
-				followList.value.push(...pageData);
-			}
-
-			// 更新页码
-			currentPage++;
-
-			// 如果获取的数据不足一页，标记为没有更多数据
-			if (pageData.length < pageSize) {
-				noMoreData.value = true;
-			}
-
-			isLoading.value = false;
-
-			// 如果是刷新状态，结束刷新
-			if (isRefreshing.value) {
-				isRefreshing.value = false;
-			}
-		}, 800);
-
-		// TODO: 替换为实际API调用
-		// api.getFollowList({
-		//   page: currentPage,
-		//   pageSize: pageSize,
-		//   keyword: searchKeyword.value
-		// }).then(res => {
-		//   // 处理响应数据
-		// });
+		});
 	};
 
 	/**
@@ -223,53 +194,79 @@
 	 */
 	const toggleFollow = (index) => {
 		const user = followList.value[index];
-		user.isFollowed = !user.isFollowed;
 
-		// 如果取消关注，可以选择从列表中移除
-		if (!user.isFollowed) {
-			// 显示确认对话框
+		// 如果取消关注，显示确认对话框
+		if (user.isFollowing) {
 			uni.showModal({
 				title: '取消关注',
 				content: `确定不再关注"${user.nickname}"吗？`,
 				success: (res) => {
 					if (res.confirm) {
-						// 用户确认，从列表中移除
-						followList.value.splice(index, 1);
-
-						uni.showToast({
-							title: '已取消关注',
-							icon: 'none'
+						// 调用取消关注API
+						uni.request({
+							url: `/api/user/follow/${user.id}`,
+							method: 'DELETE',
+							header: {
+								'Authorization': `Bearer ${uni.getStorageSync('token')}`
+							},
+							success: (res) => {
+								if (res.data.code === 200) {
+									// 更新UI状态
+									user.isFollowing = false;
+									uni.showToast({
+										title: '已取消关注',
+										icon: 'none'
+									});
+								} else {
+									uni.showToast({
+										title: res.data.message || '操作失败',
+										icon: 'none'
+									});
+								}
+							},
+							fail: (err) => {
+								console.error('取消关注失败', err);
+								uni.showToast({
+									title: '操作失败',
+									icon: 'none'
+								});
+							}
 						});
-
-						// TODO: 实际API调用
-						// api.followUser(user.id, false).then(res => {
-						//   console.log('取消关注成功');
-						// });
-					} else {
-						// 用户取消，恢复关注状态
-						user.isFollowed = true;
 					}
 				}
 			});
 		} else {
-			// 关注操作提示
-			uni.showToast({
-				title: '关注成功',
-				icon: 'success'
+			// 调用关注API
+			uni.request({
+				url: `/api/user/follow/${user.id}`,
+				method: 'POST',
+				header: {
+					'Authorization': `Bearer ${uni.getStorageSync('token')}`
+				},
+				success: (res) => {
+					if (res.data.code === 200) {
+						// 更新UI状态
+						user.isFollowing = true;
+						uni.showToast({
+							title: '关注成功',
+							icon: 'success'
+						});
+					} else {
+						uni.showToast({
+							title: res.data.message || '操作失败',
+							icon: 'none'
+						});
+					}
+				},
+				fail: (err) => {
+					console.error('关注失败', err);
+					uni.showToast({
+						title: '操作失败',
+						icon: 'none'
+					});
+				}
 			});
-
-			// TODO: 实际API调用
-			// api.followUser(user.id, true).then(res => {
-			//   console.log('关注成功');
-			// });
 		}
-	};
-
-	/**
-	 * 返回上一页
-	 */
-	const goBack = () => {
-		uni.navigateBack();
 	};
 
 	/**
@@ -289,6 +286,13 @@
 		uni.switchTab({
 			url: '/pages/index/index'
 		});
+	};
+
+	/**
+	 * 返回上一页
+	 */
+	const goBack = () => {
+		uni.navigateBack();
 	};
 
 	// 页面初始化
