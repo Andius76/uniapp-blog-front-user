@@ -500,7 +500,6 @@
 | postCount     | number  | 发表的文章数量               |
 | followCount   | number  | 关注数量                     |
 | followerCount | number  | 粉丝数量                     |
-| isFollowing   | boolean | 当前登录用户是否关注此用户    |
 
 - **响应示例：**
 
@@ -515,11 +514,18 @@
         "bio": "这是我的个人简介",
         "postCount": 10,
         "followCount": 20,
-        "followerCount": 30,
-        "isFollowing": true
+        "followerCount": 30
     }
 }
 ```
+
+- **错误码说明：**
+
+| 错误码 | 说明           |
+|--------|--------------|
+| 200    | 请求成功     |
+| 404    | 用户不存在   |
+| 500    | 服务器错误   |
 
 ### 7. 获取用户文章列表
 
