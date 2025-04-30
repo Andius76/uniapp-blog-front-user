@@ -387,14 +387,15 @@
 
 ### 4. 获取用户关注列表
 
-**接口说明：** 获取当前登录用户关注的用户列表
+**接口说明：** 获取指定用户的关注列表
 
-- **请求URL：** `/api/user/follows`
+- **请求URL：** `/api/user/follows/{userId}`
 - **请求方式：** GET
 - **请求参数：**
 
 | 参数名   | 类型   | 必选 | 说明                              |
 |----------|--------|------|-----------------------------------|
+| userId   | number | 是   | 用户ID，包含在URL路径中           |
 | page     | number | 否   | 页码，默认1                       |
 | pageSize | number | 否   | 每页条数，默认10，最大50          |
 
@@ -424,59 +425,19 @@
 | nickname      | string  | 用户昵称         |
 | avatar        | string  | 用户头像URL      |
 | bio           | string  | 用户个人简介     |
-| isFollowedByMe| boolean | 用户是否已关注我  |
-
-- **响应示例：**
-
-```json
-{
-    "code": 200,
-    "message": "success",
-    "data": {
-        "total": 25,
-        "pages": 3,
-        "currentPage": 1,
-        "pageSize": 10,
-        "list": [
-            {
-                "id": 2,
-                "nickname": "用户A",
-                "avatar": "https://example.com/avatars/a.png",
-                "bio": "用户A的个人简介",
-                "isFollowedByMe": true
-            },
-            {
-                "id": 3,
-                "nickname": "用户B",
-                "avatar": "https://example.com/avatars/b.png",
-                "bio": "用户B的个人简介",
-                "isFollowedByMe": false
-            }
-            // ...更多数据
-        ]
-    }
-}
-```
-
-- **错误码说明：**
-
-| 错误码 | 说明                           |
-|--------|--------------------------------|
-| 200    | 成功                           |
-| 400    | 参数错误                       |
-| 401    | 未登录或token无效              |
-| 500    | 服务器错误                     |
+| isFollowing   | boolean | 当前登录用户是否关注此用户 |
 
 ### 5. 获取用户粉丝列表
 
-**接口说明：** 获取当前登录用户的粉丝列表
+**接口说明：** 获取指定用户的粉丝列表
 
-- **请求URL：** `/api/user/followers`
+- **请求URL：** `/api/user/followers/{userId}`
 - **请求方式：** GET
 - **请求参数：**
 
 | 参数名   | 类型   | 必选 | 说明                              |
 |----------|--------|------|-----------------------------------|
+| userId   | number | 是   | 用户ID，包含在URL路径中           |
 | page     | number | 否   | 页码，默认1                       |
 | pageSize | number | 否   | 每页条数，默认10，最大50          |
 
@@ -506,7 +467,40 @@
 | nickname      | string  | 用户昵称         |
 | avatar        | string  | 用户头像URL      |
 | bio           | string  | 用户个人简介     |
-| isFollowedByMe| boolean | 是否已关注该用户  |
+| isFollowing   | boolean | 当前登录用户是否关注此用户 |
+
+### 6. 获取用户资料
+
+**接口说明：** 获取指定用户的详细资料
+
+- **请求URL：** `/api/user/profile/{userId}`
+- **请求方式：** GET
+- **请求参数：**
+
+| 参数名 | 类型   | 必选 | 说明                    |
+|--------|--------|------|------------------------|
+| userId | number | 是   | 用户ID，包含在URL路径中 |
+
+- **响应参数：**
+
+| 参数名  | 类型   | 说明         |
+|---------|--------|--------------|
+| code    | number | 状态码       |
+| message | string | 提示信息     |
+| data    | object | 用户资料     |
+
+- **data对象结构：**
+
+| 参数名         | 类型    | 说明                          |
+|---------------|---------|------------------------------|
+| id            | number  | 用户ID                       |
+| nickname      | string  | 用户昵称                     |
+| avatar        | string  | 用户头像URL                  |
+| bio           | string  | 个人简介                     |
+| postCount     | number  | 发表的文章数量               |
+| followCount   | number  | 关注数量                     |
+| followerCount | number  | 粉丝数量                     |
+| isFollowing   | boolean | 当前登录用户是否关注此用户    |
 
 - **响应示例：**
 
@@ -515,215 +509,108 @@
     "code": 200,
     "message": "success",
     "data": {
-        "total": 18,
-        "pages": 2,
-        "currentPage": 1,
-        "pageSize": 10,
-        "list": [
-            {
-                "id": 5,
-                "nickname": "用户C",
-                "avatar": "https://example.com/avatars/c.png",
-                "bio": "用户C的个人简介",
-                "isFollowedByMe": true
-            },
-            {
-                "id": 6,
-                "nickname": "用户D",
-                "avatar": "https://example.com/avatars/d.png",
-                "bio": "用户D的个人简介",
-                "isFollowedByMe": false
-            }
-            // ...更多数据
-        ]
+        "id": 1,
+        "nickname": "示例用户",
+        "avatar": "https://example.com/avatars/1.jpg",
+        "bio": "这是我的个人简介",
+        "postCount": 10,
+        "followCount": 20,
+        "followerCount": 30,
+        "isFollowing": true
     }
 }
 ```
 
-- **错误码说明：**
+### 7. 获取用户文章列表
 
-| 错误码 | 说明                           |
-|--------|--------------------------------|
-| 200    | 成功                           |
-| 400    | 参数错误                       |
-| 401    | 未登录或token无效              |
-| 500    | 服务器错误                     |
+**接口说明：** 获取指定用户发表或点赞的文章列表
 
-### 6. 关注/取消关注用户
-
-**接口说明：** 关注或取消关注指定用户
-
-- **请求URL：** `/api/user/follow/{userId}`
-- **请求方式：** 
-  - POST (关注用户)
-  - DELETE (取消关注)
+- **请求URL：** `/api/user/{userId}/articles`
+- **请求方式：** GET
 - **请求参数：**
 
-| 参数名 | 类型   | 必选 | 说明     |
-|--------|--------|------|----------|
-| userId | number | 是   | 用户ID，包含在URL路径中 |
+| 参数名   | 类型   | 必选 | 说明                                    |
+|----------|--------|------|----------------------------------------|
+| userId   | number | 是   | 用户ID，包含在URL路径中                 |
+| type     | string | 是   | 文章类型：posts(发表的) / likes(点赞的) |
+| page     | number | 否   | 页码，默认1                             |
+| pageSize | number | 否   | 每页条数，默认10                        |
 
 - **响应参数：**
 
-| 参数名  | 类型   | 说明     |
-|---------|--------|----------|
-| code    | number | 状态码   |
-| message | string | 提示信息 |
+| 参数名  | 类型   | 说明         |
+|---------|--------|--------------|
+| code    | number | 状态码       |
+| message | string | 提示信息     |
+| data    | object | 分页数据     |
+
+- **data对象结构：**
+
+| 参数名      | 类型    | 说明               |
+|-------------|---------|-------------------|
+| total       | number  | 总记录数          |
+| list        | array   | 文章列表          |
+
+- **list数组元素结构：**
+
+| 参数名        | 类型    | 说明              |
+|---------------|---------|------------------|
+| id            | number  | 文章ID           |
+| title         | string  | 文章标题         |
+| summary       | string  | 文章摘要         |
+| createTime    | string  | 发布时间         |
+| viewCount     | number  | 浏览量           |
+| likeCount     | number  | 点赞量           |
+| commentCount  | number  | 评论量           |
 
 - **响应示例：**
 
 ```json
 {
     "code": 200,
-    "message": "关注成功"
-}
-```
-
-或
-
-```json
-{
-    "code": 200,
-    "message": "已取消关注"
-}
-```
-
-- **错误码说明：**
-
-| 错误码 | 说明                           |
-|--------|--------------------------------|
-| 200    | 成功                           |
-| 400    | 参数错误                       |
-| 401    | 未登录或token无效              |
-| 403    | 不能关注自己                   |
-| 404    | 用户不存在                     |
-| 409    | 已经关注过该用户（关注操作时） |
-| 409    | 未关注该用户（取消关注操作时） |
-| 500    | 服务器错误                     |
-
-- **其他说明：**
-  - 该接口需要在请求头中携带token才能访问
-  - 不能关注自己
-  - 关注操作成功后，当前用户的关注数+1，目标用户的粉丝数+1
-  - 取消关注操作成功后，当前用户的关注数-1，目标用户的粉丝数-1
-
-## 关注相关接口
-
-### 1. 获取关注列表
-
-**接口说明：** 获取当前用户的关注列表
-
-- **页面：** `/pages/follows/follows`
-- **调用方法：** 
-```javascript
-http.get('/api/user/follows', {
-    page: currentPage,
-    pageSize: pageSize,
-    keyword: searchKeyword
-})
-```
-
-- **请求参数：**
-
-| 参数名   | 类型   | 必选 | 说明                              |
-|----------|--------|------|-----------------------------------|
-| page     | number | 否   | 页码，默认1                       |
-| pageSize | number | 否   | 每页条数，默认10                  |
-| keyword  | string | 否   | 搜索关键词                        |
-
-- **响应数据：**
-```javascript
-{
-    code: 200,
-    message: "success",
-    data: {
-        total: 25,      // 总记录数
-        pages: 3,       // 总页数
-        currentPage: 1,  // 当前页码
-        pageSize: 10,   // 每页条数
-        list: [{        // 关注用户列表
-            id: 2,
-            nickname: "用户A",
-            avatar: "https://example.com/avatars/a.png",
-            bio: "用户A的个人简介",
-            isFollowedByMe: true
-        }]
+    "message": "success",
+    "data": {
+        "total": 20,
+        "list": [
+            {
+                "id": 1,
+                "title": "文章标题",
+                "summary": "文章摘要...",
+                "createTime": "2024-03-20 10:00:00",
+                "viewCount": 100,
+                "likeCount": 50,
+                "commentCount": 30
+            }
+        ]
     }
-}
-```
-
-### 2. 关注用户
-
-**接口说明：** 关注指定用户
-
-- **页面：** `/pages/follows/follows`
-- **调用方法：** 
-```javascript
-http.post(`/api/user/follow/${userId}`)
-```
-
-- **请求参数：**
-
-| 参数名 | 类型   | 必选 | 说明     |
-|--------|--------|------|----------|
-| userId | number | 是   | 用户ID，包含在URL路径中 |
-
-- **响应数据：**
-```javascript
-{
-    code: 200,
-    message: "关注成功"
-}
-```
-
-### 3. 取消关注
-
-**接口说明：** 取消关注指定用户
-
-- **页面：** `/pages/follows/follows`
-- **调用方法：** 
-```javascript
-http.delete(`/api/user/follow/${userId}`)
-```
-
-- **请求参数：**
-
-| 参数名 | 类型   | 必选 | 说明     |
-|--------|--------|------|----------|
-| userId | number | 是   | 用户ID，包含在URL路径中 |
-
-- **响应数据：**
-```javascript
-{
-    code: 200,
-    message: "已取消关注"
 }
 ```
 
 ## 功能说明
 
-### 关注列表页面
+### 用户资料展示页面
 
 1. 页面功能：
-   - 显示当前用户关注的所有用户列表
-   - 支持下拉刷新和上拉加载更多
-   - 支持搜索关注的用户
-   - 可以直接取消/重新关注用户
-   - 点击用户可以跳转到用户详情页
+   - 显示用户基本信息（头像、昵称、简介）
+   - 显示用户统计信息（发表数、关注数、粉丝数）
+   - 支持关注/取消关注操作
+   - 展示用户发表的文章和点赞的文章
+   - 支持文章列表分页加载
+   - 点击文章可跳转到文章详情页
 
 2. 数据处理：
-   - 使用分页加载数据，默认每页10条
-   - 本地维护关注状态，操作后实时更新UI
-   - 取消关注时会显示确认对话框
-   - 关注/取消关注操作会有toast提示
+   - 页面加载时优先显示从列表页传递的基本信息
+   - 同时请求完整的用户资料和文章列表
+   - 文章列表支持切换和分页加载
+   - 关注状态实时更新
 
 3. 错误处理：
-   - 网络请求失败会显示错误提示
-   - token失效会自动跳转到登录页
-   - 加载失败支持重试机制
+   - 网络请求失败显示错误提示
+   - 加载失败支持重试
+   - 数据为空时显示空状态提示
 
 4. 性能优化：
-   - 使用节流处理搜索输入
-   - 使用虚拟列表优化长列表性能
+   - 使用预加载优化页面加载体验
    - 图片懒加载
+   - 列表分页加载
    - 本地缓存用户数据
