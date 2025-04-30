@@ -6,7 +6,10 @@
 				<image class="avatar" :src="getAvatarUrl(userInfo.avatar)" mode="aspectFill"></image>
 				<view class="user-meta">
 					<text class="nickname">{{ userInfo.nickname }}</text>
-					<text class="bio">{{ userInfo.bio || '这个人很懒，什么都没写~' }}</text>
+					<view class="bio-container">
+						<text class="bio-label">个人简介：</text>
+						<text class="bio">{{ userInfo.bio || '这个人很懒，什么都没写~' }}</text>
+					</view>
 				</view>
 			</view>
 
@@ -111,10 +114,12 @@
 				border-radius: 50%;
 				margin-right: 20rpx;
 				background-color: #eee;
+				flex-shrink: 0; /* 防止头像缩小 */
 			}
 
 			.user-meta {
 				flex: 1;
+				width: 0; /* 确保宽度自适应 */
 
 				.nickname {
 					font-size: 32rpx;
@@ -124,10 +129,37 @@
 					display: block;
 				}
 
-				.bio {
-					font-size: 24rpx;
-					color: #999;
-					display: block;
+				.bio-container {
+					display: flex;
+					flex-wrap: wrap; /* 允许内容换行 */
+					width: 100%; /* 确保容器占满可用空间 */
+					max-width: 100%; /* 限制最大宽度 */
+					
+					.bio-label {
+						font-size: 24rpx;
+						color: #666;
+						font-weight: 500;
+						flex-shrink: 0; /* 防止标签缩小 */
+					}
+					
+					.bio {
+						font-size: 24rpx;
+						color: #999;
+						flex: 1; /* 内容自适应宽度 */
+						max-width: 100%; /* 限制最大宽度 */
+						line-height: 1.4; /* 保留合适的行高 */
+						word-wrap: break-word; /* 允许长单词换行 */
+						/* 兼容各平台 */
+						/* #ifdef H5 */
+						box-sizing: border-box;
+						/* #endif */
+						/* #ifdef MP-WEIXIN */
+						box-sizing: border-box;
+						/* #endif */
+						/* #ifdef APP-PLUS */
+						box-sizing: border-box;
+						/* #endif */
+					}
 				}
 			}
 		}

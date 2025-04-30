@@ -362,6 +362,7 @@
 			padding: 30rpx;
 			margin-bottom: 2rpx;
 			background-color: #fff;
+			height: 160rpx;
 
 			.user-info {
 				flex: 1;
@@ -374,10 +375,13 @@
 					border-radius: 50%;
 					background-color: #eee;
 					margin-right: 20rpx;
+					flex-shrink: 0;
 				}
 
 				.user-details {
 					flex: 1;
+					width: 0;
+					overflow: hidden;
 
 					.nickname {
 						font-size: 30rpx;
@@ -385,6 +389,9 @@
 						font-weight: 500;
 						margin-bottom: 6rpx;
 						display: block;
+						white-space: nowrap;
+						overflow: hidden;
+						text-overflow: ellipsis;
 					}
 
 					.bio {
@@ -394,7 +401,8 @@
 						white-space: nowrap;
 						overflow: hidden;
 						text-overflow: ellipsis;
-						max-width: 400rpx;
+						max-width: 420rpx;
+						line-height: 1.2;
 					}
 				}
 			}
@@ -409,6 +417,7 @@
 				color: #fff;
 				border-radius: 30rpx;
 				font-size: 28rpx;
+				flex-shrink: 0;
 
 				&.followed {
 					background-color: #f2f2f2;
