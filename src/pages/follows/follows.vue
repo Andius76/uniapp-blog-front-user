@@ -305,52 +305,30 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 120rpx;
+		height: 90rpx;
 		padding: 0 30rpx;
-		background: linear-gradient(135deg, #4361ee, #7209b7);
-		position: relative;
-		overflow: hidden;
-		
-		// 添加背景图案
-		&::before {
-			content: '';
-			position: absolute;
-			top: 0;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			background-image: 
-				radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 50%),
-				radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 50%),
-				linear-gradient(45deg, transparent 48%, rgba(255, 255, 255, 0.1) 50%, transparent 52%),
-				linear-gradient(-45deg, transparent 48%, rgba(255, 255, 255, 0.1) 50%, transparent 52%);
-			background-size: 100% 100%, 100% 100%, 30rpx 30rpx, 30rpx 30rpx;
-			opacity: 0.6;
-			z-index: 1;
-		}
+		background-color: #fff;
+		border-bottom: 1rpx solid #f0f0f0;
+		position: sticky;
+		top: 0;
+		z-index: 100;
 
 		.navbar-left,
 		.navbar-right {
 			width: 60rpx;
 			display: flex;
 			align-items: center;
-			position: relative;
-			z-index: 2;
 		}
 
 		.navbar-title {
-			font-size: 36rpx;
-			font-weight: 600;
-			color: #ffffff;
-			text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
-			position: relative;
-			z-index: 2;
+			font-size: 34rpx;
+			font-weight: bold;
+			color: #333;
 		}
 	}
 
 	// 搜索框
 	.search-box {
-		margin-top: 2rpx;
 		padding: 20rpx 30rpx;
 		background-color: #fff;
 
