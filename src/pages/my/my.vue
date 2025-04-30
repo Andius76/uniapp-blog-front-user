@@ -1302,15 +1302,23 @@
 			padding: 20rpx 30rpx;
 			background-color: #fff;
 			margin-top: 2rpx;
+			height: 100rpx;
 
 			.bio-content {
 				display: flex;
 				align-items: center;
+				flex: 1;
+				margin-right: 20rpx;
+				overflow: hidden;
 
 				.bio-text {
 					font-size: 26rpx;
 					color: #666;
 					margin-left: 10rpx;
+					white-space: nowrap;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					max-width: 500rpx;
 				}
 			}
 
@@ -1321,6 +1329,7 @@
 				padding: 10rpx 30rpx;
 				border-radius: 30rpx;
 				border: 1rpx solid #eee;
+				flex-shrink: 0;
 			}
 		}
 
