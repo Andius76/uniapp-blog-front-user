@@ -3,7 +3,7 @@
 		<!-- 用户信息区域 -->
 		<view class="user-info-section">
 			<view class="user-header">
-				<image class="avatar" :src="userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+				<image class="avatar" :src="getAvatarUrl(userInfo.avatar)" mode="aspectFill"></image>
 				<view class="user-meta">
 					<text class="nickname">{{ userInfo.nickname }}</text>
 					<text class="bio">{{ userInfo.bio || '这个人很懒，什么都没写~' }}</text>
@@ -33,6 +33,21 @@
 	import { reactive } from 'vue';
 	import { onLoad } from '@dcloudio/uni-app';
 	import http from '@/utils/request.js';
+
+	// 基础URL配置
+	const baseURL = 'http://localhost:8080';
+
+	// 获取头像完整URL
+	const getAvatarUrl = (avatar) => {
+		if (!avatar) return '/static/images/avatar.png';
+		if (avatar.startsWith('http')) return avatar;
+		// 如果是完整的相对路径（以/uploads开头）
+		if (avatar.startsWith('/uploads')) {
+			return `${baseURL}${avatar}`;
+		}
+		// 如果只是文件名
+		return `${baseURL}/uploads/avatars/${avatar}`;
+	};
 
 	// 用户信息
 	const userInfo = reactive({
