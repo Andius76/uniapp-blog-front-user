@@ -244,7 +244,17 @@
 	 * 返回上一页
 	 */
 	const goBack = () => {
-		uni.navigateBack();
+		// 获取当前页面栈
+		const pages = getCurrentPages();
+		if (pages.length > 1) {
+			// 如果有上一页，则直接返回
+			uni.navigateBack();
+		} else {
+			// 如果没有上一页，则跳转到我的页面
+			uni.switchTab({
+				url: '/pages/my/my'
+			});
+		}
 	};
 
 	// 页面初始化
