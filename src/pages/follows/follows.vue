@@ -28,7 +28,7 @@
 				<view v-for="(user, index) in followList" :key="index" class="follow-item">
 					<!-- 用户信息 -->
 					<view class="user-info" @click="navigateToUserProfile(user.id)">
-						<image class="avatar" :src="user.avatar || '/static/images/avatar.png'" mode="aspectFill">
+						<image class="avatar" :src="getAvatarUrl(user.avatar)" mode="aspectFill">
 						</image>
 						<view class="user-details">
 							<text class="nickname">{{ user.nickname }}</text>
@@ -67,6 +67,16 @@
 	} from 'vue';
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	import http from '@/utils/request.js'; // 导入封装的请求工具
+
+	// 基础URL配置
+	const baseURL = 'http://localhost:8080';
+
+	// 获取头像完整URL
+	const getAvatarUrl = (avatar) => {
+		if (!avatar) return '/static/images/avatar.png';
+		if (avatar.startsWith('http')) return avatar;
+		return `${baseURL}/uploads/avatars/${avatar}`;
+	};
 
 	// 关注列表数据
 	const followList = ref([]);
