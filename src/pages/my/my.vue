@@ -23,7 +23,7 @@
 
 				<!-- 用户数据统计区域 -->
 				<view class="user-stats">
-					<view class="stat-item" @click="navigateTo('/pages/follows/follows')">
+					<view class="stat-item" @click="handleFollowsClick">
 						<text class="stat-num">{{ data.userInfo.followCount }}</text>
 						<text class="stat-label">关注</text>
 					</view>
@@ -1033,6 +1033,24 @@
 		// 默认不拦截
 		return false;
 	});
+
+	/**
+	 * 处理关注列表点击
+	 */
+	const handleFollowsClick = () => {
+		// #ifdef H5
+		// 获取当前页面的完整URL
+		const currentUrl = window.location.href;
+		// 提取基础URL（去除路径部分）
+		const baseUrl = currentUrl.split('#')[0];
+		// 在H5环境下，使用window.open在新窗口打开关注列表页面
+		window.open(`${baseUrl}#/pages/follows/follows`, '_blank');
+		return;
+		// #endif
+
+		// 其他平台使用普通跳转
+		navigateTo('/pages/follows/follows');
+	};
 
 	// 页面初始化
 	onMounted(async () => {

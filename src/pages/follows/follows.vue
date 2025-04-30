@@ -3,10 +3,8 @@
 		<!-- 顶部导航栏 -->
 		<!-- #ifdef H5 -->
 		<view class="navbar">
-			<view class="navbar-left" @click="goBack">
-				<uni-icons type="back" size="24" color="#333"></uni-icons>
-			</view>
-			<view class="navbar-title">我的关注</view>
+			<view class="navbar-left"></view>
+			<view class="navbar-title">{{ userInfo.nickname }}的关注</view>
 			<view class="navbar-right"></view>
 		</view>
 		<!-- #endif -->
@@ -86,6 +84,26 @@
 	const noMoreData = ref(false);
 	let currentPage = 1;
 	const pageSize = 10;
+
+	// 用户信息
+	const userInfo = reactive({
+		nickname: '',
+		avatar: '',
+		id: ''
+	});
+
+	/**
+	 * 获取用户信息
+	 */
+	const getUserInfo = () => {
+		// 从本地存储获取用户信息
+		const localUserInfo = uni.getStorageSync('userInfo');
+		if (localUserInfo) {
+			userInfo.nickname = localUserInfo.nickname || '用户';
+			userInfo.avatar = localUserInfo.avatar;
+			userInfo.id = localUserInfo.id;
+		}
+	};
 
 	/**
 	 * 加载关注列表
@@ -226,6 +244,17 @@
 	 * @param {Number} userId - 用户ID
 	 */
 	const navigateToUserProfile = (userId) => {
+		// #ifdef H5
+		// 获取当前页面的完整URL
+		const currentUrl = window.location.href;
+		// 提取基础URL（去除路径部分）
+		const baseUrl = currentUrl.split('#')[0];
+		// 在H5环境下，使用window.open在新窗口打开用户资料页
+		window.open(`${baseUrl}#/pages/user-profile/user-profile?id=${userId}`, '_blank');
+		return;
+		// #endif
+
+		// 其他平台使用普通跳转
 		uni.navigateTo({
 			url: `/pages/user-profile/user-profile?id=${userId}`
 		});
@@ -259,6 +288,7 @@
 
 	// 页面初始化
 	onMounted(() => {
+		getUserInfo();
 		// 加载关注列表
 		loadFollowList();
 	});

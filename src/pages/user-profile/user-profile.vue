@@ -1,12 +1,5 @@
 <template>
 	<view class="container">
-		<!-- 返回按钮 -->
-		<!-- #ifdef H5 -->
-		<view class="back-button" @click="goBack">
-			<uni-icons type="back" size="24" color="#333"></uni-icons>
-		</view>
-		<!-- #endif -->
-
 		<!-- 顶部用户信息区域 -->
 		<view class="user-top-container">
 			<!-- 用户信息区域内容 -->
@@ -305,15 +298,6 @@
 			isCollected: false,
 			isLiked: false
 		}]
-	};
-
-	/**
-	 * 返回上一页
-	 */
-	const goBack = () => {
-		uni.navigateBack({
-			delta: 1
-		});
 	};
 
 	/**
@@ -652,22 +636,6 @@
 		position: relative;
 	}
 
-	// 返回按钮样式
-	.back-button {
-		position: fixed;
-		top: 20rpx;
-		left: 15rpx;
-		z-index: 101;
-		width: 70rpx;
-		height: 70rpx;
-		border-radius: 50%;
-		background-color: rgba(255, 255, 255, 0.8);
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-	}
-
 	.user-top-container {
 		position: sticky;
 		top: 0;
@@ -691,12 +659,6 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 30rpx;
-		// #ifdef H5
-		padding-top: 90rpx; // 为返回按钮留出空间
-		// #endif
-		// #ifndef H5
-		padding-top: 30rpx; // 非H5平台不需要为返回按钮留出空间
-		// #endif
 		background-color: #fff;
 
 		.user-info {
@@ -709,9 +671,7 @@
 				border-radius: 50%;
 				margin-right: 20rpx;
 				background-color: #eee;
-				// #ifdef H5
-				margin-left: 70rpx; // 增加左边距，避免与返回按钮重叠
-				// #endif
+				box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 			}
 
 			.nickname {
@@ -732,13 +692,18 @@
 				background-color: #4361ee;
 				color: #fff;
 				font-size: 28rpx;
-				padding: 12rpx 30rpx;
+				padding: 12rpx 40rpx;
 				border-radius: 30rpx;
+				transition: all 0.3s ease;
 
 				&.following {
-					background-color: #f0f0f0;
+					background-color: #f5f5f5;
 					color: #666;
 					border: 1rpx solid #ddd;
+				}
+
+				&:active {
+					transform: scale(0.95);
 				}
 			}
 		}
@@ -756,6 +721,8 @@
 			display: flex;
 			flex-direction: column;
 			align-items: center;
+			padding: 10rpx 30rpx;
+			position: relative;
 
 			.stat-num {
 				font-size: 32rpx;
@@ -771,7 +738,7 @@
 		}
 
 		.stat-divider {
-			color: #ddd;
+			color: #eee;
 			font-size: 24rpx;
 			align-self: center;
 		}
@@ -781,20 +748,21 @@
 	.user-bio {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-start;
 		padding: 20rpx 30rpx;
 		background-color: #fff;
 		margin-top: 2rpx;
 
 		.bio-content {
 			display: flex;
-			align-items: center;
+			align-items: flex-start;
 			flex: 1;
 
 			.bio-text {
 				font-size: 26rpx;
 				color: #666;
 				margin-left: 10rpx;
+				line-height: 1.6;
 				word-break: break-all;
 				display: -webkit-box;
 				-webkit-line-clamp: 2;
@@ -810,13 +778,15 @@
 		padding: 10rpx 30rpx 5rpx;
 		background-color: #fff;
 		margin-top: 2rpx;
+		position: relative;
 
 		.nav-item {
-			padding: 10rpx 24rpx;
+			padding: 15rpx 24rpx;
 			margin: 0 15rpx;
 			font-size: 30rpx;
 			color: #666;
 			position: relative;
+			transition: all 0.3s ease;
 
 			&.active {
 				color: #4361ee;
@@ -825,7 +795,7 @@
 				&::after {
 					content: '';
 					position: absolute;
-					bottom: -6rpx;
+					bottom: -2rpx;
 					left: 50%;
 					transform: translateX(-50%);
 					width: 30rpx;
@@ -834,121 +804,131 @@
 					border-radius: 3rpx;
 				}
 			}
+
+			&:active {
+				opacity: 0.7;
+			}
 		}
 	}
 
 	// 内容区域
 	.content-area {
-		padding: 0 20rpx;
+		padding: 20rpx;
 		flex: 1;
-		margin-top: 20rpx;
 
 		.article-list {
 			height: calc(100vh - 445rpx);
 
-			// 自定义下拉刷新样式
-			&::before {
-				content: '';
-				width: 100%;
-				height: 80rpx;
-				position: absolute;
-				top: 0;
-				left: 0;
-				background-color: transparent;
-			}
-		}
-
-		// 文章卡片
-		.article-card {
-			background-color: #fff;
-			border-radius: 20rpx;
-			padding: 30rpx;
-			margin-bottom: 20rpx;
-			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-
-			// 用户信息
-			.user-info {
-				display: flex;
-				align-items: center;
+			// 文章卡片
+			.article-card {
+				background-color: #fff;
+				border-radius: 20rpx;
+				padding: 30rpx;
 				margin-bottom: 20rpx;
+				box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+				transition: transform 0.3s ease;
 
-				.avatar {
-					width: 80rpx;
-					height: 80rpx;
-					border-radius: 50%;
-					margin-right: 20rpx;
-					background-color: #eee;
+				&:active {
+					transform: scale(0.98);
 				}
 
-				.nickname {
-					flex: 1;
-					font-size: 28rpx;
-					color: #333;
-					font-weight: 500;
-				}
-			}
-
-			// 文章内容
-			.article-content {
-				margin-bottom: 20rpx;
-
-				.article-title {
-					font-size: 32rpx;
-					font-weight: bold;
-					color: #333;
-					margin-bottom: 10rpx;
-					display: block;
-				}
-
-				.article-summary {
-					font-size: 28rpx;
-					color: #666;
-					margin-bottom: 20rpx;
-					line-height: 1.5;
-					display: block;
-				}
-
-				// 文章图片
-				.article-image {
-					width: 100%;
-					height: 300rpx;
-					border-radius: 10rpx;
-					overflow: hidden;
-					margin-bottom: 20rpx;
-
-					.single-image {
-						width: 100%;
-						height: 100%;
-						background-color: #eee;
-					}
-				}
-			}
-
-			// 文章操作按钮
-			.article-actions {
-				display: flex;
-				justify-content: space-around;
-				border-top: 2rpx solid #f0f0f0;
-				padding-top: 20rpx;
-
-				.action-item {
+				// 用户信息
+				.user-info {
 					display: flex;
 					align-items: center;
+					margin-bottom: 20rpx;
 
-					.uni-icons {
-						margin-right: 10rpx;
+					.avatar {
+						width: 80rpx;
+						height: 80rpx;
+						border-radius: 50%;
+						margin-right: 20rpx;
+						background-color: #eee;
+						box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 					}
 
-					text {
-						font-size: 24rpx;
-						color: #666;
+					.nickname {
+						flex: 1;
+						font-size: 28rpx;
+						color: #333;
+						font-weight: 500;
+					}
+				}
 
-						&.liked {
-							color: #ff6b6b;
+				// 文章内容
+				.article-content {
+					margin-bottom: 20rpx;
+
+					.article-title {
+						font-size: 32rpx;
+						font-weight: bold;
+						color: #333;
+						margin-bottom: 10rpx;
+						display: block;
+					}
+
+					.article-summary {
+						font-size: 28rpx;
+						color: #666;
+						margin-bottom: 20rpx;
+						line-height: 1.6;
+						display: block;
+					}
+
+					// 文章图片
+					.article-image {
+						width: 100%;
+						height: 300rpx;
+						border-radius: 12rpx;
+						overflow: hidden;
+						margin-bottom: 20rpx;
+						background-color: #f5f5f5;
+
+						.single-image {
+							width: 100%;
+							height: 100%;
+							object-fit: cover;
+							transition: transform 0.3s ease;
+
+							&:hover {
+								transform: scale(1.02);
+							}
+						}
+					}
+				}
+
+				// 文章操作按钮
+				.article-actions {
+					display: flex;
+					justify-content: space-around;
+					border-top: 1rpx solid #f0f0f0;
+					padding-top: 20rpx;
+
+					.action-item {
+						display: flex;
+						align-items: center;
+						padding: 10rpx 20rpx;
+						transition: all 0.3s ease;
+
+						.uni-icons {
+							margin-right: 10rpx;
 						}
 
-						&.collected {
-							color: #ffc107;
+						text {
+							font-size: 24rpx;
+							color: #666;
+
+							&.liked {
+								color: #ff6b6b;
+							}
+
+							&.collected {
+								color: #ffc107;
+							}
+						}
+
+						&:active {
+							opacity: 0.7;
 						}
 					}
 				}
@@ -975,8 +955,8 @@
 			text-align: center;
 			font-size: 24rpx;
 			color: #999;
-			margin: 20rpx 0;
 			padding: 20rpx 0;
+			margin: 20rpx 0;
 		}
 	}
 
@@ -986,7 +966,7 @@
 
 		&-inner {
 			color: #fff;
-			height: 80rpx !important; // 调整刷新区域高度
+			height: 80rpx !important;
 		}
 	}
 
