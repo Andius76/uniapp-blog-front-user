@@ -25,7 +25,7 @@ function getBaseUrl() {
 	// #endif
 
 	// #ifdef H5 || MP-WEIXIN
-	// H5和微信小程序可以使用localhost
+	// H5和微信小程序统一使用8080端口，不使用Vite的5173端口
 	return 'http://localhost:8080';
 	// #endif
 
@@ -197,6 +197,7 @@ function request(options) {
 
 // 请求方法的快捷调用
 const http = {
+	config, // 导出配置对象，方便外部访问
 	get(url, params, options = {}) {
 		// 处理URL参数
 		if (params) {
@@ -239,7 +240,9 @@ const http = {
 			data,
 			...options
 		});
-	}
+	},
+	// 导出获取基础URL方法，方便其他模块直接使用
+	getBaseUrl
 };
 
 export default http;

@@ -32,8 +32,8 @@
 
 			<!-- 正文编辑区域 - 动态高度 -->
 			<view class="content-wrapper">
-				<!-- 富文本编辑器区域 -->
-				<view class="rich-editor-container">
+			<!-- 富文本编辑器区域 -->
+			<view class="rich-editor-container">
 					<!-- 富文本编辑器 -->
 					<editor id="editor" class="rich-editor" 
 						:placeholder="'请输入正文'" 
@@ -49,8 +49,8 @@
 					<view class="word-count">
 						<text>{{ articleData.wordCount }} 字</text>
 					</view>
+					</view>
 				</view>
-			</view>
 
 			<!-- 文章信息区域 - 会被挤压 -->
 			<view class="article-info-area">
@@ -78,11 +78,11 @@
 							<image :src="articleData.coverImage" mode="aspectFill" class="cover-image"></image>
 							<view class="image-delete" @click="removeCoverImage">
 								<uni-icons type="close" size="16" color="#fff"></uni-icons>
+								</view>
+								</view>
 							</view>
 						</view>
 					</view>
-				</view>
-			</view>
 		</scroll-view>
 
 		<!-- 底部工具栏 -->
@@ -131,8 +131,8 @@
 					<!-- 文章标签 -->
 					<view class="preview-tags" v-if="articleData.tags.length > 0">
 						<view v-for="(tag, index) in articleData.tags" :key="index" class="preview-tag">
-							<text>{{ tag }}</text>
-						</view>
+					<text>{{ tag }}</text>
+				</view>
 					</view>
 					
 					<!-- 文章封面 -->
@@ -145,8 +145,8 @@
 						<view class="empty-cover-placeholder">
 							<uni-icons type="image" size="36" color="#ccc"></uni-icons>
 							<text>暂无封面</text>
-						</view>
-					</view>
+			</view>
+		</view>
 
 					<!-- 文章内容 -->
 					<view class="preview-content">
@@ -181,48 +181,48 @@
 		<!-- 标签选择弹窗 -->
 		<uni-popup ref="tagPopup" type="bottom" background-color="transparent">
 			<view class="tag-popup-container">
-				<view class="tag-popup-content">
-					<view class="tag-popup-header">
-						<text class="tag-popup-title">添加标签</text>
-						<view class="tag-popup-close" @click="closeTagPopup">
-							<uni-icons type="close" size="20" color="#666"></uni-icons>
-						</view>
+			<view class="tag-popup-content">
+				<view class="tag-popup-header">
+					<text class="tag-popup-title">添加标签</text>
+					<view class="tag-popup-close" @click="closeTagPopup">
+						<uni-icons type="close" size="20" color="#666"></uni-icons>
 					</view>
+				</view>
 
-					<!-- 自定义标签输入区域 -->
-					<view class="custom-tag-input">
-						<input type="text" v-model="customTagInput" placeholder="输入自定义标签" class="tag-input-field"
+				<!-- 自定义标签输入区域 -->
+				<view class="custom-tag-input">
+					<input type="text" v-model="customTagInput" placeholder="输入自定义标签" class="tag-input-field"
 							@confirm="addCustomTag" maxlength="10" />
-						<button class="add-tag-btn" @click="addCustomTag">添加</button>
-					</view>
+					<button class="add-tag-btn" @click="addCustomTag">添加</button>
+				</view>
 
-					<!-- 已选标签展示 -->
-					<view v-if="selectedTags.length > 0" class="selected-tags-section">
+				<!-- 已选标签展示 -->
+				<view v-if="selectedTags.length > 0" class="selected-tags-section">
 						<text class="section-title">已选标签 ({{ selectedTags.length }}/5)</text>
-						<view class="tag-list">
-							<view v-for="(tag, index) in selectedTags" :key="'selected-'+index"
-								class="tag-item tag-selected">
-								<text>{{ tag }}</text>
+					<view class="tag-list">
+						<view v-for="(tag, index) in selectedTags" :key="'selected-'+index"
+							class="tag-item tag-selected">
+							<text>{{ tag }}</text>
 								<view class="tag-delete" @click="removeSelectedTag(tag)">
-									<uni-icons type="close" size="12" color="#fff"></uni-icons>
-								</view>
+								<uni-icons type="close" size="12" color="#fff"></uni-icons>
 							</view>
 						</view>
 					</view>
+				</view>
 
-					<!-- 推荐标签区域 -->
-					<view class="recommended-tags-section">
-						<text class="section-title">推荐标签</text>
-						<view class="tag-list">
-							<view v-for="(tag, index) in availableTags" :key="'recommend-'+index" class="tag-item"
-								:class="{ 'tag-selected': selectedTags.includes(tag) }" @click="toggleTag(tag)">
-								<text>{{ tag }}</text>
-							</view>
+				<!-- 推荐标签区域 -->
+				<view class="recommended-tags-section">
+					<text class="section-title">推荐标签</text>
+					<view class="tag-list">
+						<view v-for="(tag, index) in availableTags" :key="'recommend-'+index" class="tag-item"
+							:class="{ 'tag-selected': selectedTags.includes(tag) }" @click="toggleTag(tag)">
+							<text>{{ tag }}</text>
 						</view>
 					</view>
+				</view>
 
-					<view class="tag-popup-footer">
-						<button class="tag-confirm-btn" @click="confirmTagSelection">确认</button>
+				<view class="tag-popup-footer">
+					<button class="tag-confirm-btn" @click="confirmTagSelection">确认</button>
 					</view>
 					
 					<!-- 底部安全区域，防止内容被工具栏遮挡 -->
@@ -692,7 +692,7 @@
 		
 		// 延迟打开弹窗，确保滚动完成
 		setTimeout(() => {
-			tagPopup.value.open();
+		tagPopup.value.open();
 		}, 300);
 	};
 
@@ -796,84 +796,133 @@
 				// 处理选中的图片
 				const tempFilePaths = res.tempFilePaths;
 				
-				// 显示加载中提示
-				uni.showLoading({
-					title: '处理图片中...'
-				});
+				// 限制总图片数量
+				if ((articleData.images.length + tempFilePaths.length) > 20) {
+					uni.showToast({
+						title: '图片数量超过限制（最多20张）',
+						icon: 'none'
+					});
+					return;
+				}
 				
-				// 模拟上传图片到服务器
-				setTimeout(() => {
-					// 添加到图片数组
-					articleData.images = [...articleData.images, ...tempFilePaths];
-					
-					// 逐个插入图片到编辑器
-					tempFilePaths.forEach((path, index) => {
-						// 为每个图片添加唯一标识
-						const imageId = `img_${Date.now()}_${index}`;
-						
-						// 获取图片信息
-						uni.getImageInfo({
-							src: path,
-							success: (imageInfo) => {
-								// 计算适当尺寸
-								const maxWidth = uni.getSystemInfoSync().windowWidth * 0.8;
-								const ratio = imageInfo.width / imageInfo.height;
-								const width = Math.min(maxWidth, imageInfo.width);
-								const height = width / ratio;
-								
-								// 插入图片到编辑器，并添加删除功能的标记
-								editorCtx.insertImage({
-									src: path,
-									width: width + 'px',
-									height: height + 'px',
-									alt: `文章图片${index+1}`,
-									extClass: 'article-content-image',
-									data: {
-										imageId: imageId
-									},
-									success: () => {
-										// 生成带有删除按钮的HTML
-										const deleteButton = `
-											<div class="image-delete-wrapper" data-image-id="${imageId}" data-image-path="${path}" style="position:relative;display:inline-block;margin:10px 0;">
-												<img src="${path}" style="max-width:100%;height:auto;border-radius:4px;" />
-												<div class="image-delete-btn" data-image-id="${imageId}" data-image-path="${path}" style="position:absolute;top:8px;right:8px;width:24px;height:24px;background-color:rgba(0,0,0,0.5);border-radius:12px;display:flex;justify-content:center;align-items:center;color:white;font-size:16px;cursor:pointer;">×</div>
-											</div>
-										`;
-										
-										// 如果是最后一张图片，隐藏加载提示
-										if (index === tempFilePaths.length - 1) {
-											uni.hideLoading();
-											uni.showToast({
-												title: '图片添加成功',
-												icon: 'success'
-											});
-										}
-									},
-									fail: (err) => {
-										console.error('插入图片失败:', err);
-										if (index === tempFilePaths.length - 1) {
-											uni.hideLoading();
-										}
-									}
-								});
+				// 检查图片大小
+				const checkImageSize = (path) => {
+					return new Promise((resolve, reject) => {
+						uni.getFileInfo({
+							filePath: path,
+							success: (res) => {
+								// 检查图片大小是否超过5MB
+								if (res.size > 5 * 1024 * 1024) {
+									reject(new Error('图片大小不能超过5MB'));
+								} else {
+									resolve();
+								}
 							},
 							fail: () => {
-								// 获取图片信息失败，使用默认尺寸
-								editorCtx.insertImage({
-									src: path,
-									width: '80%',
-									alt: `文章图片${index+1}`,
-									extClass: 'article-content-image'
-								});
-								
-								// 如果是最后一张图片，隐藏加载提示
-								if (index === tempFilePaths.length - 1) {
-									uni.hideLoading();
-								}
+								// 无法获取文件信息，假设图片大小合适
+								resolve();
 							}
 						});
 					});
-				}, 500);
+				};
+				
+				// 检查所有图片大小
+				const sizePromises = tempFilePaths.map(path => checkImageSize(path));
+				
+				Promise.all(sizePromises)
+					.then(() => {
+						// 所有图片大小都符合要求
+						// 显示加载中提示
+						uni.showLoading({
+							title: '处理图片中...',
+							mask: true
+						});
+						
+						// 逐个插入图片到编辑器
+						tempFilePaths.forEach((path, index) => {
+							// 为每个图片添加唯一标识
+							const imageId = `img_${Date.now()}_${index}`;
+							
+							// 获取图片信息
+							uni.getImageInfo({
+								src: path,
+								success: (imageInfo) => {
+									// 计算适当尺寸
+									const maxWidth = uni.getSystemInfoSync().windowWidth * 0.8;
+									const ratio = imageInfo.width / imageInfo.height;
+									const width = Math.min(maxWidth, imageInfo.width);
+									const height = width / ratio;
+									
+									// 插入图片到编辑器
+									editorCtx.insertImage({
+										src: path,
+										width: '100%', // 确保图片宽度固定为100%
+										height: 'auto', // 高度自适应
+										alt: `文章图片${index+1}`,
+										extClass: 'article-content-image',
+										data: {
+											imageId: imageId
+										},
+										success: () => {
+											// 如果是最后一张图片，隐藏加载提示
+											if (index === tempFilePaths.length - 1) {
+												uni.hideLoading();
+												uni.showToast({
+													title: '图片添加成功',
+													icon: 'success'
+												});
+												
+												// 调整编辑器高度
+												nextTick(() => {
+													adjustEditorHeight();
+												});
+											}
+										},
+										fail: (err) => {
+											console.error('插入图片失败:', err);
+											if (index === tempFilePaths.length - 1) {
+												uni.hideLoading();
+												uni.showToast({
+													title: '部分图片插入失败',
+													icon: 'none'
+												});
+											}
+										}
+									});
+								},
+								fail: () => {
+									// 获取图片信息失败，使用默认尺寸
+									editorCtx.insertImage({
+										src: path,
+										width: '100%',
+										height: 'auto',
+										alt: `文章图片${index+1}`,
+										extClass: 'article-content-image'
+									});
+									
+									// 如果是最后一张图片，隐藏加载提示
+									if (index === tempFilePaths.length - 1) {
+										uni.hideLoading();
+										uni.showToast({
+											title: '图片添加成功',
+											icon: 'success'
+										});
+										
+										// 调整编辑器高度
+										nextTick(() => {
+											adjustEditorHeight();
+										});
+									}
+								}
+							});
+						});
+					})
+					.catch(error => {
+						uni.showToast({
+							title: error.message,
+							icon: 'none'
+						});
+					});
 			}
 		});
 	};
@@ -931,21 +980,83 @@
 			success: (res) => {
 				const tempFilePath = res.tempFilePaths[0];
 				
-				// 显示加载中提示
-				uni.showLoading({
-					title: '处理封面图片...'
+				// 检查图片大小
+				uni.getFileInfo({
+					filePath: tempFilePath,
+					success: (fileInfo) => {
+						// 限制图片大小为5MB
+						if (fileInfo.size > 5 * 1024 * 1024) {
+							uni.showToast({
+								title: '封面图片不能超过5MB',
+								icon: 'none'
+							});
+							return;
+						}
+						
+						// 显示加载中提示
+						uni.showLoading({
+							title: '处理封面图片...',
+							mask: true
+						});
+						
+						// 获取图片信息
+						uni.getImageInfo({
+							src: tempFilePath,
+							success: (imageInfo) => {
+								// 检查图片比例
+								const ratio = imageInfo.width / imageInfo.height;
+								
+								// 设置封面图片
+								articleData.coverImage = tempFilePath;
+								uni.hideLoading();
+								
+								uni.showToast({
+									title: '封面设置成功',
+									icon: 'success'
+								});
+								
+								// 如果图片比例不接近16:9，显示提示
+								if (Math.abs(ratio - 16/9) > 0.2) {
+									setTimeout(() => {
+										uni.showToast({
+											title: '建议使用16:9比例的图片作为封面',
+											icon: 'none',
+											duration: 2000
+										});
+									}, 1500);
+								}
+							},
+							fail: () => {
+								// 获取图片信息失败，仍然设置封面
+								articleData.coverImage = tempFilePath;
+								uni.hideLoading();
+								
+								uni.showToast({
+									title: '封面设置成功',
+									icon: 'success'
+								});
+							}
+						});
+					},
+					fail: () => {
+						// 无法获取文件信息，假设图片大小合适
+						// 显示加载中提示
+						uni.showLoading({
+							title: '处理封面图片...'
+						});
+						
+						// 设置封面图片
+						setTimeout(() => {
+							uni.hideLoading();
+							articleData.coverImage = tempFilePath;
+							
+							uni.showToast({
+								title: '封面设置成功',
+								icon: 'success'
+							});
+						}, 500);
+					}
 				});
-				
-				// 设置封面图片
-				setTimeout(() => {
-					uni.hideLoading();
-					articleData.coverImage = tempFilePath;
-					
-					uni.showToast({
-						title: '封面设置成功',
-						icon: 'success'
-					});
-				}, 500);
 			}
 		});
 	};
@@ -1066,66 +1177,144 @@
 			return;
 		}
 		
+		// 验证内容长度
+		if (articleData.content.length < 10) {
+			uni.showToast({
+				title: '文章内容太短，至少10个字符',
+				icon: 'none'
+			});
+			return;
+		}
+		
 		// 防止重复提交
 		if (isLoading.value) {
 			return;
 		}
 		
+		// 显示确认对话框
+		uni.showModal({
+			title: mode.value === 'edit' ? '更新文章' : '发布文章',
+			content: mode.value === 'edit' ? '确认更新这篇文章吗？' : '确认发布这篇文章吗？',
+			success: (res) => {
+				if (res.confirm) {
+					// 用户点击确认，开始处理图片和发布文章
+					processImagesAndPublish();
+				}
+			}
+		});
+	};
+
+	// 处理图片并发布文章
+	const processImagesAndPublish = () => {
 		// 设置加载状态
 		isLoading.value = true;
-
-		// 根据模式显示不同的加载提示
-		uni.showLoading({
-			title: mode.value === 'edit' ? '更新中...' : '发布中...'
-		});
-
-		// 根据模式构建不同的请求数据
-		const requestData = {
-			title: articleData.title,
-			content: articleData.content,
-			htmlContent: articleData.htmlContent,
-			tags: articleData.tags,
-			images: articleData.images,
-			coverImage: articleData.coverImage,
-			wordCount: articleData.wordCount
-		};
 		
-		// 如果是编辑模式，添加文章ID
-		if (mode.value === 'edit' && articleData.id) {
-			requestData.id = articleData.id;
+		// 显示加载提示
+		uni.showLoading({
+			title: '正在处理图片...',
+			mask: true
+		});
+		
+		// 提取HTML中的所有图片路径
+		const imageRegex = /<img[^>]*src=["']([^"']+)["'][^>]*>/g;
+		let match;
+		const extractedImages = [];
+		
+		// 复制一份HTML内容用于提取图片
+		let htmlContent = articleData.htmlContent;
+		
+		// 提取图片路径
+		while ((match = imageRegex.exec(htmlContent)) !== null) {
+			// 检查是否为本地路径（需要上传）
+			if (match[1] && !match[1].startsWith('http') && !extractedImages.includes(match[1])) {
+				extractedImages.push(match[1]);
+			}
 		}
-
-		// 根据模式调用不同的API
-		const apiCall = mode.value === 'edit' 
-			? updateArticle(requestData) 
-			: publishArticleApi(requestData);
+		
+		// 如果封面图片是本地路径且不在已提取的图片中，也添加到上传列表
+		if (articleData.coverImage && !articleData.coverImage.startsWith('http') && 
+			!extractedImages.includes(articleData.coverImage)) {
+			extractedImages.push(articleData.coverImage);
+		}
+		
+		// 更新文章数据中的图片数组
+		articleData.images = extractedImages;
+		
+		// 检查是否有图片需要处理
+		if (extractedImages.length === 0) {
+			// 没有图片需要处理，直接提交文章
+			submitArticle();
+			return;
+		}
+		
+		try {
+			// 有图片需要处理，使用API中的方法处理并发布
+			const requestData = {
+				title: articleData.title,
+				content: articleData.content,
+				htmlContent: articleData.htmlContent,
+				tags: articleData.tags,
+				images: articleData.images,
+				coverImage: articleData.coverImage,
+				wordCount: articleData.wordCount
+			};
 			
-		apiCall.then(res => {
-			uni.hideLoading();
-			isLoading.value = false;
+			// 如果是编辑模式，添加文章ID
+			if (mode.value === 'edit' && articleData.id) {
+				requestData.id = articleData.id;
+			}
 			
-			uni.showToast({
-				title: mode.value === 'edit' ? '更新成功' : '发布成功',
-				icon: 'success'
+			// 调用API，内部会处理图片上传和文章发布
+			const apiCall = mode.value === 'edit' 
+				? updateArticle(requestData) 
+				: publishArticleApi(requestData);
+				
+			apiCall.then(res => {
+				uni.hideLoading();
+				isLoading.value = false;
+				
+				uni.showToast({
+					title: mode.value === 'edit' ? '更新成功' : '发布成功',
+					icon: 'success',
+					duration: 2000
+				});
+				
+				// 发布成功后清空内容并标记为已确认离开
+				clearAndRefresh();
+				
+				// 如果是新文章且返回了ID，跳转到文章详情页
+				if (mode.value === 'new' && res.data && res.data.id) {
+					setTimeout(() => {
+						uni.redirectTo({
+							url: `/pages/article-detail/article-detail?id=${res.data.id}`
+						});
+					}, 1500);
+				} else {
+					// 编辑模式或没有返回ID，返回上一页
+					setTimeout(() => {
+						uni.navigateBack();
+					}, 1500);
+				}
+			}).catch(err => {
+				uni.hideLoading();
+				isLoading.value = false;
+				
+				console.error('发布失败', err);
+				uni.showToast({
+					title: err.message || '发布失败，请重试',
+					icon: 'none'
+				});
 			});
-
-			// 发布成功后清空内容并标记为已确认离开
-			clearAndRefresh();
-
-			// 延迟返回上一页面
-			setTimeout(() => {
-				uni.navigateBack();
-			}, 1500);
-		}).catch(err => {
+		} catch (error) {
 			uni.hideLoading();
 			isLoading.value = false;
 			
-			console.error('发布失败', err);
+			console.error('处理文章失败', error);
 			uni.showToast({
-				title: err.message || '发布失败，请重试',
+				title: error.message || '发布失败，请重试',
 				icon: 'none'
 			});
-		});
+		}
 	};
 
 	// =================== 预览模式相关方法 =================== //
@@ -1134,7 +1323,7 @@
 		// 切换到预览模式前，确保获取最新内容
 		if (!isPreviewMode.value) {
 			// 获取当前编辑器内容
-			if (editorCtx) {
+					if (editorCtx) {
 				editorCtx.getContents({
 					success: (res) => {
 						// 更新文章数据
@@ -1561,12 +1750,12 @@
 			background-color: rgba(255,255,255,0.8);
 			padding: 4rpx 10rpx;
 			font-size: 24rpx;
-			color: #666;
+		color: #666;
 			border-radius: 6rpx;
 			z-index: 2;
 		}
 	}
-	
+
 	.cover-image {
 		width: 100%;
 		height: 100%;
@@ -1827,7 +2016,7 @@
 		display: flex;
 		justify-content: center;
 	}
-	
+
 	.preview-article-wrapper {
 		width: 100%;
 		display: flex;
@@ -1913,12 +2102,12 @@
 			background-color: rgba(255,255,255,0.8);
 			padding: 4rpx 10rpx;
 			font-size: 24rpx;
-			color: #666;
+		color: #666;
 			border-radius: 6rpx;
 			z-index: 2;
 		}
 	}
-	
+
 	.preview-cover-empty {
 		height: 200rpx;
 		display: flex;
@@ -1927,13 +2116,13 @@
 		background-color: #f9f9f9;
 		
 		.empty-cover-placeholder {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 			color: #ccc;
-			
+
 			text {
-				margin-top: 10rpx;
+		margin-top: 10rpx;
 				font-size: 24rpx;
 			}
 		}

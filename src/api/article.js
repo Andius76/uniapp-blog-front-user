@@ -16,8 +16,8 @@
 
 import http from '@/utils/request';
 
-// 获取服务器基础URL，用于图片上传
-const baseUrl = http.config ? http.config.baseUrl : '';
+// 获取服务器基础URL，使用request.js中导出的方法确保一致性
+const baseUrl = http.config.baseUrl;
 
 /**
  * 发布文章
@@ -75,7 +75,8 @@ export function publishArticle(articleData) {
         content: articleData.content,
         htmlContent: htmlContent,
         tags: articleData.tags,
-        coverImage: coverImageUrl // 使用专门的封面图片
+        coverImage: coverImageUrl, // 使用专门的封面图片
+        wordCount: articleData.wordCount || articleData.content.length // 添加字数统计
       };
       
       // 发送发布请求
@@ -88,7 +89,8 @@ export function publishArticle(articleData) {
       content: articleData.content,
       htmlContent: articleData.htmlContent,
       tags: articleData.tags,
-      coverImage: null
+      coverImage: null,
+      wordCount: articleData.wordCount || articleData.content.length
     });
   }
 }
@@ -153,7 +155,8 @@ export function updateArticle(articleData) {
         content: articleData.content,
         htmlContent: htmlContent,
         tags: articleData.tags,
-        coverImage: coverImageUrl
+        coverImage: coverImageUrl,
+        wordCount: articleData.wordCount || articleData.content.length
       };
       
       // 发送更新请求
@@ -168,7 +171,8 @@ export function updateArticle(articleData) {
     content: articleData.content,
     htmlContent: articleData.htmlContent,
     tags: articleData.tags,
-    coverImage: articleData.coverImage
+    coverImage: articleData.coverImage,
+    wordCount: articleData.wordCount || articleData.content.length
   });
 }
 
@@ -191,12 +195,14 @@ function uploadArticleImages(imagePaths) {
         src: path,
         success: (imageInfo) => {
           uni.uploadFile({
-            url: `${baseUrl}/api/article/upload-image`,
+            url: `${baseUrl}/api/article/upload-image`, // 使用统一的baseUrl
             filePath: path,
             name: 'image',
             formData: {
-              // 传递图片类型，区分封面图和内容图
-              type: path === imagePaths[imagePaths.length - 1] && imagePaths[imagePaths.length - 1] === imagePaths.find(p => p === path) ? 'cover' : 'content',
+              // 传递图片类型，判断是否为封面图
+              type: path === imagePaths[imagePaths.length - 1] && 
+                    imagePaths[imagePaths.length - 1] === imagePaths.find(p => p === path) ? 
+                    'cover' : 'content',
               width: imageInfo.width,
               height: imageInfo.height
             },
@@ -205,29 +211,40 @@ function uploadArticleImages(imagePaths) {
             },
             success: (res) => {
               try {
-                const data = JSON.parse(res.data);
+                // 处理返回的数据
+                let data;
+                if (typeof res.data === 'string') {
+                  data = JSON.parse(res.data);
+                } else {
+                  data = res.data;
+                }
+                
                 if (data.code === 200 && data.data && data.data.imageUrl) {
                   resolve(data.data.imageUrl);
                 } else {
+                  console.error('上传图片失败', data);
                   reject(new Error(data.message || '上传图片失败'));
                 }
               } catch (e) {
+                console.error('解析上传结果失败', e, res.data);
                 reject(new Error('解析上传结果失败'));
               }
             },
             fail: (err) => {
+              console.error('上传请求失败', err);
               reject(err);
             }
           });
         },
-        fail: () => {
+        fail: (err) => {
+          console.error('获取图片信息失败', err);
           // 获取图片信息失败时，仍尝试上传
           uni.uploadFile({
             url: `${baseUrl}/api/article/upload-image`,
             filePath: path,
             name: 'image',
             formData: {
-              type: path === imagePaths[imagePaths.length - 1] && imagePaths[imagePaths.length - 1] === imagePaths.find(p => p === path) ? 'cover' : 'content'
+              type: 'content' // 默认为内容图片
             },
             header: {
               Authorization: `Bearer ${uni.getStorageSync('token') || ''}`
@@ -254,7 +271,15 @@ function uploadArticleImages(imagePaths) {
   });
   
   // 并行上传所有图片
-  return Promise.all(uploadTasks);
+  return Promise.all(uploadTasks)
+    .catch(err => {
+      console.error('图片上传过程中出错', err);
+      uni.showToast({
+        title: '部分图片上传失败',
+        icon: 'none'
+      });
+      return Promise.reject(err);
+    });
 }
 
 /**
