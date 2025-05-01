@@ -21,7 +21,7 @@
 		<!-- 关注列表 -->
 		<scroll-view scroll-y class="follow-list" @scrolltolower="loadMore" refresher-enabled
 			:refresher-triggered="isRefreshing" @refresherrefresh="refreshList" refresher-background="#f5f5f5"
-			:refresher-threshold="100">
+			:refresher-threshold="100" :scroll-top="scrollTop" scroll-with-animation>
 			<!-- 列表内容 -->
 			<view v-if="followList.length > 0">
 				<view v-for="(user, index) in followList" :key="index" class="follow-item">
@@ -208,21 +208,27 @@
 			}).finally(() => {
 				isLoading.value = false;
 				
-				// 如果是刷新状态，延迟结束刷新状态，让用户有足够时间感知刷新过程
+				// 如果是刷新状态，立即结束刷新状态并滚动到顶部
 				if (isRefreshing.value) {
 					// 清除之前的定时器
 					if (refreshTimeoutId) {
 						clearTimeout(refreshTimeoutId);
 					}
 					
-					// 设置新的定时器
-					refreshTimeoutId = setTimeout(() => {
-						isRefreshing.value = false;
-						refreshTimeoutId = null;
-					}, 600); // 延迟600毫秒结束刷新状态
+					// 立即结束刷新状态
+					isRefreshing.value = false;
+					refreshTimeoutId = null;
+					
+					// 滚动到顶部
+					setTimeout(() => {
+						uni.pageScrollTo({
+							scrollTop: 0,
+							duration: 100
+						});
+					}, 50);
 				}
 			});
-		}, 800); // 添加800毫秒的模拟延迟
+		}, 300); // 减少模拟延迟时间，提高响应速度
 	};
 
 	/**
