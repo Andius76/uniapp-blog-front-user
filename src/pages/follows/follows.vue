@@ -72,6 +72,7 @@
 	} from 'vue';
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	import http from '@/utils/request.js'; // 导入封装的请求工具
+	import { followUser, getUserFollows } from '@/api/user.js'; // 导入用户API函数
 
 	// 基础URL配置
 	const baseURL = 'http://localhost:8080';
@@ -129,7 +130,7 @@
 		isLoading.value = true;
 
 		// 调用后端API获取关注列表
-		http.get('/api/user/follows', {
+		getUserFollows({
 			page: currentPage,
 			pageSize: pageSize,
 			keyword: searchKeyword.value.trim() // 搜索前去除前后空格
@@ -337,7 +338,7 @@
 						uni.showLoading({ title: '取消关注中...' });
 						
 						// 调用取消关注API
-						http.delete(`/api/user/follow/${user.id}`).then(res => {
+						followUser(user.id, false).then(res => {
 							if (res.code !== 200) {
 								throw new Error(res.message || '取消关注失败');
 							}
@@ -348,6 +349,15 @@
 								title: '已取消关注',
 								icon: 'none'
 							});
+							
+							// 从列表中移除该用户（改善用户体验）
+							setTimeout(() => {
+								followList.value = followList.value.filter(item => item.id !== user.id);
+								if (followList.value.length === 0 && !isSearching.value) {
+									// 刷新列表显示空状态
+									refreshList();
+								}
+							}, 500);
 						}).catch(err => {
 							console.error('取消关注失败', err);
 							uni.showToast({
@@ -365,7 +375,7 @@
 			uni.showLoading({ title: '关注中...' });
 			
 			// 调用关注API
-			http.post(`/api/user/follow/${user.id}`).then(res => {
+			followUser(user.id, true).then(res => {
 				if (res.code !== 200) {
 					// 处理409已关注的情况，不作为错误处理
 					if (res.code === 409) {

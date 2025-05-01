@@ -261,6 +261,8 @@
 	let originalGestureConfig = null;
 	// 存储定时器ID
 	let lockTimeoutId = null;
+	// 存储刷新定时器ID
+	let refreshTimeoutId = null;
 
 	// 使用reactive统一管理数据
 	const data = reactive({
@@ -1172,6 +1174,12 @@
 			lockTimeoutId = null;
 		}
 		
+		// 清理刷新定时器
+		if (refreshTimeoutId) {
+			clearTimeout(refreshTimeoutId);
+			refreshTimeoutId = null;
+		}
+		
 		// 恢复原始手势设置
 		restoreBackGesture();
 	});
@@ -1182,8 +1190,74 @@
 		if (data.showUserSettings === false && isBackGestureLocked.value) {
 			console.log('页面显示，保持手势锁定');
 		}
+
+		// 每次页面显示时刷新用户信息，确保关注数量等数据最新
+		refreshUserInfo();
 	});
-	
+
+	/**
+	 * 刷新用户信息
+	 * 用于从其他页面返回时更新关注数量等数据
+	 * 使用节流控制，避免短时间内多次刷新
+	 */
+	const refreshUserInfo = async () => {
+		// 如果已经有刷新请求在进行中，取消该请求
+		if (refreshTimeoutId) {
+			clearTimeout(refreshTimeoutId);
+		}
+		
+		// 设置300ms的节流延迟，确保不会在页面切换时频繁请求
+		refreshTimeoutId = setTimeout(async () => {
+			try {
+				// 无需显示loading，静默刷新
+				const response = await getUserInfo();
+				
+				if (response.code === 200) {
+					// 处理空的个人简介，使用默认值
+					if (!response.data.bio) {
+						response.data.bio = DEFAULT_BIO;
+					}
+					
+					// 处理头像URL
+					const processedUserInfo = processUserInfo(response.data);
+					
+					// 适配后端返回的字段名称
+					const userData = {
+						...processedUserInfo,
+						// 后端返回fansCount，前端使用followerCount
+						followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
+						// 后端没有收藏数，默认为0
+						collectionCount: processedUserInfo.collectionCount || 0,
+					};
+					
+					// 检查关注数是否发生变化，有变化再更新UI
+					const hasFollowCountChanged = data.userInfo.followCount !== userData.followCount;
+					
+					// 更新用户完整信息
+					data.userInfo = userData;
+					
+					// 更新本地存储
+					uni.setStorageSync('userInfo', {
+						id: userData.id,
+						nickname: userData.nickname,
+						avatar: userData.avatar,
+						email: userData.email
+					});
+					
+					// 如果关注数量变化，在控制台输出日志方便调试
+					if (hasFollowCountChanged) {
+						console.log('关注数量已更新:', userData.followCount);
+					}
+				}
+			} catch (error) {
+				console.error('刷新用户信息失败:', error);
+				// 静默失败，不影响用户体验
+			} finally {
+				refreshTimeoutId = null;
+			}
+		}, 300);
+	};
+
 	// 页面隐藏时(切换选项卡)
 	onHide(() => {
 		// 页面隐藏时，如果设置面板是打开状态，关闭它

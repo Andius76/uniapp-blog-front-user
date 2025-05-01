@@ -119,4 +119,13 @@ export function followUser(userId, isFollow) {
   return isFollow ? 
     request.post(`/api/user/follow/${userId}`) : 
     request.delete(`/api/user/follow/${userId}`);
+}
+
+/**
+ * 检查是否关注了指定用户
+ * @param {Number} userId 要检查的用户ID
+ * @returns {Promise} 关注状态结果
+ */
+export function checkUserFollow(userId) {
+  return request.get(`/api/user/check-follow/${userId}`);
 } 
