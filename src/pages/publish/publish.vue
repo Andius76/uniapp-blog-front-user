@@ -21,7 +21,10 @@
 		<scroll-view scroll-y class="publish-content" v-if="!isPreviewMode" :style="{height: 'calc(100vh - 190rpx)'}">
 			<!-- 标题输入 -->
 			<view class="title-input">
-				<input type="text" v-model="articleData.title" placeholder="请输入标题" class="input-field" />
+				<input type="text" v-model="articleData.title" placeholder="请输入标题" class="input-field" maxlength="50" />
+				<view class="title-word-count" v-if="articleData.title.length > 0">
+					<text>{{ articleData.title.length }}/50</text>
+				</view>
 			</view>
 
 			<!-- 分割线 -->
@@ -29,8 +32,8 @@
 
 			<!-- 正文编辑区域 - 动态高度 -->
 			<view class="content-wrapper">
-			<!-- 富文本编辑器区域 -->
-			<view class="rich-editor-container">
+				<!-- 富文本编辑器区域 -->
+				<view class="rich-editor-container">
 					<!-- 富文本编辑器 -->
 					<editor id="editor" class="rich-editor" 
 						:placeholder="'请输入正文'" 
@@ -46,8 +49,8 @@
 					<view class="word-count">
 						<text>{{ articleData.wordCount }} 字</text>
 					</view>
-					</view>
 				</view>
+			</view>
 
 			<!-- 文章信息区域 - 会被挤压 -->
 			<view class="article-info-area">
@@ -68,16 +71,18 @@
 					<view class="cover-container">
 						<view v-if="!articleData.coverImage" class="cover-placeholder" @click="selectCoverImage">
 							<uni-icons type="image" size="36" color="#999"></uni-icons>
+							<text class="add-cover-text">添加封面</text>
 						</view>
 						<view v-else class="cover-preview">
+							<text class="cover-label">封面</text>
 							<image :src="articleData.coverImage" mode="aspectFill" class="cover-image"></image>
 							<view class="image-delete" @click="removeCoverImage">
 								<uni-icons type="close" size="16" color="#fff"></uni-icons>
-								</view>
-								</view>
 							</view>
 						</view>
 					</view>
+				</view>
+			</view>
 		</scroll-view>
 
 		<!-- 底部工具栏 -->
@@ -110,34 +115,43 @@
 
 		<!-- 预览模式的内容区域 -->
 		<view class="preview-container" v-if="isPreviewMode">
-			<!-- 预览模式下的文章内容 -->
-			<view class="preview-article">
-				<!-- 文章标题 -->
-				<view class="preview-title">
-					<text>{{ articleData.title || '无标题文章' }}</text>
-				</view>
-				
-				<!-- 文章信息 -->
-				<view class="preview-info">
-					<text class="preview-date">{{ getCurrentDate() }}</text>
-					<text class="preview-word-count">{{ articleData.wordCount }} 字</text>
-				</view>
-				
-				<!-- 文章标签 -->
-				<view class="preview-tags" v-if="articleData.tags.length > 0">
-					<view v-for="(tag, index) in articleData.tags" :key="index" class="preview-tag">
-					<text>{{ tag }}</text>
-				</view>
-			</view>
-				
-				<!-- 文章封面 -->
-				<view class="preview-cover" v-if="articleData.coverImage">
-					<image :src="articleData.coverImage" mode="widthFix" class="preview-cover-image"></image>
-		</view>
+			<view class="preview-article-wrapper">
+				<view class="preview-article">
+					<!-- 文章标题 -->
+					<view class="preview-title">
+						<text>{{ articleData.title || '无标题文章' }}</text>
+					</view>
+					
+					<!-- 文章信息 -->
+					<view class="preview-info">
+						<text class="preview-date">{{ getCurrentDate() }}</text>
+						<text class="preview-word-count">{{ articleData.wordCount }} 字</text>
+					</view>
+					
+					<!-- 文章标签 -->
+					<view class="preview-tags" v-if="articleData.tags.length > 0">
+						<view v-for="(tag, index) in articleData.tags" :key="index" class="preview-tag">
+							<text>{{ tag }}</text>
+						</view>
+					</view>
+					
+					<!-- 文章封面 -->
+					<view class="preview-cover" v-if="articleData.coverImage">
+						<text class="cover-label">封面</text>
+						<image :src="articleData.coverImage" mode="widthFix" class="preview-cover-image"></image>
+					</view>
+					<view class="preview-cover preview-cover-empty" v-else>
+						<text class="cover-label">封面</text>
+						<view class="empty-cover-placeholder">
+							<uni-icons type="image" size="36" color="#ccc"></uni-icons>
+							<text>暂无封面</text>
+						</view>
+					</view>
 
-				<!-- 文章内容 -->
-				<view class="preview-content">
-					<rich-text :nodes="processedHtmlContent" class="rich-text-content"></rich-text>
+					<!-- 文章内容 -->
+					<view class="preview-content">
+						<rich-text :nodes="processedHtmlContent" class="rich-text-content"></rich-text>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -316,18 +330,26 @@
 		let html = articleData.htmlContent || '<p>暂无内容</p>';
 		
 		// 对HTML内容进行处理，确保图片宽度不超过容器
-		html = html.replace(/<img/g, '<img style="max-width:100%;height:auto;display:block;margin:10px 0;border-radius:8px;"');
+		html = html.replace(/<img/g, '<img style="max-width:100%;height:auto;display:block;margin:20rpx 0;border-radius:8rpx;object-fit:cover;"');
 		
 		// 添加样式到段落
-		html = html.replace(/<p/g, '<p style="margin-bottom:20px;width:100%;overflow-wrap:break-word;"');
+		html = html.replace(/<p/g, '<p style="margin-bottom:20rpx;width:100%;overflow-wrap:break-word;min-height:30rpx;"');
 		
 		// 添加样式到标题
-		html = html.replace(/<h1/g, '<h1 style="font-size:36rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;"');
-		html = html.replace(/<h2/g, '<h2 style="font-size:32rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;"');
-		html = html.replace(/<h3/g, '<h3 style="font-size:30rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;"');
+		html = html.replace(/<h1/g, '<h1 style="font-size:36rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;overflow-wrap:break-word;"');
+		html = html.replace(/<h2/g, '<h2 style="font-size:32rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;overflow-wrap:break-word;"');
+		html = html.replace(/<h3/g, '<h3 style="font-size:30rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;overflow-wrap:break-word;"');
 		
 		// 添加样式到链接
 		html = html.replace(/<a/g, '<a style="color:#4361ee;text-decoration:none;"');
+		
+		// 添加样式到列表
+		html = html.replace(/<ul/g, '<ul style="padding-left:40rpx;margin-bottom:20rpx;width:100%;"');
+		html = html.replace(/<ol/g, '<ol style="padding-left:40rpx;margin-bottom:20rpx;width:100%;"');
+		html = html.replace(/<li/g, '<li style="margin-bottom:10rpx;"');
+		
+		// 添加样式到表格
+		html = html.replace(/<table/g, '<table style="width:100%;border-collapse:collapse;margin:20rpx 0;overflow-x:auto;display:block;"');
 		
 		return html;
 	});
@@ -1026,6 +1048,15 @@
 			});
 			return;
 		}
+		
+		// 验证标题长度
+		if (articleData.title.length > 50) {
+			uni.showToast({
+				title: '标题最多50个字符',
+				icon: 'none'
+			});
+			return;
+		}
 
 		if (!articleData.content.trim()) {
 			uni.showToast({
@@ -1103,7 +1134,7 @@
 		// 切换到预览模式前，确保获取最新内容
 		if (!isPreviewMode.value) {
 			// 获取当前编辑器内容
-					if (editorCtx) {
+			if (editorCtx) {
 				editorCtx.getContents({
 					success: (res) => {
 						// 更新文章数据
@@ -1113,6 +1144,15 @@
 						
 						// 切换模式
 						isPreviewMode.value = true;
+						
+						// 延迟执行，确保DOM已更新
+						setTimeout(() => {
+							// 滚动到顶部
+							const previewContainer = document.querySelector('.preview-container');
+							if (previewContainer) {
+								previewContainer.scrollTop = 0;
+							}
+						}, 100);
 					}
 				});
 			} else {
@@ -1335,6 +1375,7 @@
 	/* 标题输入 */
 	.title-input {
 		padding: 30rpx 0;
+		position: relative;
 	}
 
 	.input-field {
@@ -1493,8 +1534,16 @@
 		background-color: $bg-light;
 		border-radius: 10rpx;
 		display: flex;
+		flex-direction: column;
 		justify-content: center;
 		align-items: center;
+		border: 2rpx dashed #ddd;
+		
+		.add-cover-text {
+			font-size: 24rpx;
+			color: #999;
+			margin-top: 10rpx;
+		}
 	}
 	
 	.cover-preview {
@@ -1503,6 +1552,19 @@
 		position: relative;
 		border-radius: 10rpx;
 		overflow: hidden;
+		border: 2rpx dashed #ddd;
+		
+		.cover-label {
+			position: absolute;
+			top: 10rpx;
+			left: 10rpx;
+			background-color: rgba(255,255,255,0.8);
+			padding: 4rpx 10rpx;
+			font-size: 24rpx;
+			color: #666;
+			border-radius: 6rpx;
+			z-index: 2;
+		}
 	}
 	
 	.cover-image {
@@ -1766,6 +1828,13 @@
 		justify-content: center;
 	}
 	
+	.preview-article-wrapper {
+		width: 100%;
+		display: flex;
+		justify-content: center;
+		padding-bottom: 120rpx; /* 确保底部有足够空间 */
+	}
+	
 	.preview-article {
 		background-color: $bg-white;
 		border-radius: 16rpx;
@@ -1774,8 +1843,11 @@
 		width: 100%;
 		max-width: 720rpx;
 		min-width: 680rpx;
+		height: auto;
+		min-height: 800rpx;
 		box-sizing: border-box;
-		overflow-wrap: break-word; /* 确保长内容自动换行 */
+		overflow-wrap: break-word;
+		margin-bottom: 60rpx;
 	}
 	
 	.preview-title {
@@ -1784,6 +1856,9 @@
 		color: $text-color;
 		margin-bottom: 20rpx;
 		line-height: 1.4;
+		width: 100%;
+		overflow-wrap: break-word;
+		word-break: break-word;
 	}
 
 	.preview-info {
@@ -1818,12 +1893,49 @@
 		border-radius: 12rpx;
 		overflow: hidden;
 		width: 100%;
+		position: relative;
+		border: 2rpx dashed #ddd;
+		padding: 20rpx;
+		box-sizing: border-box;
 		
 		.preview-cover-image {
 			width: 100%;
 			max-width: 100%;
 			height: auto;
 			display: block;
+			border-radius: 8rpx;
+		}
+		
+		.cover-label {
+			position: absolute;
+			top: 10rpx;
+			left: 10rpx;
+			background-color: rgba(255,255,255,0.8);
+			padding: 4rpx 10rpx;
+			font-size: 24rpx;
+			color: #666;
+			border-radius: 6rpx;
+			z-index: 2;
+		}
+	}
+	
+	.preview-cover-empty {
+		height: 200rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		background-color: #f9f9f9;
+		
+		.empty-cover-placeholder {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			color: #ccc;
+			
+			text {
+				margin-top: 10rpx;
+				font-size: 24rpx;
+			}
 		}
 	}
 	
@@ -1834,11 +1946,16 @@
 		word-break: break-word;
 		overflow-wrap: break-word;
 		width: 100%;
+		height: auto;
+		min-height: 200rpx;
 	}
 
 	.rich-text-content {
 		width: 100%;
 		display: block;
+		min-height: 50rpx;
+		height: auto !important;
+		overflow: visible;
 	}
 
 	/* 禁用状态的工具栏项目 */
@@ -1851,5 +1968,14 @@
 	.tag-popup-safe-area {
 		height: 100rpx; /* 与底部工具栏高度一致 */
 		width: 100%;
+	}
+
+	/* 标题字数统计样式 */
+	.title-word-count {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		font-size: 24rpx;
+		color: #999;
 	}
 </style>
