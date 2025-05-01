@@ -41,6 +41,29 @@
 				<view class="preview-toggle" @click="togglePreview">
 					<text>{{ previewMode ? '编辑模式' : '预览模式' }}</text>
 				</view>
+				
+				<!-- 添加封面图片上传区域 -->
+				<view class="cover-image-area">
+					<text class="cover-title">文章封面</text>
+					<view class="cover-image-container">
+						<view v-if="!articleData.coverImage" class="cover-upload-btn" @click="selectCoverImage">
+							<uni-icons type="image" size="32" color="#4361ee"></uni-icons>
+							<text class="upload-text">设置封面图片</text>
+						</view>
+						<view v-else class="cover-preview">
+							<image :src="articleData.coverImage" mode="aspectFill" class="cover-preview-image"></image>
+							<view class="cover-actions">
+								<view class="cover-action-btn" @click="selectCoverImage">
+									<text>更换封面</text>
+								</view>
+								<view class="cover-action-btn cover-delete" @click="removeCoverImage">
+									<text>删除</text>
+								</view>
+							</view>
+						</view>
+					</view>
+					<text class="cover-tip">设置封面图片可以提高文章的阅读量和点击率</text>
+				</view>
 			</view>
 		</view>
 
@@ -65,29 +88,6 @@
 					</view>
 				</view>
 			</view>
-		</view>
-
-		<!-- 添加封面图片上传区域 -->
-		<view class="cover-image-area">
-			<text class="cover-title">文章封面</text>
-			<view class="cover-image-container">
-				<view v-if="!articleData.coverImage" class="cover-upload-btn" @click="selectCoverImage">
-					<uni-icons type="image" size="32" color="#4361ee"></uni-icons>
-					<text class="upload-text">设置封面图片</text>
-				</view>
-				<view v-else class="cover-preview">
-					<image :src="articleData.coverImage" mode="aspectFill" class="cover-preview-image"></image>
-					<view class="cover-actions">
-						<view class="cover-action-btn" @click="selectCoverImage">
-							<text>更换封面</text>
-						</view>
-						<view class="cover-action-btn cover-delete" @click="removeCoverImage">
-							<text>删除</text>
-						</view>
-					</view>
-				</view>
-			</view>
-			<text class="cover-tip">设置封面图片可以提高文章的阅读量和点击率</text>
 		</view>
 
 		<!-- 底部工具栏 -->
