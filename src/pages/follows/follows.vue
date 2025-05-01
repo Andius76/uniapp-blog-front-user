@@ -102,6 +102,7 @@
 	const isRefreshing = ref(false);
 	const noMoreData = ref(false);
 	const isSearching = ref(false); // 新增：标记是否处于搜索状态
+	const scrollTop = ref(0); // 控制滚动位置
 	let currentPage = 1;
 	const pageSize = 10;
 
@@ -208,7 +209,7 @@
 			}).finally(() => {
 				isLoading.value = false;
 				
-				// 如果是刷新状态，立即结束刷新状态并滚动到顶部
+				// 如果是刷新状态，立即结束刷新状态
 				if (isRefreshing.value) {
 					// 清除之前的定时器
 					if (refreshTimeoutId) {
@@ -218,14 +219,6 @@
 					// 立即结束刷新状态
 					isRefreshing.value = false;
 					refreshTimeoutId = null;
-					
-					// 滚动到顶部
-					setTimeout(() => {
-						uni.pageScrollTo({
-							scrollTop: 0,
-							duration: 100
-						});
-					}, 50);
 				}
 			});
 		}, 300); // 减少模拟延迟时间，提高响应速度
@@ -251,6 +244,8 @@
 		followList.value = [];
 		currentPage = 1;
 		noMoreData.value = false;
+		// 重置滚动位置，触发滚动到顶部
+		scrollTop.value = scrollTop.value === 0 ? 0.1 : 0;
 
 		// 重新加载
 		loadFollowList();
@@ -319,6 +314,8 @@
 		followList.value = [];
 		currentPage = 1;
 		noMoreData.value = false;
+		// 重置滚动位置，触发滚动到顶部
+		scrollTop.value = scrollTop.value === 0 ? 0.1 : 0;
 		
 		// 重新加载
 		loadFollowList();
@@ -343,6 +340,8 @@
 		followList.value = [];
 		currentPage = 1;
 		noMoreData.value = false;
+		// 重置滚动位置，触发滚动到顶部
+		scrollTop.value = scrollTop.value === 0 ? 0.1 : 0;
 
 		// 重新加载
 		loadFollowList();
