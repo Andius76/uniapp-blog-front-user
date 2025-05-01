@@ -27,42 +27,53 @@
 			<!-- 分割线 -->
 			<view class="divider"></view>
 
-			<!-- 富文本编辑器区域 -->
-			<view class="rich-editor-container">
-				<!-- 富文本编辑器 -->
-				<editor id="editor" class="rich-editor" 
-					:placeholder="'请输入正文'" 
-					@ready="onEditorReady" 
-					@input="onEditorInput" 
-					@paste="handlePaste"
-					@focus="editorFocus" 
-					@blur="editorBlur"
-					@statuschange="onStatusChange">
-				</editor>
-			</view>
-			
-			<!-- 文章标签区域 -->
-			<view class="article-category">
-				<text class="category-label">文章标签</text>
-				<view class="tag-container">
-					<!-- 已添加的标签 -->
-					<view v-for="(tag, index) in articleData.tags" :key="index" class="tag-item simple-tag">
-						<text>{{ tag }}</text>
+			<!-- 正文编辑区域 - 动态高度 -->
+			<view class="content-wrapper">
+				<!-- 富文本编辑器区域 -->
+				<view class="rich-editor-container">
+					<!-- 富文本编辑器 -->
+					<editor id="editor" class="rich-editor" 
+						:placeholder="'请输入正文'" 
+						@ready="onEditorReady" 
+						@input="onEditorInput" 
+						@paste="handlePaste"
+						@focus="editorFocus" 
+						@blur="editorBlur"
+						@statuschange="onStatusChange">
+					</editor>
+					
+					<!-- 字数统计 -->
+					<view class="word-count">
+						<text>{{ articleData.wordCount }} 字</text>
 					</view>
 				</view>
 			</view>
 			
-			<!-- 封面图片区域 -->
-			<view class="cover-section">
-				<text class="section-label">文章封面</text>
-				<view class="cover-container">
-					<view v-if="!articleData.coverImage" class="cover-placeholder" @click="selectCoverImage">
-						<uni-icons type="image" size="36" color="#999"></uni-icons>
+			<!-- 文章信息区域 - 会被挤压 -->
+			<view class="article-info-area">
+				<!-- 文章标签区域 -->
+				<view class="article-category">
+					<text class="category-label">文章标签</text>
+					<view class="tag-container">
+						<!-- 已添加的标签 -->
+						<view v-for="(tag, index) in articleData.tags" :key="index" class="tag-item simple-tag">
+							<text>{{ tag }}</text>
+						</view>
 					</view>
-					<view v-else class="cover-preview">
-						<image :src="articleData.coverImage" mode="aspectFill" class="cover-image"></image>
-						<view class="image-delete" @click="removeCoverImage">
-							<uni-icons type="close" size="16" color="#fff"></uni-icons>
+				</view>
+				
+				<!-- 封面图片区域 -->
+				<view class="cover-section">
+					<text class="section-label">文章封面</text>
+					<view class="cover-container">
+						<view v-if="!articleData.coverImage" class="cover-placeholder" @click="selectCoverImage">
+							<uni-icons type="image" size="36" color="#999"></uni-icons>
+						</view>
+						<view v-else class="cover-preview">
+							<image :src="articleData.coverImage" mode="aspectFill" class="cover-image"></image>
+							<view class="image-delete" @click="removeCoverImage">
+								<uni-icons type="close" size="16" color="#fff"></uni-icons>
+							</view>
 						</view>
 					</view>
 				</view>
@@ -267,8 +278,15 @@
 						html: articleData.htmlContent,
 						fail: err => {
 							console.error('设置内容失败:', err);
+						},
+						complete: () => {
+							// 内容加载完成后，调整高度
+							adjustEditorHeight();
 						}
 					});
+				} else {
+					// 如果没有初始内容，也要调整一次高度
+					adjustEditorHeight();
 				}
 			})
 			.exec();
@@ -284,6 +302,11 @@
 		
 		// 更新字数统计
 		articleData.wordCount = e.detail.text ? e.detail.text.length : 0;
+		
+		// 自动调整编辑器高度
+		nextTick(() => {
+			adjustEditorHeight();
+		});
 	};
 	
 	// 编辑器状态变化
@@ -297,6 +320,74 @@
 		editorStatus.isStrike = !!formats.strike;
 		editorStatus.isH1 = formats.header === 1;
 		editorStatus.isH2 = formats.header === 2;
+	};
+
+	// 添加调整编辑器高度的方法
+	const adjustEditorHeight = () => {
+		// 尝试获取编辑器内容和计算合适的高度
+		if (editorCtx) {
+			editorCtx.getContents({
+				success: (res) => {
+					// 获取内容
+					const text = res.text || '';
+					const html = res.html || '';
+					
+					// 根据内容计算高度
+					// 1. 基础高度为300rpx
+					let estimatedHeight = 300;
+					
+					// 2. 按字符数计算基本高度 (每10个字符约增加3rpx)
+					estimatedHeight += Math.floor(text.length / 10) * 3;
+					
+					// 3. 统计换行符数量，每个换行符增加行高
+					const lineCount = (text.match(/\n/g) || []).length;
+					estimatedHeight += lineCount * 40; // 假设每行高度约40rpx
+					
+					// 4. 检测图片数量
+					const imgCount = (html.match(/<img/g) || []).length;
+					estimatedHeight += imgCount * 300; // 每张图片估算300rpx
+					
+					// 确保最小高度
+					estimatedHeight = Math.max(300, estimatedHeight);
+					
+					// 为了更好的视觉效果，增加一些缓冲空间
+					estimatedHeight += 100;
+					
+					// 设置编辑器高度
+					// 方法1: 直接设置DOM元素样式 (适用于H5和APP)
+					// #ifdef H5 || APP-PLUS
+					const editorEl = document.getElementById('editor');
+					if (editorEl) {
+						editorEl.style.minHeight = `${estimatedHeight}rpx`;
+					}
+					// #endif
+					
+					// 方法2: 通过选择器设置样式 (更通用的方法)
+					uni.createSelectorQuery()
+						.select('#editor')
+						.fields({
+							size: true,
+							rect: true
+						}, (data) => {
+							if (data) {
+								// 获取编辑器元素并设置样式
+								uni.createSelectorQuery()
+									.select('#editor')
+									.node(res => {
+										if (res && res.node) {
+											res.node.style.minHeight = `${estimatedHeight}rpx`;
+										}
+									})
+									.exec();
+							}
+						})
+						.exec();
+					
+					// 记录当前内容长度，供下次比较
+					articleData.wordCount = text.length;
+				}
+			});
+		}
 	};
 
 	// 处理粘贴事件
@@ -1096,6 +1187,20 @@
 	.publish-content {
 		flex: 1;
 		padding: 0 30rpx;
+		box-sizing: border-box;
+		position: relative;
+	}
+	
+	.content-wrapper {
+		margin-bottom: 30rpx;
+		position: relative;
+		flex: 1;
+	}
+	
+	.article-info-area {
+		position: relative;
+		z-index: 1;
+		background-color: $bg-white;
 	}
 	
 	/* 标题输入 */
@@ -1120,16 +1225,23 @@
 	/* 富文本编辑器 */
 	.rich-editor-container {
 		width: 100%;
-		min-height: 400rpx;
+		min-height: 300rpx;
 		margin-bottom: 30rpx;
+		position: relative;
+		z-index: 2; /* 确保编辑器在正确的层级 */
+		overflow: visible;
+		transition: min-height 0.2s; /* 添加平滑过渡 */
 	}
 	
 	.rich-editor {
 		width: 100%;
-		min-height: 400rpx;
+		min-height: 300rpx;
+		height: auto;
 		font-size: 30rpx;
 		line-height: 1.6;
 		padding: 20rpx 0;
+		box-sizing: border-box;
+		transition: min-height 0.2s; /* 添加平滑过渡 */
 	}
 	
 	/* 标签区域 */
@@ -1483,5 +1595,17 @@
 			color: $bg-white;
 			font-size: 28rpx;
 		}
+	}
+	
+	/* 字数统计样式 */
+	.word-count {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		padding: 6rpx 12rpx;
+		font-size: 24rpx;
+		color: $text-light;
+		background-color: rgba(255, 255, 255, 0.8);
+		border-radius: 6rpx;
 	}
 </style>
