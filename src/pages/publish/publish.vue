@@ -49,11 +49,6 @@
 					<view v-for="(tag, index) in articleData.tags" :key="index" class="tag-item simple-tag">
 						<text>{{ tag }}</text>
 					</view>
-					
-					<!-- 添加标签按钮 -->
-					<view v-if="articleData.tags.length < 5" class="add-tag" @click="showTagSelector">
-						<uni-icons type="plus" size="16" color="#666"></uni-icons>
-					</view>
 				</view>
 			</view>
 			
