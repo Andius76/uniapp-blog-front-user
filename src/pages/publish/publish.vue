@@ -115,45 +115,47 @@
 
 		<!-- 预览模式的内容区域 -->
 		<view class="preview-container" v-if="isPreviewMode">
-			<view class="preview-article-wrapper">
-				<view class="preview-article">
-					<!-- 文章标题 -->
-					<view class="preview-title">
-						<text>{{ articleData.title || '无标题文章' }}</text>
+			<scroll-view scroll-y class="preview-scroll-view">
+				<view class="preview-article-wrapper">
+					<view class="preview-article">
+						<!-- 文章标题 -->
+						<view class="preview-title">
+							<text>{{ articleData.title || '无标题文章' }}</text>
+						</view>
+						
+						<!-- 文章信息 -->
+						<view class="preview-info">
+							<text class="preview-date">{{ getCurrentDate() }}</text>
+							<text class="preview-word-count">{{ articleData.wordCount }} 字</text>
+						</view>
+						
+						<!-- 文章标签 -->
+						<view class="preview-tags" v-if="articleData.tags.length > 0">
+							<view v-for="(tag, index) in articleData.tags" :key="index" class="preview-tag">
+						<text>{{ tag }}</text>
 					</view>
-					
-					<!-- 文章信息 -->
-					<view class="preview-info">
-						<text class="preview-date">{{ getCurrentDate() }}</text>
-						<text class="preview-word-count">{{ articleData.wordCount }} 字</text>
-					</view>
-					
-					<!-- 文章标签 -->
-					<view class="preview-tags" v-if="articleData.tags.length > 0">
-						<view v-for="(tag, index) in articleData.tags" :key="index" class="preview-tag">
-					<text>{{ tag }}</text>
+						</view>
+						
+						<!-- 文章封面 -->
+						<view class="preview-cover" v-if="articleData.coverImage">
+							<text class="cover-label">封面</text>
+							<image :src="articleData.coverImage" mode="widthFix" class="preview-cover-image"></image>
+						</view>
+						<view class="preview-cover preview-cover-empty" v-else>
+							<text class="cover-label">封面</text>
+							<view class="empty-cover-placeholder">
+								<uni-icons type="image" size="36" color="#ccc"></uni-icons>
+								<text>暂无封面</text>
 				</view>
-					</view>
-					
-					<!-- 文章封面 -->
-					<view class="preview-cover" v-if="articleData.coverImage">
-						<text class="cover-label">封面</text>
-						<image :src="articleData.coverImage" mode="widthFix" class="preview-cover-image"></image>
-					</view>
-					<view class="preview-cover preview-cover-empty" v-else>
-						<text class="cover-label">封面</text>
-						<view class="empty-cover-placeholder">
-							<uni-icons type="image" size="36" color="#ccc"></uni-icons>
-							<text>暂无封面</text>
 			</view>
-		</view>
 
-					<!-- 文章内容 -->
-					<view class="preview-content">
-						<rich-text :nodes="processedHtmlContent" class="rich-text-content"></rich-text>
+						<!-- 文章内容 -->
+						<view class="preview-content">
+							<rich-text :nodes="processedHtmlContent" class="rich-text-content"></rich-text>
+						</view>
 					</view>
 				</view>
-			</view>
+			</scroll-view>
 		</view>
 
 		<!-- 格式工具栏弹出层 -->
@@ -447,7 +449,7 @@
 					// 设置编辑器高度
 					// 方法1: 直接设置DOM元素样式 (适用于H5和APP)
 					// #ifdef H5 || APP-PLUS
-					const editorEl = document.getElementById('editor');
+					const editorEl = document.querySelector('#editor');
 					if (editorEl) {
 						editorEl.style.minHeight = `${estimatedHeight}rpx`;
 					}
@@ -1369,6 +1371,9 @@
 		listenBackButton();
 		listenTabBarClicks();
 		
+		// 初始化图片删除事件监听
+		listenImageDeleteButtons();
+		
 		// 获取页面参数
 		const pages = getCurrentPages();
 		const currentPage = pages[pages.length - 1];
@@ -1416,19 +1421,6 @@
 				});
 			}
 		}
-		
-		// 监听编辑器中图片删除按钮的点击事件
-		document.addEventListener('click', (e) => {
-			// 检查点击的元素是否是图片删除按钮
-			if (e.target && e.target.classList.contains('image-delete-btn')) {
-				// 获取图片路径
-				const imagePath = e.target.getAttribute('data-image-path');
-				if (imagePath) {
-					// 调用删除方法
-					removeImageFromEditor(imagePath);
-				}
-			}
-		});
 	});
 
 	// 监听页面后退按钮
@@ -1474,6 +1466,30 @@
 		// 移除图片删除事件监听
 		document.removeEventListener('click', () => {});
 	});
+
+	// 监听编辑器中图片删除按钮的点击事件
+	const listenImageDeleteButtons = () => {
+		// #ifdef H5
+		// 仅在H5环境中使用DOM API
+		setTimeout(() => {
+			// 确保DOM已加载
+			const editorDoc = document.querySelector('.rich-editor');
+			if (editorDoc) {
+				editorDoc.addEventListener('click', (e) => {
+					// 检查点击的元素是否是图片删除按钮
+					if (e.target && e.target.classList && e.target.classList.contains('image-delete-btn')) {
+						// 获取图片路径
+						const imagePath = e.target.getAttribute('data-image-path');
+						if (imagePath) {
+							// 调用删除方法
+							removeImageFromEditor(imagePath);
+						}
+					}
+				});
+			}
+		}, 500);
+		// #endif
+	};
 </script>
 
 <style lang="scss">
@@ -2011,10 +2027,14 @@
 		bottom: 100rpx;
 		background-color: $bg-light;
 		z-index: 100;
-		overflow-y: auto;
+		padding: 0; /* 移除内边距，避免与scroll-view冲突 */
+	}
+
+	.preview-scroll-view {
+		height: 100%; /* 充满整个容器高度 */
+		width: 100%;
+		box-sizing: border-box;
 		padding: 30rpx;
-		display: flex;
-		justify-content: center;
 	}
 
 	.preview-article-wrapper {
@@ -2032,11 +2052,11 @@
 		width: 100%;
 		max-width: 720rpx;
 		min-width: 680rpx;
-		height: auto;
-		min-height: 800rpx;
 		box-sizing: border-box;
 		overflow-wrap: break-word;
 		margin-bottom: 60rpx;
+		display: flex; /* 使用flex布局 */
+		flex-direction: column; /* 垂直排列子元素 */
 	}
 	
 	.preview-title {
@@ -2135,16 +2155,32 @@
 		word-break: break-word;
 		overflow-wrap: break-word;
 		width: 100%;
-		height: auto;
-		min-height: 200rpx;
 	}
 
 	.rich-text-content {
 		width: 100%;
-		display: block;
-		min-height: 50rpx;
 		height: auto !important;
-		overflow: visible;
+		
+		/* 确保rich-text内的内容显示正确 */
+	}
+	
+	/* 修复rich-text内容样式 */
+	:deep(.rich-text-content) img {
+		max-width: 100% !important;
+		height: auto !important;
+		margin: 20rpx 0;
+	}
+	
+	:deep(.rich-text-content) p {
+		margin-bottom: 20rpx;
+		min-height: 30rpx;
+	}
+	
+	:deep(.rich-text-content) h1,
+	:deep(.rich-text-content) h2,
+	:deep(.rich-text-content) h3 {
+		margin: 30rpx 0 20rpx;
+		line-height: 1.5;
 	}
 
 	/* 禁用状态的工具栏项目 */
