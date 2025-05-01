@@ -67,6 +67,29 @@
 			</view>
 		</view>
 
+		<!-- 添加封面图片上传区域 -->
+		<view class="cover-image-area">
+			<text class="cover-title">文章封面</text>
+			<view class="cover-image-container">
+				<view v-if="!articleData.coverImage" class="cover-upload-btn" @click="selectCoverImage">
+					<uni-icons type="image" size="32" color="#4361ee"></uni-icons>
+					<text class="upload-text">设置封面图片</text>
+				</view>
+				<view v-else class="cover-preview">
+					<image :src="articleData.coverImage" mode="aspectFill" class="cover-preview-image"></image>
+					<view class="cover-actions">
+						<view class="cover-action-btn" @click="selectCoverImage">
+							<text>更换封面</text>
+						</view>
+						<view class="cover-action-btn cover-delete" @click="removeCoverImage">
+							<text>删除</text>
+						</view>
+					</view>
+				</view>
+			</view>
+			<text class="cover-tip">设置封面图片可以提高文章的阅读量和点击率</text>
+		</view>
+
 		<!-- 底部工具栏 -->
 		<view class="editor-toolbar">
 			<view class="toolbar-item" @click="showTextFormatting">
@@ -156,6 +179,7 @@
 	} from 'vue';
 	import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup';
 	import uniPopupDialog from '@/uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.vue';
+	import { publishArticle as publishArticleApi, updateArticle } from '@/api/article'; // 引入文章API并重命名
 
 	// 引入uni-popup组件
 	const tagPopup = ref(null);
@@ -196,7 +220,8 @@
 		content: '',
 		htmlContent: '',
 		images: [],
-		tags: [] // 添加标签字段
+		tags: [], // 添加标签字段
+		coverImage: null // 添加封面图片字段
 	});
 
 	// 发布按钮文本
@@ -400,6 +425,7 @@
 		}
 		articleData.images = [];
 		articleData.tags = [];
+		articleData.coverImage = null; // 清空封面图片
 		selectedTags.value = [];
 
 		// 标记已确认离开
@@ -530,6 +556,11 @@
 					articleData.images = [...parsedData.images];
 				}
 				
+				// 填充封面图片
+				if (parsedData.coverImage) {
+					articleData.coverImage = parsedData.coverImage;
+				}
+				
 				console.log('编辑模式：加载文章数据', articleData);
 				
 				// 等待编辑器准备完成后设置内容
@@ -587,7 +618,8 @@
 			content: articleData.content,
 			htmlContent: articleData.htmlContent,
 			tags: articleData.tags,
-			images: articleData.images
+			images: articleData.images,
+			coverImage: articleData.coverImage // 添加封面图片
 		};
 		
 		// 如果是编辑模式，添加文章ID
@@ -595,9 +627,12 @@
 			requestData.id = articleData.id;
 		}
 
-		// 这里应该是实际的API请求
-		// 根据mode值调用不同的API
-		setTimeout(() => {
+		// 根据模式调用不同的API
+		const apiCall = mode.value === 'edit' 
+			? updateArticle(requestData) 
+			: publishArticleApi(requestData);
+			
+		apiCall.then(res => {
 			uni.hideLoading();
 			uni.showToast({
 				title: mode.value === 'edit' ? '更新成功' : '发布成功',
@@ -611,50 +646,14 @@
 			setTimeout(() => {
 				uni.navigateBack();
 			}, 1500);
-		}, 1000);
-		
-		// TODO: 实际的API调用应该类似：
-		/*
-		if (mode.value === 'edit') {
-			// 更新文章
-			api.updateArticle(requestData).then(res => {
-				uni.hideLoading();
-				uni.showToast({
-					title: '更新成功',
-					icon: 'success'
-				});
-				clearAndRefresh();
-				setTimeout(() => {
-					uni.navigateBack();
-				}, 1500);
-			}).catch(err => {
-				uni.hideLoading();
-				uni.showToast({
-					title: '更新失败，请重试',
-					icon: 'none'
-				});
+		}).catch(err => {
+			uni.hideLoading();
+			console.error('发布失败', err);
+			uni.showToast({
+				title: err.message || '发布失败，请重试',
+				icon: 'none'
 			});
-		} else {
-			// 创建新文章
-			api.createArticle(requestData).then(res => {
-				uni.hideLoading();
-				uni.showToast({
-					title: '发布成功',
-					icon: 'success'
-				});
-				clearAndRefresh();
-				setTimeout(() => {
-					uni.navigateBack();
-				}, 1500);
-			}).catch(err => {
-				uni.hideLoading();
-				uni.showToast({
-					title: '发布失败，请重试',
-					icon: 'none'
-				});
-			});
-		}
-		*/
+		});
 	};
 
 	// 插入图片
@@ -796,6 +795,49 @@
 						icon: 'success'
 					});
 				}, 500);
+			}
+		});
+	};
+
+	// 选择封面图片
+	const selectCoverImage = () => {
+		uni.chooseImage({
+			count: 1, // 只选择一张图片作为封面
+			success: (res) => {
+				const tempFilePath = res.tempFilePaths[0];
+				
+				// 显示加载中提示
+				uni.showLoading({
+					title: '处理封面图片...'
+				});
+				
+				// 设置封面图片
+				setTimeout(() => {
+					uni.hideLoading();
+					articleData.coverImage = tempFilePath;
+					
+					uni.showToast({
+						title: '封面设置成功',
+						icon: 'success'
+					});
+				}, 500);
+			}
+		});
+	};
+	
+	// 删除封面图片
+	const removeCoverImage = () => {
+		uni.showModal({
+			title: '删除封面',
+			content: '确定要删除封面图片吗？',
+			success: (res) => {
+				if (res.confirm) {
+					articleData.coverImage = null;
+					uni.showToast({
+						title: '封面已删除',
+						icon: 'success'
+					});
+				}
 			}
 		});
 	};
@@ -1229,5 +1271,84 @@
 		justify-content: center;
 		align-items: center;
 		z-index: 10;
+	}
+
+	/* 封面图片区域样式 */
+	.cover-image-area {
+		padding: 20rpx 30rpx;
+		border-top: 1px dashed #eee;
+		background-color: #f9f9f9;
+	}
+
+	.cover-title {
+		font-size: 28rpx;
+		color: #666;
+		margin-bottom: 20rpx;
+		display: block;
+	}
+
+	.cover-image-container {
+		display: flex;
+		justify-content: center;
+		width: 100%;
+		margin-bottom: 20rpx;
+	}
+
+	.cover-upload-btn {
+		width: 300rpx;
+		height: 200rpx;
+		background-color: #f2f2f2;
+		border: 1px dashed #ccc;
+		border-radius: 8rpx;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.upload-text {
+		font-size: 26rpx;
+		color: #666;
+		margin-top: 10rpx;
+	}
+
+	.cover-preview {
+		width: 450rpx;
+		position: relative;
+	}
+
+	.cover-preview-image {
+		width: 100%;
+		height: 300rpx;
+		border-radius: 8rpx;
+		object-fit: cover;
+	}
+
+	.cover-actions {
+		display: flex;
+		justify-content: space-between;
+		margin-top: 10rpx;
+	}
+
+	.cover-action-btn {
+		background-color: #4361ee;
+		color: #fff;
+		font-size: 24rpx;
+		padding: 8rpx 20rpx;
+		border-radius: 30rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.cover-delete {
+		background-color: #ff4d4f;
+	}
+
+	.cover-tip {
+		font-size: 24rpx;
+		color: #999;
+		text-align: center;
+		display: block;
 	}
 </style>
