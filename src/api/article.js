@@ -186,27 +186,68 @@ function uploadArticleImages(imagePaths) {
   // 创建图片上传任务数组
   const uploadTasks = imagePaths.map(path => {
     return new Promise((resolve, reject) => {
-      uni.uploadFile({
-        url: `${baseUrl}/api/article/upload-image`,
-        filePath: path,
-        name: 'image',
-        header: {
-          Authorization: `Bearer ${uni.getStorageSync('token') || ''}`
-        },
-        success: (res) => {
-          try {
-            const data = JSON.parse(res.data);
-            if (data.code === 200 && data.data && data.data.imageUrl) {
-              resolve(data.data.imageUrl);
-            } else {
-              reject(new Error(data.message || '上传图片失败'));
+      // 获取图片信息，用于传递宽高参数
+      uni.getImageInfo({
+        src: path,
+        success: (imageInfo) => {
+          uni.uploadFile({
+            url: `${baseUrl}/api/article/upload-image`,
+            filePath: path,
+            name: 'image',
+            formData: {
+              // 传递图片类型，区分封面图和内容图
+              type: path === imagePaths[imagePaths.length - 1] && imagePaths[imagePaths.length - 1] === imagePaths.find(p => p === path) ? 'cover' : 'content',
+              width: imageInfo.width,
+              height: imageInfo.height
+            },
+            header: {
+              Authorization: `Bearer ${uni.getStorageSync('token') || ''}`
+            },
+            success: (res) => {
+              try {
+                const data = JSON.parse(res.data);
+                if (data.code === 200 && data.data && data.data.imageUrl) {
+                  resolve(data.data.imageUrl);
+                } else {
+                  reject(new Error(data.message || '上传图片失败'));
+                }
+              } catch (e) {
+                reject(new Error('解析上传结果失败'));
+              }
+            },
+            fail: (err) => {
+              reject(err);
             }
-          } catch (e) {
-            reject(new Error('解析上传结果失败'));
-          }
+          });
         },
-        fail: (err) => {
-          reject(err);
+        fail: () => {
+          // 获取图片信息失败时，仍尝试上传
+          uni.uploadFile({
+            url: `${baseUrl}/api/article/upload-image`,
+            filePath: path,
+            name: 'image',
+            formData: {
+              type: path === imagePaths[imagePaths.length - 1] && imagePaths[imagePaths.length - 1] === imagePaths.find(p => p === path) ? 'cover' : 'content'
+            },
+            header: {
+              Authorization: `Bearer ${uni.getStorageSync('token') || ''}`
+            },
+            success: (res) => {
+              try {
+                const data = JSON.parse(res.data);
+                if (data.code === 200 && data.data && data.data.imageUrl) {
+                  resolve(data.data.imageUrl);
+                } else {
+                  reject(new Error(data.message || '上传图片失败'));
+                }
+              } catch (e) {
+                reject(new Error('解析上传结果失败'));
+              }
+            },
+            fail: (err) => {
+              reject(err);
+            }
+          });
         }
       });
     });
@@ -257,8 +298,8 @@ export function likeArticle(articleId, isLike) {
  * @return {Promise} - 返回操作结果的Promise
  */
 export function collectArticle(articleId, isCollect) {
-  return isCollect ?
-    http.post(`/api/article/collect/${articleId}`) :
+  return isCollect ? 
+    http.post(`/api/article/collect/${articleId}`) : 
     http.delete(`/api/article/collect/${articleId}`);
 }
 
@@ -279,10 +320,59 @@ export function getArticleComments(articleId, params) {
  * @param {number} articleId - 文章ID
  * @param {Object} commentData - 评论数据
  * @param {string} commentData.content - 评论内容
- * @param {number} [commentData.parentId] - 父评论ID，回复评论时使用
- * @param {number} [commentData.replyUserId] - 回复用户ID，回复评论时使用
- * @return {Promise} - 返回操作结果的Promise
+ * @param {number} [commentData.parentId] - 父评论ID（回复评论时必需）
+ * @param {number} [commentData.replyUserId] - 被回复用户ID（回复评论时必需）
+ * @return {Promise} - 返回包含新评论信息的Promise
  */
 export function commentArticle(articleId, commentData) {
   return http.post(`/api/article/${articleId}/comment`, commentData);
+}
+
+/**
+ * 获取用户收藏的文章列表
+ * @param {Object} params - 查询参数
+ * @param {number} params.page - 页码，默认1
+ * @param {number} params.pageSize - 每页条数，默认10
+ * @return {Promise} - 返回包含收藏文章列表的Promise
+ */
+export function getCollectedArticles(params) {
+  return http.get('/api/article/collections', params);
+}
+
+/**
+ * 获取文章标签列表
+ * @return {Promise} - 返回包含标签列表的Promise
+ */
+export function getArticleTags() {
+  return http.get('/api/article/tags');
+}
+
+/**
+ * 获取用户发表的文章列表
+ * @param {number} userId - 用户ID
+ * @param {Object} params - 查询参数
+ * @param {number} params.page - 页码，默认1
+ * @param {number} params.pageSize - 每页条数，默认10
+ * @return {Promise} - 返回包含用户文章列表的Promise
+ */
+export function getUserArticles(userId, params) {
+  return http.get(`/api/user/${userId}/articles`, {
+    ...params,
+    type: 'posts'
+  });
+}
+
+/**
+ * 获取用户点赞的文章列表
+ * @param {number} userId - 用户ID
+ * @param {Object} params - 查询参数
+ * @param {number} params.page - 页码，默认1
+ * @param {number} params.pageSize - 每页条数，默认10
+ * @return {Promise} - 返回包含用户点赞文章列表的Promise
+ */
+export function getUserLikedArticles(userId, params) {
+  return http.get(`/api/user/${userId}/articles`, {
+    ...params,
+    type: 'likes'
+  });
 } 
