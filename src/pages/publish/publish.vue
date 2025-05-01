@@ -1187,6 +1187,7 @@
 	.publish-content {
 		flex: 1;
 		padding: 0 30rpx;
+		padding-bottom: 120rpx; /* 增加底部内边距，比工具栏高度多一些 */
 		box-sizing: border-box;
 		position: relative;
 	}
@@ -1404,6 +1405,13 @@
 		align-items: center;
 		background-color: $bg-white;
 		border-top: 1rpx solid $border-color;
+		position: fixed; /* 固定定位 */
+		bottom: 0; /* 固定在底部 */
+		left: 0; /* 左边缘对齐 */
+		right: 0; /* 右边缘对齐 */
+		width: 100%; /* 宽度100% */
+		z-index: 999; /* 确保在最上层 */
+		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05); /* 添加顶部阴影，提升视觉层次 */
 	}
 	
 	.toolbar-item {
