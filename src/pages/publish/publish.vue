@@ -1096,6 +1096,9 @@
 		articleData.coverImage = null;
 		selectedTags.value = [];
 
+		// 清除草稿
+		clearDraft();
+
 		// 标记已确认离开
 		isConfirmedExit = true;
 	};
@@ -1319,6 +1322,73 @@
 		}
 	};
 
+	// 无图片文章提交
+	const submitArticle = () => {
+		// 更新加载提示
+		uni.showLoading({
+			title: mode.value === 'edit' ? '更新中...' : '发布中...',
+			mask: true
+		});
+		
+		// 构建请求数据
+		const requestData = {
+			title: articleData.title,
+			content: articleData.content,
+			htmlContent: articleData.htmlContent,
+			tags: articleData.tags,
+			coverImage: articleData.coverImage,
+			wordCount: articleData.wordCount
+		};
+		
+		// 如果是编辑模式，添加文章ID
+		if (mode.value === 'edit' && articleData.id) {
+			requestData.id = articleData.id;
+		}
+		
+		// 调用API
+		const apiCall = mode.value === 'edit' 
+			? updateArticle(requestData) 
+			: publishArticleApi(requestData);
+			
+		apiCall.then(res => {
+			uni.hideLoading();
+			isLoading.value = false;
+			
+			// 显示成功提示
+			uni.showToast({
+				title: mode.value === 'edit' ? '更新成功' : '发布成功',
+				icon: 'success',
+				duration: 2000
+			});
+			
+			// 发布成功后清空内容并标记为已确认离开
+			clearAndRefresh();
+			
+			// 如果是新文章且返回了ID，跳转到文章详情页
+			if (mode.value === 'new' && res.data && res.data.id) {
+				setTimeout(() => {
+					uni.redirectTo({
+						url: `/pages/article-detail/article-detail?id=${res.data.id}`
+					});
+				}, 1500);
+			} else {
+				// 编辑模式或没有返回ID，返回上一页
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 1500);
+			}
+		}).catch(err => {
+			uni.hideLoading();
+			isLoading.value = false;
+			
+			console.error('发布失败', err);
+			uni.showToast({
+				title: err.message || '发布失败，请重试',
+				icon: 'none'
+			});
+		});
+	};
+
 	// =================== 预览模式相关方法 =================== //
 	// 切换预览模式
 	const togglePreviewMode = () => {
@@ -1421,6 +1491,21 @@
 				});
 			}
 		}
+		
+		// 尝试加载草稿
+		loadDraft();
+		
+		// 定时自动保存草稿
+		const autoSaveInterval = setInterval(() => {
+			if (hasContent() && !isPreviewMode.value) {
+				saveDraft();
+			}
+		}, 60000); // 每分钟自动保存一次
+		
+		// 组件卸载时清除定时器
+		onBeforeUnmount(() => {
+			clearInterval(autoSaveInterval);
+		});
 	});
 
 	// 监听页面后退按钮
@@ -1489,6 +1574,133 @@
 			}
 		}, 500);
 		// #endif
+	};
+
+	// 保存草稿
+	const saveDraft = () => {
+		if (!hasContent()) return;
+		
+		try {
+			// 获取当前编辑器内容
+			if (editorCtx) {
+				editorCtx.getContents({
+					success: (res) => {
+						// 构建草稿数据
+						const draftData = {
+							title: articleData.title,
+							content: res.text || '',
+							htmlContent: res.html || '',
+							tags: articleData.tags,
+							coverImage: articleData.coverImage,
+							timestamp: Date.now()
+						};
+						
+						// 保存到本地存储
+						uni.setStorageSync('article_draft', JSON.stringify(draftData));
+						console.log('草稿已自动保存');
+					}
+				});
+			} else {
+				// 编辑器未初始化，使用当前数据保存
+				const draftData = {
+					title: articleData.title,
+					content: articleData.content,
+					htmlContent: articleData.htmlContent,
+					tags: articleData.tags,
+					coverImage: articleData.coverImage,
+					timestamp: Date.now()
+				};
+				
+				// 保存到本地存储
+				uni.setStorageSync('article_draft', JSON.stringify(draftData));
+				console.log('草稿已自动保存（无编辑器）');
+			}
+		} catch (error) {
+			console.error('保存草稿失败', error);
+		}
+	};
+
+	// 加载草稿
+	const loadDraft = () => {
+		// 如果是编辑模式，不加载草稿
+		if (mode.value === 'edit') return;
+		
+		try {
+			// 从本地存储获取草稿
+			const draftStr = uni.getStorageSync('article_draft');
+			if (!draftStr) return;
+			
+			const draft = JSON.parse(draftStr);
+			
+			// 检查草稿时间是否在24小时内
+			const now = Date.now();
+			const draftAge = now - (draft.timestamp || 0);
+			const oneDayMs = 24 * 60 * 60 * 1000;
+			
+			if (draftAge > oneDayMs) {
+				// 草稿太旧，删除
+				uni.removeStorageSync('article_draft');
+				return;
+			}
+			
+			// 询问用户是否加载草稿
+			uni.showModal({
+				title: '发现未发布的草稿',
+				content: '是否恢复之前未完成的文章？',
+				success: (res) => {
+					if (res.confirm) {
+						// 填充草稿数据
+						articleData.title = draft.title || '';
+						articleData.content = draft.content || '';
+						articleData.htmlContent = draft.htmlContent || '';
+						
+						// 填充标签
+						if (Array.isArray(draft.tags)) {
+							articleData.tags = [...draft.tags];
+							selectedTags.value = [...draft.tags];
+						}
+						
+						// 填充封面图片
+						if (draft.coverImage) {
+							articleData.coverImage = draft.coverImage;
+						}
+						
+						// 如果编辑器已初始化，设置内容
+						if (editorCtx && draft.htmlContent) {
+							editorCtx.setContents({
+								html: draft.htmlContent,
+								fail: err => {
+									console.error('设置草稿内容失败:', err);
+								},
+								complete: () => {
+									// 内容加载完成后，调整高度
+									adjustEditorHeight();
+								}
+							});
+						}
+						
+						uni.showToast({
+							title: '草稿已恢复',
+							icon: 'success'
+						});
+					} else {
+						// 用户不想加载草稿，删除
+						uni.removeStorageSync('article_draft');
+					}
+				}
+			});
+		} catch (error) {
+			console.error('加载草稿失败', error);
+		}
+	};
+
+	// 清除草稿
+	const clearDraft = () => {
+		try {
+			uni.removeStorageSync('article_draft');
+		} catch (error) {
+			console.error('清除草稿失败', error);
+		}
 	};
 </script>
 
