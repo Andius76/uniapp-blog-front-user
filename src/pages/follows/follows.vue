@@ -20,7 +20,8 @@
 
 		<!-- 关注列表 -->
 		<scroll-view scroll-y class="follow-list" @scrolltolower="loadMore" refresher-enabled
-			:refresher-triggered="isRefreshing" @refresherrefresh="refreshList" refresher-background="#f5f5f5">
+			:refresher-triggered="isRefreshing" @refresherrefresh="refreshList" refresher-background="#f5f5f5"
+			:refresher-threshold="100">
 			<!-- 列表内容 -->
 			<view v-if="followList.length > 0">
 				<view v-for="(user, index) in followList" :key="index" class="follow-item">
@@ -68,7 +69,8 @@
 	import {
 		ref,
 		reactive,
-		onMounted
+		onMounted,
+		onUnmounted
 	} from 'vue';
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	import http from '@/utils/request.js'; // 导入封装的请求工具
@@ -76,6 +78,10 @@
 
 	// 基础URL配置
 	const baseURL = 'http://localhost:8080';
+
+	// 存储定时器ID
+	let searchTimer = null; // 用于防抖处理
+	let refreshTimeoutId = null; // 用于管理刷新状态
 
 	// 获取头像完整URL
 	const getAvatarUrl = (avatar) => {
@@ -98,7 +104,6 @@
 	const isSearching = ref(false); // 新增：标记是否处于搜索状态
 	let currentPage = 1;
 	const pageSize = 10;
-	let searchTimer = null; // 用于防抖处理
 
 	// 用户信息
 	const userInfo = reactive({
@@ -129,82 +134,95 @@
 
 		isLoading.value = true;
 
-		// 调用后端API获取关注列表
-		getUserFollows({
-			page: currentPage,
-			pageSize: pageSize,
-			keyword: searchKeyword.value.trim() // 搜索前去除前后空格
-		}).then(res => {
-			if (res.code !== 200) {
-				throw new Error(res.message || '获取关注列表失败');
-			}
-			
-			const { list, total, pages } = res.data;
-			
-			// 确保列表中的所有用户都设置为已关注状态
-			const processedList = list.map(user => {
-				return {
-					...user,
-					isFollowedByMe: true  // 默认为已关注状态
-				};
-			});
-
-			// 添加到关注列表
-			if (currentPage === 1) {
-				followList.value = [...processedList];
-			} else {
-				followList.value.push(...processedList);
-			}
-
-			// 更新页码
-			currentPage++;
-
-			// 如果获取的数据不足一页，标记为没有更多数据
-			if (list.length < pageSize || followList.value.length >= total) {
-				noMoreData.value = true;
-			}
-			
-			// 刷新成功提示
-			if (isRefreshing.value) {
-				uni.showToast({
-					title: '刷新成功',
-					icon: 'none',
-					duration: 1000
+		// 模拟API请求延迟，使刷新时间稍长，增加感知
+		setTimeout(() => {
+			// 调用后端API获取关注列表
+			getUserFollows({
+				page: currentPage,
+				pageSize: pageSize,
+				keyword: searchKeyword.value.trim() // 搜索前去除前后空格
+			}).then(res => {
+				if (res.code !== 200) {
+					throw new Error(res.message || '获取关注列表失败');
+				}
+				
+				const { list, total, pages } = res.data;
+				
+				// 确保列表中的所有用户都设置为已关注状态
+				const processedList = list.map(user => {
+					return {
+						...user,
+						isFollowedByMe: true  // 默认为已关注状态
+					};
 				});
-			}
-			
-			// 如果是搜索操作，显示搜索结果数量
-			if (isSearching.value && searchKeyword.value.trim()) {
-				if (total > 0) {
-					uni.showToast({
-						title: `找到${total}位相关用户`,
-						icon: 'none',
-						duration: 1500
-					});
+
+				// 添加到关注列表
+				if (currentPage === 1) {
+					followList.value = [...processedList];
 				} else {
+					followList.value.push(...processedList);
+				}
+
+				// 更新页码
+				currentPage++;
+
+				// 如果获取的数据不足一页，标记为没有更多数据
+				if (list.length < pageSize || followList.value.length >= total) {
+					noMoreData.value = true;
+				}
+				
+				// 刷新成功提示
+				if (isRefreshing.value) {
 					uni.showToast({
-						title: '未找到相关用户',
+						title: '刷新成功',
 						icon: 'none',
-						duration: 1500
+						duration: 1000
 					});
 				}
-				isSearching.value = false;
-			}
-		}).catch(err => {
-			console.error('获取关注列表失败', err);
-			
-			// 显示错误提示
-			uni.showToast({
-				title: '获取关注列表失败',
-				icon: 'none'
+				
+				// 如果是搜索操作，显示搜索结果数量
+				if (isSearching.value && searchKeyword.value.trim()) {
+					if (total > 0) {
+						uni.showToast({
+							title: `找到${total}位相关用户`,
+							icon: 'none',
+							duration: 1500
+						});
+					} else {
+						uni.showToast({
+							title: '未找到相关用户',
+							icon: 'none',
+							duration: 1500
+						});
+					}
+					isSearching.value = false;
+				}
+			}).catch(err => {
+				console.error('获取关注列表失败', err);
+				
+				// 显示错误提示
+				uni.showToast({
+					title: '获取关注列表失败',
+					icon: 'none'
+				});
+			}).finally(() => {
+				isLoading.value = false;
+				
+				// 如果是刷新状态，延迟结束刷新状态，让用户有足够时间感知刷新过程
+				if (isRefreshing.value) {
+					// 清除之前的定时器
+					if (refreshTimeoutId) {
+						clearTimeout(refreshTimeoutId);
+					}
+					
+					// 设置新的定时器
+					refreshTimeoutId = setTimeout(() => {
+						isRefreshing.value = false;
+						refreshTimeoutId = null;
+					}, 600); // 延迟600毫秒结束刷新状态
+				}
 			});
-		}).finally(() => {
-			isLoading.value = false;
-			// 如果是刷新状态，结束刷新
-			if (isRefreshing.value) {
-				isRefreshing.value = false;
-			}
-		});
+		}, 800); // 添加800毫秒的模拟延迟
 	};
 
 	/**
@@ -213,6 +231,12 @@
 	const refreshList = () => {
 		// 如果已经在刷新或加载中，则不处理
 		if (isRefreshing.value || isLoading.value) return;
+
+		// 清除之前的刷新定时器
+		if (refreshTimeoutId) {
+			clearTimeout(refreshTimeoutId);
+			refreshTimeoutId = null;
+		}
 
 		// 设置刷新状态
 		isRefreshing.value = true;
@@ -461,6 +485,21 @@
 		// 加载关注列表
 		loadFollowList();
 	});
+	
+	// 页面卸载时清理定时器
+	onUnmounted(() => {
+		// 清理搜索定时器
+		if (searchTimer) {
+			clearTimeout(searchTimer);
+			searchTimer = null;
+		}
+		
+		// 清理刷新定时器
+		if (refreshTimeoutId) {
+			clearTimeout(refreshTimeoutId);
+			refreshTimeoutId = null;
+		}
+	});
 </script>
 
 <style lang="scss">
@@ -634,5 +673,15 @@
 	// 自定义刷新区域样式
 	:deep(.uni-scroll-view-refresh) {
 		background-color: #f5f5f5 !important;
+	}
+	
+	// 提供默认样式，兼容性更好
+	.uni-scroll-view-refresh {
+		background-color: #f5f5f5 !important;
+		
+		&-inner {
+			color: #fff;
+			height: 80rpx !important; // 调整刷新区域高度
+		}
 	}
 </style>
