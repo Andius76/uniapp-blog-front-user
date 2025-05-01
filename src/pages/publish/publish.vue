@@ -59,7 +59,7 @@
 			<text class="images-title">已添加图片</text>
 			<view class="article-image-list">
 				<view v-for="(image, index) in articleData.images" :key="index" class="article-image-item">
-					<image :src="image" mode="aspectFill" class="preview-image"></image>
+					<image :src="image" mode="aspectFill" class="preview-image" @click="previewImage(image)"></image>
 					<view class="image-delete" @click.stop="removeImage(index)">
 						<uni-icons type="clear" size="16" color="#fff"></uni-icons>
 					</view>
@@ -273,7 +273,48 @@
 	const handlePaste = async (e) => {
 		// 粘贴内容处理逻辑
 		console.log('粘贴了内容', e);
-		// 可以在这里对粘贴内容进行额外处理，例如过滤、清理样式等
+		
+		// 检查剪贴板是否包含图片
+		const items = (e.clipboardData || window.clipboardData).items;
+		if (items && items.length) {
+			for (let i = 0; i < items.length; i++) {
+				if (items[i].type.indexOf('image') !== -1) {
+					const blob = items[i].getAsFile();
+					const reader = new FileReader();
+					reader.onload = function(event) {
+						const imageUrl = event.target.result;
+						
+						// 处理粘贴的图片
+						if (editorCtx) {
+							// 获取图片信息（这里需要模拟）
+							const img = new Image();
+							img.onload = function() {
+								// 计算缩略图尺寸
+								const maxWidth = uni.getSystemInfoSync().windowWidth * 0.5;
+								const ratio = img.width / img.height;
+								const width = Math.min(maxWidth, img.width);
+								const height = width / ratio;
+								
+								// 插入缩略图
+								editorCtx.insertImage({
+									src: imageUrl,
+									width: width + 'px',
+									height: height + 'px',
+									alt: '粘贴的图片',
+									extClass: 'article-content-image'
+								});
+								
+								// 添加到图片数组
+								articleData.images.push(imageUrl);
+							};
+							img.src = imageUrl;
+						}
+					};
+					reader.readAsDataURL(blob);
+					break;
+				}
+			}
+		}
 	};
 
 	// 编辑器获取焦点
@@ -289,6 +330,20 @@
 	// 切换预览模式
 	const togglePreview = () => {
 		previewMode.value = !previewMode.value;
+		
+		// 在切换到预览模式时，将缩略图替换为原尺寸图片
+		if (previewMode.value && editorContent.value) {
+			let previewHtml = editorContent.value;
+			
+			// 替换编辑器中的缩略图样式为全尺寸展示
+			previewHtml = previewHtml.replace(/<img[^>]*class="[^"]*article-content-image[^"]*"[^>]*>/g, (match) => {
+				// 去除宽高限制，使图片以原始比例显示
+				return match.replace(/width="[^"]*"/g, 'width="100%"').replace(/height="[^"]*"/g, '');
+			});
+			
+			// 更新渲染的预览内容
+			editorContent.value = previewHtml;
+		}
 	};
 
 	// 添加自定义标签
@@ -706,29 +761,42 @@
 						tempFilePaths.forEach((path, index) => {
 							console.log(`处理第${index+1}张图片:`, path);
 							
-							// 直接使用本地路径
-							editorCtx.insertImage({
+							// 获取图片信息
+							uni.getImageInfo({
 								src: path,
-								width: '100%',
-								alt: `文章图片${index+1}`,
-								success: () => {
-									console.log(`APP图片${index+1}插入成功`);
-								},
-								fail: (err) => {
-									console.error(`APP图片${index+1}插入失败:`, err);
+								success: (imageInfo) => {
+									// 计算缩略图尺寸，保持比例，最大宽度为屏幕宽度的50%
+									const maxWidth = uni.getSystemInfoSync().windowWidth * 0.5;
+									const ratio = imageInfo.width / imageInfo.height;
+									const width = Math.min(maxWidth, imageInfo.width);
+									const height = width / ratio;
 									
-									// 尝试使用plus API
-									if (plus && plus.io && plus.io.convertLocalFileSystemURL) {
-										console.log('尝试使用plus.io.convertLocalFileSystemURL');
-										plus.io.convertLocalFileSystemURL(path, (localUrl) => {
-											console.log('转换后的URL:', localUrl);
-											editorCtx.insertImage({
-												src: localUrl,
-												width: '100%',
-												alt: `文章图片${index+1}(转换后)`
-											});
-										});
-									}
+									// 插入缩略图，但保留原始图片路径用于预览
+									editorCtx.insertImage({
+										src: path,
+										width: width + 'px',
+										height: height + 'px',
+										alt: `文章图片${index+1}`,
+										extClass: 'article-content-image', // 添加自定义类名便于样式控制
+										data: {
+											originalSrc: path // 保存原始图片路径
+										},
+										success: () => {
+											console.log(`APP图片${index+1}插入成功`);
+										},
+										fail: (err) => {
+											console.error(`APP图片${index+1}插入失败:`, err);
+										}
+									});
+								},
+								fail: () => {
+									// 获取图片信息失败时使用默认尺寸
+									editorCtx.insertImage({
+										src: path,
+										width: '80%',
+										alt: `文章图片${index+1}`,
+										extClass: 'article-content-image'
+									});
 								}
 							});
 						});
@@ -741,31 +809,65 @@
 					// #ifdef MP-WEIXIN
 					tempFilePaths.forEach((path, index) => {
 						if (editorCtx) {
-							// 微信小程序使用base64方式插入图片
-							uni.getFileSystemManager().readFile({
-								filePath: path,
-								encoding: 'base64',
-								success: (res) => {
-									const base64 = 'data:image/png;base64,' + res.data;
-									editorCtx.insertImage({
-										src: base64,
-										width: '100%',
-										alt: '文章图片',
-										success: () => {
-											console.log('小程序图片插入成功');
+							// 获取图片信息以计算合适的显示尺寸
+							uni.getImageInfo({
+								src: path,
+								success: (imageInfo) => {
+									// 计算缩略图尺寸，最大宽度为屏幕宽度的50%
+									const maxWidth = uni.getSystemInfoSync().windowWidth * 0.5;
+									const ratio = imageInfo.width / imageInfo.height;
+									const width = Math.min(maxWidth, imageInfo.width);
+									const height = width / ratio;
+									
+									// 微信小程序使用base64方式插入图片
+									uni.getFileSystemManager().readFile({
+										filePath: path,
+										encoding: 'base64',
+										success: (res) => {
+											const base64 = 'data:image/png;base64,' + res.data;
+											editorCtx.insertImage({
+												src: base64,
+												width: width + 'px',
+												height: height + 'px',
+												alt: '文章图片',
+												extClass: 'article-content-image',
+												data: {
+													originalSrc: path
+												},
+												success: () => {
+													console.log('小程序图片插入成功');
+												},
+												fail: (err) => {
+													console.error('小程序图片插入失败', err);
+												}
+											});
 										},
 										fail: (err) => {
-											console.error('小程序图片插入失败', err);
+											console.error('读取图片文件失败', err);
+											// 失败时尝试直接使用路径
+											editorCtx.insertImage({
+												src: path,
+												width: '80%',
+												alt: '文章图片',
+												extClass: 'article-content-image'
+											});
 										}
 									});
 								},
-								fail: (err) => {
-									console.error('读取图片文件失败', err);
-									// 失败时尝试直接使用路径
-									editorCtx.insertImage({
-										src: path,
-										width: '100%',
-										alt: '文章图片'
+								fail: () => {
+									// 获取图片信息失败时使用默认尺寸
+									uni.getFileSystemManager().readFile({
+										filePath: path,
+										encoding: 'base64',
+										success: (res) => {
+											const base64 = 'data:image/png;base64,' + res.data;
+											editorCtx.insertImage({
+												src: base64,
+												width: '80%',
+												alt: '文章图片',
+												extClass: 'article-content-image'
+											});
+										}
 									});
 								}
 							});
@@ -775,15 +877,41 @@
 
 					// 针对H5的处理
 					// #ifdef H5
-					tempFilePaths.forEach(path => {
+					tempFilePaths.forEach((path, index) => {
 						if (editorCtx) {
-							// 在H5中直接使用临时路径
-							editorCtx.insertImage({
+							// 获取图片信息
+							uni.getImageInfo({
 								src: path,
-								width: '100%',
-								alt: '文章图片',
-								success: () => {
-									console.log('H5图片插入成功');
+								success: (imageInfo) => {
+									// 计算缩略图尺寸
+									const maxWidth = document.body.clientWidth * 0.5;
+									const ratio = imageInfo.width / imageInfo.height;
+									const width = Math.min(maxWidth, imageInfo.width);
+									const height = width / ratio;
+									
+									// 在H5中直接使用临时路径
+									editorCtx.insertImage({
+										src: path,
+										width: width + 'px',
+										height: height + 'px',
+										alt: '文章图片',
+										extClass: 'article-content-image',
+										data: {
+											originalSrc: path
+										},
+										success: () => {
+											console.log('H5图片插入成功');
+										}
+									});
+								},
+								fail: () => {
+									// 获取图片信息失败时使用默认尺寸
+									editorCtx.insertImage({
+										src: path,
+										width: '80%',
+										alt: '文章图片',
+										extClass: 'article-content-image'
+									});
 								}
 							});
 						}
@@ -914,6 +1042,14 @@
 					});
 				}
 			}
+		});
+	};
+
+	// 预览图片
+	const previewImage = (image) => {
+		uni.previewImage({
+			current: image,
+			urls: articleData.images
 		});
 	};
 </script>
@@ -1350,5 +1486,24 @@
 		color: #999;
 		text-align: center;
 		display: block;
+	}
+
+	/* 文章图片缩略图样式 */
+	.article-content-image {
+		max-width: 50%; 
+		height: auto;
+		border-radius: 4px;
+		margin: 8rpx 0;
+		border: 1px solid #eee;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		cursor: pointer;
+	}
+	
+	/* 预览模式下的图片样式 */
+	.rich-display .article-content-image {
+		max-width: 100%;
+		height: auto;
+		margin: 16rpx 0;
+		border: none;
 	}
 </style>

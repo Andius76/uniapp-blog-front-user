@@ -1016,7 +1016,9 @@
 | 参数名 | 类型 | 必选 | 说明     |
 |--------|------|------|----------|
 | image  | file | 是   | 图片文件 |
-| type   | string | 否 | 图片类型：cover(封面图)或content(内容图)，默认为content |
+| type   | string | 否 | 图片类型：cover(封面图)或content(正文图)，默认为content |
+| width  | number | 否 | 原始图片宽度，用于服务器生成缩略图 |
+| height | number | 否 | 原始图片高度，用于服务器生成缩略图 |
 
 - **响应参数：**
 
@@ -1028,10 +1030,13 @@
 
 - **data对象结构：**
 
-| 参数名    | 类型   | 说明                 |
-|-----------|--------|----------------------|
-| imageUrl  | string | 图片的访问URL        |
-| type      | string | 图片类型：cover或content |
+| 参数名         | 类型   | 说明                 |
+|----------------|--------|----------------------|
+| imageUrl       | string | 图片的访问URL        |
+| thumbnailUrl   | string | 缩略图的访问URL      |
+| type           | string | 图片类型：cover或content |
+| width          | number | 原始图片宽度         |
+| height         | number | 原始图片高度         |
 
 - **响应示例：**
 
@@ -1041,7 +1046,10 @@
     "message": "图片上传成功",
     "data": {
         "imageUrl": "http://example.com/uploads/articles/image_1234567890.jpg",
-        "type": "cover"
+        "thumbnailUrl": "http://example.com/uploads/articles/thumbnails/image_1234567890.jpg",
+        "type": "content",
+        "width": 1200,
+        "height": 800
     }
 }
 ```
@@ -1061,9 +1069,13 @@
   - 文件大小限制：5MB
   - 上传成功后会自动处理和压缩图片
   - 封面图片会进行额外的处理，如裁剪为特定比例（16:9）和尺寸
-  - 返回的imageUrl为完整的图片访问URL
+  - 正文图片会自动生成缩略图，在编辑模式使用缩略图，预览和发布时使用原图
+  - thumbnailUrl用于在编辑器中显示缩略图，imageUrl用于实际文章展示
+  - 前端会自动处理缩略图与原图的切换逻辑，后端只需提供两个URL
+  - 返回的imageUrl和thumbnailUrl均为完整的图片访问URL
   - 图片会被保存在服务器的articles目录下
   - type参数用于区分图片用途，可用于后端不同的处理逻辑
+  - width和height参数可用于后端生成合适尺寸的缩略图
   - **⚠️ 当前状态：待实现**
 
 ### 4. 获取文章列表
@@ -1147,6 +1159,7 @@
 | content        | string           | 文章内容（纯文本）           |
 | htmlContent    | string           | 文章HTML内容                 |
 | coverImage     | string           | 封面图片URL                  |
+| images         | Array\<object\>  | 文章图片数组，包含原图和缩略图URL |
 | tags           | Array\<string\>  | 文章标签                     |
 | viewCount      | number           | 浏览量                       |
 | likeCount      | number           | 点赞数                       |
@@ -1160,6 +1173,15 @@
 | createTime     | string           | 创建时间                     |
 | updateTime     | string           | 更新时间                     |
 
+- **images数组元素结构：**
+
+| 参数名       | 类型   | 说明               |
+|--------------|--------|-------------------|
+| imageUrl     | string | 原始图片URL       |
+| thumbnailUrl | string | 缩略图URL         |
+| width        | number | 图片原始宽度      |
+| height       | number | 图片原始高度      |
+
 - **响应示例：**
 
 ```json
@@ -1170,8 +1192,16 @@
         "id": 1001,
         "title": "示例文章标题",
         "content": "这是文章的纯文本内容...",
-        "htmlContent": "<p>这是文章的HTML内容...</p>",
+        "htmlContent": "<p>这是文章的HTML内容...</p><img class='article-content-image' src='https://example.com/uploads/articles/image_1.jpg' />",
         "coverImage": "https://example.com/uploads/articles/cover_1001.jpg",
+        "images": [
+            {
+                "imageUrl": "https://example.com/uploads/articles/image_1.jpg",
+                "thumbnailUrl": "https://example.com/uploads/articles/thumbnails/image_1.jpg",
+                "width": 1200,
+                "height": 800
+            }
+        ],
         "tags": ["技术", "教程"],
         "viewCount": 120,
         "likeCount": 30,
