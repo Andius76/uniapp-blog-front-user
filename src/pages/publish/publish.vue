@@ -18,7 +18,7 @@
 			</view>
 		</view>
 
-		<scroll-view scroll-y class="publish-content">
+		<scroll-view scroll-y class="publish-content" v-if="!isPreviewMode" :style="{height: 'calc(100vh - 190rpx)'}">
 			<!-- 标题输入 -->
 			<view class="title-input">
 				<input type="text" v-model="articleData.title" placeholder="请输入标题" class="input-field" />
@@ -29,8 +29,8 @@
 
 			<!-- 正文编辑区域 - 动态高度 -->
 			<view class="content-wrapper">
-				<!-- 富文本编辑器区域 -->
-				<view class="rich-editor-container">
+			<!-- 富文本编辑器区域 -->
+			<view class="rich-editor-container">
 					<!-- 富文本编辑器 -->
 					<editor id="editor" class="rich-editor" 
 						:placeholder="'请输入正文'" 
@@ -46,9 +46,9 @@
 					<view class="word-count">
 						<text>{{ articleData.wordCount }} 字</text>
 					</view>
+					</view>
 				</view>
-			</view>
-			
+
 			<!-- 文章信息区域 - 会被挤压 -->
 			<view class="article-info-area">
 				<!-- 文章标签区域 -->
@@ -73,32 +73,72 @@
 							<image :src="articleData.coverImage" mode="aspectFill" class="cover-image"></image>
 							<view class="image-delete" @click="removeCoverImage">
 								<uni-icons type="close" size="16" color="#fff"></uni-icons>
+								</view>
+								</view>
 							</view>
 						</view>
 					</view>
-				</view>
-			</view>
 		</scroll-view>
 
 		<!-- 底部工具栏 -->
 		<view class="editor-toolbar">
-			<view class="toolbar-item" @click="showFormattingToolbar">
+			<view class="toolbar-item" @click="togglePreviewMode">
+				<view class="toolbar-icon">
+					<uni-icons :type="isPreviewMode ? 'compose' : 'eye'" size="24" color="#333"></uni-icons>
+				</view>
+				<text class="toolbar-text">{{ isPreviewMode ? '编辑模式' : '预览模式' }}</text>
+			</view>
+			<view class="toolbar-item" @click="showFormattingToolbar" :class="{'disabled': isPreviewMode}">
 				<view class="toolbar-icon">
 					<text class="icon-text">A</text>
 				</view>
 				<text class="toolbar-text">文本格式</text>
 			</view>
-			<view class="toolbar-item" @click="insertImage">
+			<view class="toolbar-item" @click="insertImage" :class="{'disabled': isPreviewMode}">
 				<view class="toolbar-icon">
 					<uni-icons type="image" size="24" color="#333"></uni-icons>
 				</view>
 				<text class="toolbar-text">上传图片</text>
 			</view>
-			<view class="toolbar-item" @click="showTagSelector">
+			<view class="toolbar-item" @click="showTagSelector" :class="{'disabled': isPreviewMode}">
 				<view class="toolbar-icon">
 					<uni-icons type="paperclip" size="24" color="#333"></uni-icons>
 				</view>
 				<text class="toolbar-text">添加标签</text>
+			</view>
+		</view>
+
+		<!-- 预览模式的内容区域 -->
+		<view class="preview-container" v-if="isPreviewMode">
+			<!-- 预览模式下的文章内容 -->
+			<view class="preview-article">
+				<!-- 文章标题 -->
+				<view class="preview-title">
+					<text>{{ articleData.title || '无标题文章' }}</text>
+				</view>
+				
+				<!-- 文章信息 -->
+				<view class="preview-info">
+					<text class="preview-date">{{ getCurrentDate() }}</text>
+					<text class="preview-word-count">{{ articleData.wordCount }} 字</text>
+				</view>
+				
+				<!-- 文章标签 -->
+				<view class="preview-tags" v-if="articleData.tags.length > 0">
+					<view v-for="(tag, index) in articleData.tags" :key="index" class="preview-tag">
+					<text>{{ tag }}</text>
+				</view>
+			</view>
+				
+				<!-- 文章封面 -->
+				<view class="preview-cover" v-if="articleData.coverImage">
+					<image :src="articleData.coverImage" mode="widthFix" class="preview-cover-image"></image>
+		</view>
+
+				<!-- 文章内容 -->
+				<view class="preview-content">
+					<rich-text :nodes="processedHtmlContent" class="rich-text-content"></rich-text>
+				</view>
 			</view>
 		</view>
 
@@ -125,49 +165,54 @@
 		</view>
 
 		<!-- 标签选择弹窗 -->
-		<uni-popup ref="tagPopup" type="bottom">
-			<view class="tag-popup-content">
-				<view class="tag-popup-header">
-					<text class="tag-popup-title">添加标签</text>
-					<view class="tag-popup-close" @click="closeTagPopup">
-						<uni-icons type="close" size="20" color="#666"></uni-icons>
+		<uni-popup ref="tagPopup" type="bottom" background-color="transparent">
+			<view class="tag-popup-container">
+				<view class="tag-popup-content">
+					<view class="tag-popup-header">
+						<text class="tag-popup-title">添加标签</text>
+						<view class="tag-popup-close" @click="closeTagPopup">
+							<uni-icons type="close" size="20" color="#666"></uni-icons>
+						</view>
 					</view>
-				</view>
 
-				<!-- 自定义标签输入区域 -->
-				<view class="custom-tag-input">
-					<input type="text" v-model="customTagInput" placeholder="输入自定义标签" class="tag-input-field"
-						@confirm="addCustomTag" maxlength="10" />
-					<button class="add-tag-btn" @click="addCustomTag">添加</button>
-				</view>
+					<!-- 自定义标签输入区域 -->
+					<view class="custom-tag-input">
+						<input type="text" v-model="customTagInput" placeholder="输入自定义标签" class="tag-input-field"
+							@confirm="addCustomTag" maxlength="10" />
+						<button class="add-tag-btn" @click="addCustomTag">添加</button>
+					</view>
 
-				<!-- 已选标签展示 -->
-				<view v-if="selectedTags.length > 0" class="selected-tags-section">
-					<text class="section-title">已选标签 ({{ selectedTags.length }}/5)</text>
-					<view class="tag-list">
-						<view v-for="(tag, index) in selectedTags" :key="'selected-'+index"
-							class="tag-item tag-selected">
-							<text>{{ tag }}</text>
-							<view class="tag-delete" @click="removeSelectedTag(tag)">
-								<uni-icons type="close" size="12" color="#fff"></uni-icons>
+					<!-- 已选标签展示 -->
+					<view v-if="selectedTags.length > 0" class="selected-tags-section">
+						<text class="section-title">已选标签 ({{ selectedTags.length }}/5)</text>
+						<view class="tag-list">
+							<view v-for="(tag, index) in selectedTags" :key="'selected-'+index"
+								class="tag-item tag-selected">
+								<text>{{ tag }}</text>
+								<view class="tag-delete" @click="removeSelectedTag(tag)">
+									<uni-icons type="close" size="12" color="#fff"></uni-icons>
+								</view>
 							</view>
 						</view>
 					</view>
-				</view>
 
-				<!-- 推荐标签区域 -->
-				<view class="recommended-tags-section">
-					<text class="section-title">推荐标签</text>
-					<view class="tag-list">
-						<view v-for="(tag, index) in availableTags" :key="'recommend-'+index" class="tag-item"
-							:class="{ 'tag-selected': selectedTags.includes(tag) }" @click="toggleTag(tag)">
-							<text>{{ tag }}</text>
+					<!-- 推荐标签区域 -->
+					<view class="recommended-tags-section">
+						<text class="section-title">推荐标签</text>
+						<view class="tag-list">
+							<view v-for="(tag, index) in availableTags" :key="'recommend-'+index" class="tag-item"
+								:class="{ 'tag-selected': selectedTags.includes(tag) }" @click="toggleTag(tag)">
+								<text>{{ tag }}</text>
+							</view>
 						</view>
 					</view>
-				</view>
 
-				<view class="tag-popup-footer">
-					<button class="tag-confirm-btn" @click="confirmTagSelection">确认</button>
+					<view class="tag-popup-footer">
+						<button class="tag-confirm-btn" @click="confirmTagSelection">确认</button>
+					</view>
+					
+					<!-- 底部安全区域，防止内容被工具栏遮挡 -->
+					<view class="tag-popup-safe-area"></view>
 				</view>
 			</view>
 		</uni-popup>
@@ -230,6 +275,8 @@
 	const editorContent = ref('');
 	// 是否已确认离开
 	let isConfirmedExit = false;
+	// 预览模式
+	const isPreviewMode = ref(false);
 
 	// =================== 文章数据对象 =================== //
 	// 文章模式
@@ -262,7 +309,29 @@
 
 	// 已选标签
 	const selectedTags = ref([]);
-	
+
+	// 添加处理HTML内容的计算属性
+	const processedHtmlContent = computed(() => {
+		// 获取原始HTML内容
+		let html = articleData.htmlContent || '<p>暂无内容</p>';
+		
+		// 对HTML内容进行处理，确保图片宽度不超过容器
+		html = html.replace(/<img/g, '<img style="max-width:100%;height:auto;display:block;margin:10px 0;border-radius:8px;"');
+		
+		// 添加样式到段落
+		html = html.replace(/<p/g, '<p style="margin-bottom:20px;width:100%;overflow-wrap:break-word;"');
+		
+		// 添加样式到标题
+		html = html.replace(/<h1/g, '<h1 style="font-size:36rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;"');
+		html = html.replace(/<h2/g, '<h2 style="font-size:32rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;"');
+		html = html.replace(/<h3/g, '<h3 style="font-size:30rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;"');
+		
+		// 添加样式到链接
+		html = html.replace(/<a/g, '<a style="color:#4361ee;text-decoration:none;"');
+		
+		return html;
+	});
+
 	// =================== 编辑器方法 =================== //
 	// 编辑器准备完成
 	const onEditorReady = () => {
@@ -427,8 +496,8 @@
 									alt: '粘贴的图片',
 									extClass: 'article-content-image',
 									success: () => {
-										// 添加到图片数组
-										articleData.images.push(imageUrl);
+								// 添加到图片数组
+								articleData.images.push(imageUrl);
 										uni.hideLoading();
 									},
 									fail: (err) => {
@@ -462,6 +531,9 @@
 
 	// 显示格式工具栏
 	const showFormattingToolbar = () => {
+		// 预览模式下禁用
+		if (isPreviewMode.value) return;
+		
 		showFormattingTools.value = !showFormattingTools.value;
 	};
 
@@ -553,14 +625,14 @@
 		const index = articleData.tags.indexOf(tag);
 		if (index > -1) {
 			articleData.tags.splice(index, 1);
-			
-			uni.showToast({
+
+		uni.showToast({
 				title: '标签已移除',
-				icon: 'success'
-			});
+			icon: 'success'
+		});
 		}
 	};
-	
+
 	// 移除选中标签
 	const removeSelectedTag = (tag) => {
 		const index = selectedTags.value.indexOf(tag);
@@ -571,6 +643,9 @@
 
 	// 显示标签选择器
 	const showTagSelector = () => {
+		// 预览模式下禁用
+		if (isPreviewMode.value) return;
+		
 		// 如果已经有5个标签，则提示
 		if (articleData.tags.length >= 5) {
 			uni.showToast({
@@ -583,7 +658,20 @@
 		// 打开前，先将已有的标签设置为选中状态
 		selectedTags.value = [...articleData.tags];
 		customTagInput.value = '';
-		tagPopup.value.open();
+		
+		// 打开弹窗前调整页面滚动位置，确保不被底部工具栏遮挡
+		const pageScrollTop = uni.pageScrollTop || 0;
+		if (pageScrollTop > 0) {
+			uni.pageScrollTo({
+				scrollTop: 0,
+				duration: 300
+			});
+		}
+		
+		// 延迟打开弹窗，确保滚动完成
+		setTimeout(() => {
+			tagPopup.value.open();
+		}, 300);
 	};
 
 	// 关闭标签选择器
@@ -668,6 +756,9 @@
 	// =================== 图片相关方法 =================== //
 	// 插入图片
 	const insertImage = () => {
+		// 预览模式下禁用
+		if (isPreviewMode.value) return;
+		
 		// 首先确认编辑器上下文是否已初始化
 		if (!editorCtx) {
 			uni.showToast({
@@ -1006,6 +1097,42 @@
 		});
 	};
 
+	// =================== 预览模式相关方法 =================== //
+	// 切换预览模式
+	const togglePreviewMode = () => {
+		// 切换到预览模式前，确保获取最新内容
+		if (!isPreviewMode.value) {
+			// 获取当前编辑器内容
+					if (editorCtx) {
+				editorCtx.getContents({
+					success: (res) => {
+						// 更新文章数据
+						articleData.htmlContent = res.html || '';
+						articleData.content = res.text || '';
+						articleData.wordCount = res.text ? res.text.length : 0;
+						
+						// 切换模式
+						isPreviewMode.value = true;
+					}
+				});
+			} else {
+				isPreviewMode.value = true;
+			}
+		} else {
+			// 从预览模式切换回编辑模式
+			isPreviewMode.value = false;
+		}
+	};
+	
+	// 获取当前日期
+	const getCurrentDate = () => {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = (now.getMonth() + 1).toString().padStart(2, '0');
+		const day = now.getDate().toString().padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	};
+
 	// =================== 生命周期方法 =================== //
 	// 页面挂载时添加监听
 	onMounted(() => {
@@ -1136,13 +1263,13 @@
 		color: $text-color;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
 	}
-	
+
 	.container {
 		display: flex;
 		flex-direction: column;
 		height: 100vh;
 	}
-	
+
 	/* ========== 头部样式 ========== */
 	.publish-header {
 		display: flex;
@@ -1154,7 +1281,7 @@
 		background-color: $bg-white;
 		position: relative;
 	}
-	
+
 	.back-btn {
 		width: 60rpx;
 		height: 60rpx;
@@ -1162,7 +1289,7 @@
 		justify-content: center;
 		align-items: center;
 	}
-	
+
 	.header-title {
 		position: absolute;
 		left: 50%;
@@ -1170,7 +1297,7 @@
 		font-size: 32rpx;
 		font-weight: 500;
 	}
-	
+
 	.publish-btn {
 		background-color: $primary-color;
 		color: $bg-white;
@@ -1182,7 +1309,7 @@
 			color: $bg-white;
 		}
 	}
-	
+
 	/* ========== 内容区域 ========== */
 	.publish-content {
 		flex: 1;
@@ -1202,13 +1329,14 @@
 		position: relative;
 		z-index: 1;
 		background-color: $bg-white;
+		padding-bottom: 120rpx; /* 添加底部内边距，避免内容被工具栏遮挡 */
 	}
 	
 	/* 标题输入 */
 	.title-input {
 		padding: 30rpx 0;
 	}
-	
+
 	.input-field {
 		font-size: 36rpx;
 		font-weight: 500;
@@ -1263,7 +1391,7 @@
 		flex-wrap: wrap;
 		gap: 16rpx;
 	}
-	
+
 	/* 正文下方的标签样式 */
 	.article-category .tag-item {
 		display: flex;
@@ -1335,7 +1463,7 @@
 		display: flex;
 		justify-content: center;
 	}
-	
+
 	.tag-confirm-btn {
 		width: 60%;
 		height: 80rpx;
@@ -1413,7 +1541,7 @@
 		z-index: 999; /* 确保在最上层 */
 		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05); /* 添加顶部阴影，提升视觉层次 */
 	}
-	
+
 	.toolbar-item {
 		display: flex;
 		flex-direction: column;
@@ -1432,7 +1560,7 @@
 		font-size: 28rpx;
 		font-weight: bold;
 	}
-	
+
 	.toolbar-text {
 		font-size: 24rpx;
 		color: $text-secondary;
@@ -1482,27 +1610,33 @@
 	}
 	
 	/* ========== 标签弹窗 ========== */
+	.tag-popup-container {
+		width: 100%;
+		position: relative;
+		padding-bottom: env(safe-area-inset-bottom); /* 兼容全面屏底部安全区域 */
+	}
+
 	.tag-popup-content {
 		background-color: $bg-white;
 		padding: 30rpx;
 		border-top-left-radius: 20rpx;
 		border-top-right-radius: 20rpx;
-		max-height: 70vh;
+		max-height: 65vh; /* 限制最大高度为视口的65%，确保不会太高 */
 		overflow-y: auto;
 	}
-	
+
 	.tag-popup-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 30rpx;
 	}
-	
+
 	.tag-popup-title {
 		font-size: 32rpx;
 		font-weight: bold;
 	}
-	
+
 	.tag-popup-close {
 		width: 40rpx;
 		height: 40rpx;
@@ -1510,12 +1644,12 @@
 		justify-content: center;
 		align-items: center;
 	}
-	
+
 	.custom-tag-input {
 		display: flex;
 		margin-bottom: 30rpx;
 	}
-	
+
 	.tag-input-field {
 		flex: 1;
 		height: 80rpx;
@@ -1524,7 +1658,7 @@
 		padding: 0 30rpx;
 		font-size: 28rpx;
 	}
-	
+
 	.add-tag-btn {
 		width: 140rpx;
 		height: 80rpx;
@@ -1537,25 +1671,25 @@
 		justify-content: center;
 		align-items: center;
 	}
-	
+
 	.section-title {
 		font-size: 28rpx;
 		color: $text-secondary;
 		margin-bottom: 20rpx;
 		display: block;
 	}
-	
+
 	.selected-tags-section,
 	.recommended-tags-section {
 		margin-bottom: 30rpx;
 	}
-	
+
 	.tag-list {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 16rpx;
 	}
-	
+
 	/* ========== 链接弹窗 ========== */
 	.link-input-container {
 		display: flex;
@@ -1597,9 +1731,9 @@
 			height: 40rpx;
 			background-color: rgba(0, 0, 0, 0.5);
 			border-radius: 20rpx;
-			display: flex;
-			justify-content: center;
-			align-items: center;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 			color: $bg-white;
 			font-size: 28rpx;
 		}
@@ -1615,5 +1749,107 @@
 		color: $text-light;
 		background-color: rgba(255, 255, 255, 0.8);
 		border-radius: 6rpx;
+	}
+	
+	/* 预览模式样式简化 */
+	.preview-container {
+		position: fixed;
+		top: 90rpx;
+		left: 0;
+		right: 0;
+		bottom: 100rpx;
+		background-color: $bg-light;
+		z-index: 100;
+		overflow-y: auto;
+		padding: 30rpx;
+		display: flex;
+		justify-content: center;
+	}
+	
+	.preview-article {
+		background-color: $bg-white;
+		border-radius: 16rpx;
+		padding: 40rpx 30rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+		width: 100%;
+		max-width: 720rpx;
+		min-width: 680rpx;
+		box-sizing: border-box;
+		overflow-wrap: break-word; /* 确保长内容自动换行 */
+	}
+	
+	.preview-title {
+		font-size: 40rpx;
+		font-weight: 700;
+		color: $text-color;
+		margin-bottom: 20rpx;
+		line-height: 1.4;
+	}
+
+	.preview-info {
+		display: flex;
+		align-items: center;
+		margin-bottom: 30rpx;
+		font-size: 24rpx;
+		color: $text-light;
+	}
+	
+	.preview-date {
+		margin-right: 20rpx;
+	}
+	
+	.preview-tags {
+		display: flex;
+		flex-wrap: wrap;
+		margin-bottom: 30rpx;
+		gap: 16rpx;
+	}
+	
+	.preview-tag {
+		font-size: 24rpx;
+		padding: 8rpx 16rpx;
+		background-color: rgba(67, 97, 238, 0.1);
+		color: $primary-color;
+		border-radius: 8rpx;
+	}
+	
+	.preview-cover {
+		margin-bottom: 30rpx;
+		border-radius: 12rpx;
+		overflow: hidden;
+		width: 100%;
+		
+		.preview-cover-image {
+			width: 100%;
+			max-width: 100%;
+			height: auto;
+			display: block;
+		}
+	}
+	
+	.preview-content {
+		font-size: 28rpx;
+		line-height: 1.8;
+		color: $text-color;
+		word-break: break-word;
+		overflow-wrap: break-word;
+		width: 100%;
+	}
+
+	.rich-text-content {
+		width: 100%;
+		display: block;
+	}
+
+	/* 禁用状态的工具栏项目 */
+	.toolbar-item.disabled {
+		opacity: 0.5;
+		pointer-events: none;
+	}
+
+	/* 标签弹窗底部安全区域 */
+	.tag-popup-safe-area {
+		height: 100rpx; /* 与底部工具栏高度一致 */
+		width: 100%;
 	}
 </style>
