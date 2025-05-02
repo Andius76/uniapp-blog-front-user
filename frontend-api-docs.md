@@ -1721,7 +1721,41 @@
    - 自动处理点赞和收藏状态，避免每次查询时需要额外请求
    - 根据不同的列表类型自动选择对应的API接口
 
-9. **运行时优化：**
+9. **API接口调用：**
+
+   组件根据不同属性选择对应的API接口：
+
+   - **获取指定用户的文章列表** 
+     - API路径：`/api/article/user/{userId}/articles`
+     - 请求方式：GET
+     - 参数说明：
+       | 参数名 | 说明 |
+       |--------|------|
+       | userId | 用户ID，路径参数 |
+       | type | 文章类型：posts(发表的)或likes(点赞的)，默认posts |
+       | page | 页码，默认1 |
+       | pageSize | 每页记录数，默认10 |
+     - 当`listType`为'posts'时，`type=posts`；当`listType`为'like'时，`type=likes`
+
+   - **收藏文章操作** 
+     - API路径：`/api/article/collect/{articleId}`
+     - 请求方式：POST(收藏)或DELETE(取消收藏)
+     - 参数说明：
+       | 参数名 | 说明 |
+       |--------|------|
+       | articleId | 文章ID，路径参数 |
+     - 需要在请求头中添加`Authorization: Bearer {token}`
+
+   - **点赞文章操作** 
+     - API路径：`/api/article/like/{articleId}`
+     - 请求方式：POST(点赞)或DELETE(取消点赞)
+     - 参数说明：
+       | 参数名 | 说明 |
+       |--------|------|
+       | articleId | 文章ID，路径参数 |
+     - 需要在请求头中添加`Authorization: Bearer {token}`
+
+10. **运行时优化：**
 
    - 使用响应式数据确保性能优化
    - 图片加载优化，使用`mode="aspectFill"`确保图片显示一致
@@ -1729,3 +1763,103 @@
    - 用户头像和昵称点击跳转到用户资料页
    - 自动处理文章摘要显示和"全文"显示
    - 优化了按钮点击体验和反馈提示
+
+### 个人中心页面 (my.vue)
+
+**页面说明：** 用户个人中心页面，展示用户个人信息、关注统计和文章列表等内容
+
+1. **页面路径：** `/pages/my/my.vue`
+
+2. **API调用：**
+
+   - **获取当前登录用户信息**
+     - API路径：`/api/user/info`
+     - 请求方式：GET
+     - 请求参数：无
+     - 响应数据：
+       ```json
+       {
+         "code": 200,
+         "message": "操作成功",
+         "data": {
+           "id": 1,
+           "email": "user@example.com",
+           "nickname": "示例用户",
+           "avatar": "https://example.com/avatars/default.jpg",
+           "bio": "这是我的个人简介",
+           "followCount": 10,
+           "fansCount": 5,
+           "articleCount": 8,
+           "createTime": "2023-05-01 12:00:00"
+         }
+       }
+       ```
+     - 用于初始化用户个人资料、关注数量和粉丝数量等信息
+     - 数据适配：后端返回的`fansCount`字段在前端使用`followerCount`
+
+   - **更新用户个人资料**
+     - API路径：`/api/user/profile`
+     - 请求方式：PUT
+     - 请求参数：
+       ```json
+       {
+         "nickname": "新昵称", // 可选，仅更新个人简介时可不传
+         "bio": "新的个人简介" // 可选，仅更新昵称时可不传
+       }
+       ```
+     - 通过`handleNicknameChange`和`handleBioChange`方法调用
+
+   - **上传用户头像**
+     - API路径：`/api/user/avatar`
+     - 请求方式：POST（multipart/form-data）
+     - 请求参数：
+       | 参数名 | 说明 |
+       |--------|------|
+       | avatar | 头像文件 |
+     - 通过`handleAvatarChange`方法调用
+
+   - **获取用户文章列表**
+     - 通过ArticleList组件实现，根据选中的标签页(`data.currentTab`)显示用户发表的文章或用户点赞的文章：
+       - 当`data.currentTab === 0`时，显示用户发表的文章(`list-type="posts"`)
+       - 当`data.currentTab === 1`时，显示用户点赞的文章(`list-type="like"`)
+     - 实际API调用由ArticleList组件处理，详见组件文档
+
+3. **交互事件处理：**
+
+   - **切换标签页**
+     - 方法：`switchTab(index)`
+     - 功能：切换"我的发表"和"我的点赞"标签页，并重新加载对应类型的文章列表
+     - 相关API调用：通过ArticleList组件的`resetList`和`loadArticles`方法实现
+
+   - **编辑个人简介**
+     - 方法：`toggleBioEdit()`和`saveUserBio()`
+     - 功能：显示/隐藏个人简介编辑弹窗，并保存修改后的个人简介
+     - 相关API调用：使用`updateUserProfile({ bio: bioValue })`接口
+
+   - **文章操作**
+     - 通过ArticleList组件的事件实现文章的查看、点赞、收藏、评论、编辑和删除等操作
+     - 点击编辑文章时，跳转到发布页面并传递文章数据进行编辑
+     - 点击删除文章时，弹出确认对话框并在确认后调用删除文章API
+
+4. **数据刷新机制：**
+
+   - **页面显示时刷新**
+     - 在`onShow`生命周期钩子中调用`refreshUserInfo()`方法刷新用户信息
+     - 在`onShow`生命周期钩子中调用ArticleList组件的`refresh()`方法刷新文章列表
+     
+   - **节流控制**
+     - 使用`refreshTimeoutId`实现300ms的节流控制，避免频繁刷新数据
+     - 使用缓存的用户基本信息作为首屏渲染数据，提高页面加载速度
+
+5. **状态管理：**
+
+   - 使用Vue 3的Composition API (`reactive`和`ref`)管理页面状态
+   - 页面核心状态包括：用户信息(`data.userInfo`)、当前标签页(`data.currentTab`)、设置面板显示状态(`data.showUserSettings`)等
+   - 使用`watch`监听设置面板显示状态，实现物理返回键的拦截处理
+
+6. **注意事项：**
+
+   - 页面首次加载时，会优先使用本地缓存的用户信息进行渲染，然后再通过API获取完整的用户信息
+   - 使用`getCurrentUser()`方法获取当前登录用户，用于判断文章是否为当前用户所发表
+   - 页面实现了物理返回键和返回手势的拦截处理，提高用户体验
+   - 用户头像和个人简介都有默认值，确保UI显示的完整性

@@ -221,48 +221,65 @@
 				pageSize: pageSize.value
 			};
 			
-			// 根据不同的列表类型设置参数
-			if (props.listType === 'tag' && props.tagName) {
-				params.tag = props.tagName;
-			}
-			
 			// 获取文章列表的API路径
 			let apiPath = '/api/article';
 			
-			// 如果是获取指定用户的文章
+			// 根据不同的列表类型设置参数和API路径
 			if (props.userId) {
-				apiPath = `/api/user/${props.userId}/articles`;
+				// 获取指定用户的文章
+				apiPath = `/api/article/user/${props.userId}/articles`;
 				params.type = props.listType === 'like' ? 'likes' : 'posts';
 			} else if (props.listType === 'collection') {
 				// 获取收藏的文章
 				apiPath = '/api/article/collections';
+			} else if (props.listType === 'follow') {
+				// 获取关注的用户发布的文章
+				apiPath = '/api/article/follow';
+			} else if (props.listType === 'hot') {
+				// 获取热门文章
+				params.sort = 'hot';
+			} else if (props.listType === 'new') {
+				// 获取最新文章
+				params.sort = 'new';
+			} else if (props.listType === 'tag' && props.tagName) {
+				// 获取特定标签的文章
+				params.tag = props.tagName;
 			}
 			
 			// 发起请求
 			const response = await request(apiPath, params);
 			
+			// 处理响应数据
 			if (response.code === 200 && response.data) {
-				// 处理文章列表数据
+				// 处理文章数据并添加到文章列表
 				const newArticles = processArticleData(response.data.list || []);
 				
-				// 添加到文章列表
 				if (currentPage.value === 1) {
+					// 第一页数据，替换列表
 					articleList.value = newArticles;
 				} else {
+					// 追加数据到列表
 					articleList.value = [...articleList.value, ...newArticles];
 				}
 				
 				// 更新页码
 				currentPage.value++;
 				
-				// 检查是否还有更多数据
-				if (!response.data.list || response.data.list.length < pageSize.value) {
+				// 判断是否还有更多数据
+				// 如果后端返回了pageSize，使用它进行判断
+				const backendPageSize = response.data.pageSize || pageSize.value;
+				
+				// 如果没有数据或数据量小于页大小，认为没有更多数据了
+				if (!response.data.list || response.data.list.length < backendPageSize) {
 					noMoreData.value = true;
 				}
+				
+				// 触发loadMore事件
+				emit('loadMore');
 			} else {
-				// 请求失败
+				// 处理错误情况
 				uni.showToast({
-					title: response.message || '获取文章列表失败',
+					title: response.message || '加载失败',
 					icon: 'none'
 				});
 			}
@@ -308,64 +325,73 @@
 	
 	// 网络请求封装
 	const request = async (url, params = {}) => {
-		// 实际项目中替换为API调用
-		// 这里使用模拟数据
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				// 模拟API请求延迟
-				const mockArticles = [{
-					id: 1,
-					title: '前端学习路线图 - Vue3新特性解析',
-					collectCount: 45,
-					isCollected: false,
-					summary: 'Vue3带来了Composition API、Teleport、Fragments等新特性，本文详细介绍这些新特性的使用方法和优势',
-					coverImage: '/static/images/default.png',
-					likeCount: 156,
-					commentCount: 38,
-					isLiked: false,
-					tags: ['前端', 'Vue3', '教程'],
-					author: {
-						id: 10001,
-						nickname: '前端达人',
-						avatar: '/static/images/avatar.png',
-						isFollowed: false
-					},
-					createTime: '2024-04-20 10:00:00'
+		// 获取基础URL
+		const baseUrl = getBaseUrl();
+		
+		// 获取token
+		const token = uni.getStorageSync('token');
+		
+		// 构建请求URL（添加查询参数）
+		let requestUrl = baseUrl + url;
+		if (Object.keys(params).length > 0) {
+			const queryString = Object.keys(params)
+				.map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+				.join('&');
+			requestUrl += `?${queryString}`;
+		}
+		
+		// 返回Promise
+		return new Promise((resolve, reject) => {
+			uni.request({
+				url: requestUrl,
+				method: 'GET',
+				header: {
+					'Authorization': token ? `Bearer ${token}` : '',
+					'Content-Type': 'application/json'
 				},
-				{
-					id: 2,
-					title: 'uniapp跨平台开发实战经验分享',
-					collectCount: 32,
-					isCollected: true,
-					summary: '使用uniapp开发跨平台应用的实战经验，包括性能优化、组件复用、条件编译等多个方面的技巧',
-					images: [
-						'/static/images/default.png',
-						'/static/images/default.png',
-						'/static/images/default.png'
-					],
-					likeCount: 98,
-					commentCount: 25,
-					isLiked: false,
-					tags: ['uniapp', '跨平台', '移动开发'],
-					author: {
-						id: 10002,
-						nickname: '移动开发专家',
-						avatar: '/static/images/avatar.png',
-						isFollowed: true
-					},
-					createTime: '2024-04-18 15:30:00'
-				}];
-				
-				resolve({
-					code: 200,
-					message: "success",
-					data: {
-						total: 100,
-						list: mockArticles
+				success: (res) => {
+					// 处理API响应
+					if (res.statusCode === 200) {
+						resolve(res.data || {code: 200, message: "success", data: {total: 0, list: []}});
+					} else if (res.statusCode === 401) {
+						// 未授权，可能是token过期
+						uni.showToast({
+							title: '请先登录',
+							icon: 'none'
+						});
+						
+						// 可以在这里添加重定向到登录页的逻辑
+						// uni.navigateTo({url: '/pages/login/login'});
+						
+						resolve({code: 401, message: "需要登录", data: null});
+					} else {
+						// 其他错误
+						resolve({code: res.statusCode, message: res.data?.message || "请求失败", data: null});
 					}
-				});
-			}, 800);
+				},
+				fail: (err) => {
+					console.error('API请求失败:', err);
+					reject(err);
+				}
+			});
 		});
+	};
+	
+	/**
+	 * 获取基础URL
+	 */
+	const getBaseUrl = () => {
+		// #ifdef APP-PLUS
+		return 'http://10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
+		// #endif
+		
+		// #ifdef H5
+		return 'http://localhost:8080';
+		// #endif
+		
+		// #ifdef MP-WEIXIN
+		return 'http://localhost:8080';
+		// #endif
 	};
 	
 	// 处理下拉刷新
@@ -414,23 +440,135 @@
 	};
 	
 	// 处理收藏
-	const handleCollect = (index) => {
+	const handleCollect = async (index) => {
 		const article = articleList.value[index];
-		// 切换收藏状态
-		article.isCollected = !article.isCollected;
-		article.collectCount += article.isCollected ? 1 : -1;
+		const articleId = article.id;
+		const baseUrl = getBaseUrl();
+		const token = uni.getStorageSync('token');
 		
-		emit('collect', article);
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		try {
+			// 构建请求
+			const url = `${baseUrl}/api/article/collect/${articleId}`;
+			const method = article.isCollected ? 'DELETE' : 'POST';
+			
+			// 发起请求
+			uni.request({
+				url,
+				method,
+				header: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				},
+				success: (res) => {
+					if (res.statusCode === 200) {
+						// 切换收藏状态
+						article.isCollected = !article.isCollected;
+						article.collectCount = (article.collectCount || 0) + (article.isCollected ? 1 : -1);
+						
+						// 显示提示
+						uni.showToast({
+							title: article.isCollected ? '收藏成功' : '已取消收藏',
+							icon: 'success'
+						});
+						
+						// 触发事件
+						emit('collect', article);
+					} else {
+						uni.showToast({
+							title: res.data?.message || '操作失败',
+							icon: 'none'
+						});
+					}
+				},
+				fail: (err) => {
+					console.error('收藏操作失败:', err);
+					uni.showToast({
+						title: '网络异常，请稍后再试',
+						icon: 'none'
+					});
+				}
+			});
+		} catch (error) {
+			console.error('收藏操作异常:', error);
+			uni.showToast({
+				title: '操作异常，请稍后再试',
+				icon: 'none'
+			});
+		}
 	};
 	
 	// 处理点赞
-	const handleLike = (index) => {
+	const handleLike = async (index) => {
 		const article = articleList.value[index];
-		// 切换点赞状态
-		article.isLiked = !article.isLiked;
-		article.likeCount += article.isLiked ? 1 : -1;
+		const articleId = article.id;
+		const baseUrl = getBaseUrl();
+		const token = uni.getStorageSync('token');
 		
-		emit('like', article);
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		try {
+			// 构建请求
+			const url = `${baseUrl}/api/article/like/${articleId}`;
+			const method = article.isLiked ? 'DELETE' : 'POST';
+			
+			// 发起请求
+			uni.request({
+				url,
+				method,
+				header: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				},
+				success: (res) => {
+					if (res.statusCode === 200) {
+						// 切换点赞状态
+						article.isLiked = !article.isLiked;
+						article.likeCount = (article.likeCount || 0) + (article.isLiked ? 1 : -1);
+						
+						// 显示提示
+						uni.showToast({
+							title: article.isLiked ? '点赞成功' : '已取消点赞',
+							icon: 'success'
+						});
+						
+						// 触发事件
+						emit('like', article);
+					} else {
+						uni.showToast({
+							title: res.data?.message || '操作失败',
+							icon: 'none'
+						});
+					}
+				},
+				fail: (err) => {
+					console.error('点赞操作失败:', err);
+					uni.showToast({
+						title: '网络异常，请稍后再试',
+						icon: 'none'
+					});
+				}
+			});
+		} catch (error) {
+			console.error('点赞操作异常:', error);
+			uni.showToast({
+				title: '操作异常，请稍后再试',
+				icon: 'none'
+			});
+		}
 	};
 	
 	// 处理编辑
