@@ -329,6 +329,15 @@ export function collectArticle(articleId, isCollect) {
 }
 
 /**
+ * 删除文章
+ * @param {number} articleId - 文章ID
+ * @return {Promise} - 返回操作结果的Promise
+ */
+export function deleteArticle(articleId) {
+  return http.delete(`/api/article/${articleId}`);
+}
+
+/**
  * 获取文章评论列表
  * @param {number} articleId - 文章ID
  * @param {Object} params - 查询参数
@@ -400,4 +409,8 @@ export function getUserLikedArticles(userId, params) {
     ...params,
     type: 'likes'
   });
-} 
+}
+
+/**
+ * 获取文章收藏列表
+ */ 

@@ -19,7 +19,7 @@
 					<text class="nickname" @click="handleAuthorClick(article.author?.id)">{{article.author?.nickname}}</text>
 					<!-- 只有非当前用户时才显示关注按钮 -->
 					<button 
-						v-if="!isCurrentUser(article.author?.id)" 
+						v-if="!isCurrentUser(article.author?.id) && !showManageOptions" 
 						class="follow-btn" 
 						:class="{'followed': article.author?.isFollowed}"
 						@click.stop="handleFollow(index)"
@@ -55,36 +55,32 @@
 
 				<!-- 文章操作按钮 -->
 				<view class="article-actions">
+					<!-- 分享按钮 -->
 					<view class="action-item" @click.stop="handleShare(index)">
-						<uni-icons type="redo-filled" size="20" color="#666"></uni-icons>
-						<text>分享</text>
+						<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
+						<text v-if="!showManageOptions">分享</text>
 					</view>
-					<view class="action-item" @click.stop="handleComment(index)">
-						<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
-						<text>{{article.commentCount || 0}}</text>
-					</view>
-					<view class="action-item" @click.stop="handleCollect(index)">
-						<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20"
-							:color="article.isCollected ? '#ffc107' : '#666'"></uni-icons>
-						<text :class="{'collected': article.isCollected}">{{article.collectCount || 0}}</text>
-					</view>
+					
+					<!-- 点赞按钮 -->
 					<view class="action-item" @click.stop="handleLike(index)">
 						<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
-							:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
+							:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
 						<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
 					</view>
 					
-					<!-- 编辑和删除按钮（根据是否显示管理选项来决定是否展示） -->
-					<template v-if="showManageOptions && isCurrentUser(article.author?.id)">
-						<view class="action-item" @click.stop="handleEdit(index)">
-							<uni-icons type="compose" size="20" color="#666"></uni-icons>
-							<text>编辑</text>
-						</view>
-						<view class="action-item" @click.stop="handleDelete(index)">
-							<uni-icons type="trash" size="20" color="#666"></uni-icons>
-							<text>删除</text>
-						</view>
-					</template>
+					<!-- 编辑按钮（当显示管理选项且是当前用户的文章时） -->
+					<view class="action-item manage-btn" 
+						v-if="showManageOptions && isCurrentUser(article.author?.id)"
+						@click.stop="handleEdit(index)">
+						<uni-icons type="compose" size="20" color="#000"></uni-icons>
+					</view>
+					
+					<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
+					<view class="action-item manage-btn" 
+						v-if="showManageOptions && isCurrentUser(article.author?.id)"
+						@click.stop="handleDelete(index)">
+						<uni-icons type="trash" size="20" color="#000"></uni-icons>
+					</view>
 				</view>
 			</view>
 
@@ -107,6 +103,7 @@
 <script setup>
 	import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+	import { deleteArticle, getArticleDetail } from '@/api/article';
 	
 	// 定义组件属性
 	const props = defineProps({
@@ -252,7 +249,22 @@
 			let apiPath = '/api/article';
 			
 			// 根据不同的列表类型设置参数和API路径
-			if (props.userId) {
+			if (props.listType === 'myPosts') {
+				// 直接获取当前登录用户的文章，无需传递userId
+				const currentUserId = getCurrentUserId();
+				if (!currentUserId) {
+					console.error('用户未登录，无法获取我的发表');
+					uni.showToast({
+						title: '请先登录',
+						icon: 'none'
+					});
+					isLoading.value = false;
+					return Promise.reject(new Error('用户未登录'));
+				}
+				apiPath = `/api/article/user/${currentUserId}/articles`;
+				params.type = 'posts';
+				console.log(`加载当前用户(${currentUserId})的文章`);
+			} else if (props.userId) {
 				// 获取指定用户的文章
 				apiPath = `/api/article/user/${props.userId}/articles`;
 				params.type = props.listType === 'like' ? 'likes' : 'posts';
@@ -773,14 +785,162 @@
 		}
 	};
 	
-	// 处理编辑
-	const handleEdit = (index) => {
-		emit('edit', articleList.value[index]);
+	// 处理编辑文章
+	const handleEdit = async (index) => {
+		const article = articleList.value[index];
+		const articleId = article.id;
+		const baseUrl = getBaseUrl();
+		const token = uni.getStorageSync('token');
+		
+		// 确认是否为当前用户的文章
+		if (!isCurrentUser(article.author?.id)) {
+			uni.showToast({
+				title: '只能编辑自己的文章',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		try {
+			// 显示加载中
+			uni.showLoading({
+				title: '加载文章内容...'
+			});
+			
+			// 获取完整的文章内容，准备编辑
+			const url = `${baseUrl}/api/article/${articleId}`;
+			
+			// 发起请求
+			uni.request({
+				url,
+				method: 'GET',
+				header: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				},
+				success: (res) => {
+					uni.hideLoading();
+					
+					if (res.statusCode === 200 && res.data.code === 200 && res.data.data) {
+						// 准备文章数据
+						const articleData = {
+							id: article.id,
+							title: article.title,
+							content: res.data.data.content || article.content,
+							htmlContent: res.data.data.htmlContent || article.content,
+							tags: article.tags || [],
+							coverImage: article.coverImage
+						};
+						
+						// 触发事件
+						emit('edit', articleData);
+					} else {
+						// 使用简略数据
+						console.warn('无法获取完整文章内容，使用简略数据');
+						emit('edit', article);
+						
+						uni.showToast({
+							title: '获取完整内容失败',
+							icon: 'none'
+						});
+					}
+				},
+				fail: (err) => {
+					uni.hideLoading();
+					console.error('获取文章详情失败:', err);
+					
+					// 使用简略数据作为回退方案
+					emit('edit', article);
+					
+					uni.showToast({
+						title: '网络异常，使用简略内容',
+						icon: 'none'
+					});
+				}
+			});
+		} catch (error) {
+			uni.hideLoading();
+			console.error('编辑操作异常:', error);
+			
+			// 使用简略数据作为回退方案
+			emit('edit', article);
+			
+			uni.showToast({
+				title: '操作异常，使用简略内容',
+				icon: 'none'
+			});
+		}
 	};
 	
-	// 处理删除
+	// 处理删除文章
 	const handleDelete = (index) => {
-		emit('delete', articleList.value[index]);
+		const article = articleList.value[index];
+		
+		// 确认是否为当前用户的文章
+		if (!isCurrentUser(article.author?.id)) {
+			uni.showToast({
+				title: '只能删除自己的文章',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 显示确认对话框
+		uni.showModal({
+			title: '确认删除',
+			content: '确定要删除这篇文章吗？该操作无法撤销。',
+			confirmText: '删除',
+			confirmColor: '#FF5A5F',
+			success: (res) => {
+				if (res.confirm) {
+					// 显示加载中
+					uni.showLoading({
+						title: '删除中...'
+					});
+					
+					// 调用删除API
+					deleteArticle(article.id)
+						.then(res => {
+							if (res.code === 200) {
+								// 从列表中移除该文章
+								articleList.value.splice(index, 1);
+								
+								// 显示成功提示
+								uni.showToast({
+									title: '删除成功',
+									icon: 'success'
+								});
+								
+								// 发出删除事件
+								emit('delete', article);
+							} else {
+								uni.showToast({
+									title: res.message || '删除失败',
+									icon: 'none'
+								});
+							}
+						})
+						.catch(err => {
+							console.error('删除文章失败:', err);
+							uni.showToast({
+								title: '网络异常，请稍后再试',
+								icon: 'none'
+							});
+						})
+						.finally(() => {
+							uni.hideLoading();
+						});
+				}
+			}
+		});
 	};
 	
 	// 处理关注
@@ -930,21 +1090,25 @@
 				justify-content: space-around;
 				border-top: 2rpx solid #f0f0f0;
 				padding-top: 20rpx;
+				padding-bottom: 10rpx;
 				flex-wrap: wrap;
-
+				position: relative;
+				
 				.action-item {
 					display: flex;
 					align-items: center;
+					justify-content: center;
 					margin-bottom: 10rpx;
-
+					padding: 0 15rpx;
+					
 					.uni-icons {
 						margin-right: 10rpx;
 					}
-
+					
 					text {
 						font-size: 24rpx;
 						color: #666;
-
+						
 						&.liked {
 							color: #ff6b6b;
 						}
@@ -952,6 +1116,24 @@
 						&.collected {
 							color: #ffc107;
 						}
+					}
+				}
+				
+				.manage-btn {
+					width: 70rpx;
+					height: 70rpx;
+					background-color: #f8f8f8;
+					border-radius: 50%;
+					justify-content: center;
+					margin-right: 0;
+					
+					.uni-icons {
+						margin-right: 0;
+					}
+					
+					&:active {
+						opacity: 0.8;
+						transform: scale(0.95);
 					}
 				}
 			}

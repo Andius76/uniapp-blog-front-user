@@ -64,15 +64,14 @@
 				<!-- 使用ArticleList组件 -->
 				<ArticleList
 					ref="articleListRef"
-					:list-type="data.currentTab === 0 ? 'posts' : 'like'"
+					:list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
 					:userId="data.userInfo.id"
 					:show-manage-options="data.currentTab === 0"
 					:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
 					:height="'calc(100vh - 445rpx)'"
 					@article-click="viewArticleDetail"
-					@collect="handleCollect"
 					@like="handleLike"
-					@comment="handleComment"
+					@share="handleShare"
 					@edit="handleEditArticle"
 					@delete="handleDeleteArticle"
 				/>
@@ -131,6 +130,7 @@
 	import UserSettings from '@/components/user-settings/user-settings.vue';
 	// 导入API接口
 	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
+	import { deleteArticle, getArticleDetail } from '@/api/article';
 	import { onLoad, onShow, onHide, onBackPress } from '@dcloudio/uni-app';
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
@@ -165,7 +165,7 @@
 		// 标签页数据
 		tabs: [{
 				name: '我的发表',
-				type: 'posts'
+				type: 'myPosts'
 			},
 			{
 				name: '我的点赞',
@@ -255,9 +255,80 @@
 		});
 
 		// TODO: 实际点赞API调用
-		// api.likeArticle(article.id, article.isLiked).then(res => {
-		//   console.log('点赞状态已更新');
-		// });
+	};
+
+	/**
+	 * 处理分享
+	 * @param {Object} article - 文章对象
+	 */
+	const handleShare = (article) => {
+		// 分享菜单
+		uni.showActionSheet({
+			itemList: ['分享到微信', '复制链接', '生成分享图'],
+			success: (res) => {
+				switch (res.tapIndex) {
+					case 0: // 分享到微信
+						// #ifdef APP-PLUS
+						uni.share({
+							provider: 'weixin',
+							scene: 'WXSceneSession',
+							type: 0,
+							title: article.title,
+							summary: article.summary || '来自我的博客',
+							imageUrl: article.coverImage || '',
+							href: `${getBaseUrl()}/article/${article.id}`,
+							success: () => {
+								uni.showToast({
+									title: '分享成功',
+									icon: 'success'
+								});
+							}
+						});
+						// #endif
+						
+						// #ifdef H5 || MP-WEIXIN
+						uni.showToast({
+							title: '已复制链接，请手动分享',
+							icon: 'none'
+						});
+						uni.setClipboardData({
+							data: `${getBaseUrl()}/article/${article.id}`,
+							success: () => {
+								console.log('链接已复制');
+							}
+						});
+						// #endif
+						break;
+						
+					case 1: // 复制链接
+						uni.setClipboardData({
+							data: `${getBaseUrl()}/article/${article.id}`,
+							success: () => {
+								uni.showToast({
+									title: '链接已复制',
+									icon: 'success'
+								});
+							}
+						});
+						break;
+						
+					case 2: // 生成分享图
+						uni.showToast({
+							title: '分享图生成中...',
+							icon: 'loading',
+							duration: 2000
+						});
+						
+						setTimeout(() => {
+							uni.showToast({
+								title: '分享图已生成',
+								icon: 'success'
+							});
+						}, 2000);
+						break;
+				}
+			}
+		});
 	};
 
 	/**
@@ -265,80 +336,121 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleEditArticle = (article) => {
-		// 组装需要传递的文章数据
-		const articleData = {
-			id: article.id,
-			title: article.title,
-			content: article.summary, // 注意：这里只有摘要，实际应该传完整内容
-			tags: article.tags || [],
-			images: article.coverImage ? [article.coverImage] : (article.images || [])
-		};
-
-		// 将文章数据转换为JSON字符串，并进行URI编码
-		const articleDataStr = encodeURIComponent(JSON.stringify(articleData));
-
-		// 跳转到发布页面，带上文章数据
-		uni.navigateTo({
-			url: `/pages/publish/publish?mode=edit&articleData=${articleDataStr}`
+		console.log('编辑文章', article);
+		
+		// 确保用户已登录
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 确保是当前用户的文章
+		if (article.author?.id !== data.userInfo.id) {
+			uni.showToast({
+				title: '只能编辑自己的文章',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 显示编辑中的加载提示
+		uni.showLoading({
+			title: '准备编辑...',
+			mask: true
 		});
+		
+		// 获取完整的文章内容（如果需要）
+		getArticleDetail(article.id)
+			.then(res => {
+				uni.hideLoading();
+				
+				if (res.code === 200) {
+					// 准备文章数据
+					const articleData = encodeURIComponent(JSON.stringify({
+						id: article.id,
+						title: article.title,
+						content: res.data.content || article.content,
+						htmlContent: res.data.htmlContent || article.content,
+						tags: article.tags || [],
+						coverImage: article.coverImage
+					}));
+					
+					// 跳转到编辑页面
+					navigateTo(`/pages/publish/publish?mode=edit&articleData=${articleData}`);
+				} else {
+					throw new Error(res.message || '获取文章详情失败');
+				}
+			})
+			.catch(err => {
+				console.error('准备编辑文章失败:', err);
+				uni.hideLoading();
+				
+				// 使用可用的数据尝试编辑
+				const fallbackData = encodeURIComponent(JSON.stringify({
+					id: article.id,
+					title: article.title,
+					content: article.content || '',
+					htmlContent: article.htmlContent || article.content || '',
+					tags: article.tags || [],
+					coverImage: article.coverImage
+				}));
+				
+				uni.showToast({
+					title: '获取完整内容失败，使用简略内容',
+					icon: 'none',
+					duration: 2000
+				});
+				
+				setTimeout(() => {
+					navigateTo(`/pages/publish/publish?mode=edit&articleData=${fallbackData}`);
+				}, 1000);
+			});
 	};
 
 	/**
 	 * 处理删除文章
 	 * @param {Object} article - 文章对象
 	 */
-	const handleDeleteArticle = (article) => {
-		// 显示确认对话框
-		uni.showModal({
-			title: '确认删除',
-			content: '确定要删除这篇文章吗？删除后将无法恢复。',
-			confirmText: '删除',
-			confirmColor: '#ff0000',
-			success: (res) => {
-				if (res.confirm) {
-					// 用户点击确认，执行删除
-					deleteArticle(article.id);
-				}
-			}
-		});
-	};
-
-	/**
-	 * 执行文章删除操作
-	 * @param {Number} articleId - 文章ID
-	 */
-	const deleteArticle = (articleId) => {
-		// 显示加载提示
+	const handleDeleteArticle = async (article) => {
+		console.log('删除文章', article);
+		// 显示加载状态
 		uni.showLoading({
-			title: '删除中...'
+			title: '正在删除...',
+			mask: true
 		});
-
-		// 模拟删除请求
-		setTimeout(() => {
-			// 刷新文章列表
-			articleListRef.value?.resetList();
-			articleListRef.value?.loadArticles();
-
-			// 隐藏加载提示
-			uni.hideLoading();
-
-			// 显示成功提示
+		
+		// 调用删除API
+		try {
+			const response = await deleteArticle(article.id);
+			
+			if (response.code === 200) {
+				// 刷新文章列表
+				nextTick(() => {
+					articleListRef.value?.resetList();
+					articleListRef.value?.loadArticles();
+				});
+				
+				// 显示成功提示
+				uni.showToast({
+					title: '删除成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '删除失败');
+			}
+		} catch (apiError) {
+			console.error('删除文章失败:', apiError);
 			uni.showToast({
-				title: '删除成功',
-				icon: 'success'
+				title: '删除失败，请重试',
+				icon: 'none'
 			});
-
-			// TODO: 实际删除API调用
-			// api.deleteArticle(articleId).then(res => {
-			//   console.log('文章删除成功');
-			// }).catch(err => {
-			//   console.error('文章删除失败:', err);
-			//   uni.showToast({
-			//     title: '删除失败，请重试',
-			//     icon: 'none'
-			//   });
-			// });
-		}, 800);
+		} finally {
+			uni.hideLoading();
+		}
 	};
 
 	/**
