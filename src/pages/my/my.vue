@@ -636,8 +636,9 @@
 		// 每次页面显示时刷新用户信息，确保关注数量等数据最新
 		refreshUserInfo();
 		
-		// 如果文章列表组件已初始化，刷新列表数据
+		// 恢复刷新文章列表的代码，确保从发布页返回时刷新数据
 		if (articleListRef.value) {
+			console.log('检测到页面显示，刷新文章列表');
 			articleListRef.value.refresh();
 		}
 	});

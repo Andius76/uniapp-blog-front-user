@@ -1289,6 +1289,13 @@
 				
 				// 如果是新文章且返回了ID，跳转到文章详情页
 				if (mode.value === 'new' && res.data && res.data.id) {
+					// 添加全局事件，通知文章列表刷新
+					uni.$emit('article_published', {
+						articleId: res.data.id,
+						timestamp: Date.now()
+					});
+					console.log('发布成功，触发全局刷新事件');
+					
 					setTimeout(() => {
 						uni.redirectTo({
 							url: `/pages/article-detail/article-detail?id=${res.data.id}`
@@ -1296,6 +1303,13 @@
 					}, 1500);
 				} else {
 					// 编辑模式或没有返回ID，返回上一页
+					// 添加全局事件，通知文章列表刷新
+					uni.$emit('article_updated', {
+						articleId: articleData.id,
+						timestamp: Date.now()
+					});
+					console.log('更新成功，触发全局刷新事件');
+					
 					setTimeout(() => {
 						uni.navigateBack();
 					}, 1500);

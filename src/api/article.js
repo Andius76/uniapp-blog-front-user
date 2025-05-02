@@ -381,7 +381,7 @@ export function getArticleTags() {
  * @return {Promise} - 返回包含用户文章列表的Promise
  */
 export function getUserArticles(userId, params) {
-  return http.get(`/api/user/${userId}/articles`, {
+  return http.get(`/api/article/user/${userId}/articles`, {
     ...params,
     type: 'posts'
   });
@@ -396,7 +396,7 @@ export function getUserArticles(userId, params) {
  * @return {Promise} - 返回包含用户点赞文章列表的Promise
  */
 export function getUserLikedArticles(userId, params) {
-  return http.get(`/api/user/${userId}/articles`, {
+  return http.get(`/api/article/user/${userId}/articles`, {
     ...params,
     type: 'likes'
   });

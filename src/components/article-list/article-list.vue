@@ -4,7 +4,7 @@
 			scroll-y 
 			class="article-scroll" 
 			@scrolltolower="handleLoadMore" 
-			refresher-enabled
+			:refresher-enabled="true"
 			:refresher-triggered="isRefreshing" 
 			@refresherrefresh="handleRefresh"
 			:refresher-threshold="100"
@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-	import { ref, reactive, computed, watch, onMounted } from 'vue';
+	import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	
 	// 定义组件属性
@@ -196,6 +196,29 @@
 		if (props.autoLoad) {
 			loadArticles();
 		}
+		
+		// 监听全局文章发布/更新事件
+		uni.$on('article_published', (data) => {
+			console.log('接收到文章发布事件:', data);
+			// 如果列表类型是推荐、最新或热门，刷新列表
+			if (['recommend', 'new', 'hot'].includes(props.listType)) {
+				resetList();
+				loadArticles();
+			}
+		});
+		
+		uni.$on('article_updated', (data) => {
+			console.log('接收到文章更新事件:', data);
+			// 重新加载列表数据
+			resetList();
+			loadArticles();
+		});
+	});
+	
+	// 组件卸载时移除事件监听
+	onBeforeUnmount(() => {
+		uni.$off('article_published');
+		uni.$off('article_updated');
 	});
 	
 	// 重置列表数据
