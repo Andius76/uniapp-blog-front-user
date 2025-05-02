@@ -21,7 +21,7 @@ function getBaseUrl() {
 	// 获取当前运行的平台
 	// #ifdef APP-PLUS
 	// APP端不能使用localhost/127.0.0.1，需要使用本机IP地址
-	return 'http://10.9.83.43:8080'; // 请替换为开发服务器的IP地址
+	return 'http://10.9.57.7:8080'; // 统一使用与article-list.vue中相同的IP地址
 	// #endif
 
 	// #ifdef H5 || MP-WEIXIN
@@ -169,21 +169,37 @@ function request(options) {
 
 	// 请求拦截
 	const interceptedOptions = requestInterceptor(mergedOptions);
+	
+	// 详细日志
+	console.log('===== 发起请求 =====');
+	console.log('请求URL:', interceptedOptions.url);
+	console.log('请求方法:', interceptedOptions.method);
+	console.log('请求头:', JSON.stringify(interceptedOptions.header));
+	if (interceptedOptions.data) {
+		console.log('请求数据:', JSON.stringify(interceptedOptions.data));
+	}
 
 	// 返回Promise
 	return new Promise((resolve, reject) => {
 		uni.request({
 			...interceptedOptions,
 			success: (res) => {
+				// 详细日志
+				console.log('===== 响应数据 =====');
+				console.log('状态码:', res.statusCode);
+				console.log('响应头:', JSON.stringify(res.header));
 				try {
 					// 响应拦截
 					const result = responseInterceptor(res);
 					resolve(result);
 				} catch (error) {
+					console.error('响应处理错误:', error);
 					reject(error);
 				}
 			},
 			fail: (err) => {
+				console.error('===== 请求失败 =====');
+				console.error('错误详情:', err);
 				uni.showToast({
 					title: '网络请求失败',
 					icon: 'none',

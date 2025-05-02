@@ -287,8 +287,25 @@
 				console.log('添加时间戳参数防止缓存:', params.timestamp);
 			}
 			
+			// 打印完整的请求信息，便于调试
+			console.log('======= 请求信息 =======');
+			console.log('API路径:', apiPath);
+			console.log('请求参数:', JSON.stringify(params));
+			console.log('用户ID:', props.userId);
+			console.log('列表类型:', props.listType);
+			
 			// 发起请求
 			const response = await request(apiPath, params);
+			
+			// 打印响应信息
+			console.log('======= 响应信息 =======');
+			console.log('响应代码:', response.code);
+			console.log('响应消息:', response.message);
+			console.log('数据总数:', response.data?.total);
+			console.log('页大小:', response.data?.pageSize);
+			console.log('当前页:', response.data?.pageNum);
+			console.log('是否有列表数据:', !!response.data?.list);
+			console.log('列表数据条数:', response.data?.list?.length || 0);
 			
 			// 处理响应数据
 			if (response.code === 200 && response.data) {

@@ -633,13 +633,27 @@
 			console.log('页面显示，保持手势锁定');
 		}
 
+		// 打印当前用户信息，用于调试
+		console.log('===== 页面显示 =====');
+		console.log('当前用户ID:', data.userInfo.id);
+		console.log('当前选项卡:', data.currentTab, data.tabs[data.currentTab]?.name);
+		console.log('文章列表组件是否初始化:', !!articleListRef.value);
+
 		// 每次页面显示时刷新用户信息，确保关注数量等数据最新
 		refreshUserInfo();
 		
-		// 恢复刷新文章列表的代码，确保从发布页返回时刷新数据
+		// 使用延迟刷新文章列表，确保从发布页返回时能正确刷新数据
 		if (articleListRef.value) {
-			console.log('检测到页面显示，刷新文章列表');
-			articleListRef.value.refresh();
+			console.log('检测到页面显示，准备刷新文章列表');
+			// 使用setTimeout延迟执行，确保页面完全加载后再刷新
+			setTimeout(() => {
+				// 重置列表并重新加载
+				articleListRef.value.resetList();
+				articleListRef.value.loadArticles();
+				console.log('文章列表刷新完成');
+			}, 300);
+		} else {
+			console.warn('文章列表组件未初始化，无法刷新');
 		}
 	});
 
@@ -872,7 +886,7 @@
 	 */
 	const getBaseUrl = () => {
 		// #ifdef APP-PLUS
-		return 'http:// 10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
+		return 'http://10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
 		// #endif
 		
 		// #ifdef H5
