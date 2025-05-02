@@ -929,20 +929,24 @@
 				if (res.confirm) {
 					// 显示加载中
 					uni.showLoading({
-						title: '删除中...'
+						title: '正在删除...',
+						mask: true
 					});
 					
 					// 调用删除API
 					deleteArticle(article.id)
 						.then(res => {
-							if (res.code === 200) {
+							// 无论结果如何，先从前端列表中移除该文章
+							// 如果后端返回200或文章不存在都认为是删除成功
+							if (res.code === 200 || res.message === '文章不存在') {
 								// 从列表中移除该文章
 								articleList.value.splice(index, 1);
 								
 								// 显示成功提示
 								uni.showToast({
-									title: '文章已删除',
-									icon: 'success'
+									title: '删除成功',
+									icon: 'success',
+									duration: 2000
 								});
 								
 								// 发出删除事件
@@ -950,7 +954,7 @@
 							} else {
 								console.error('删除失败:', res);
 								uni.showToast({
-									title: res.message || '删除失败',
+									title: res.message || '删除失败，请重试',
 									icon: 'none',
 									duration: 2000
 								});
@@ -959,11 +963,23 @@
 						.catch(err => {
 							console.error('删除文章失败:', err);
 							const errorMsg = err.data?.message || err.message || '网络异常，请稍后再试';
-							uni.showToast({
-								title: errorMsg,
-								icon: 'none',
-								duration: 2000
-							});
+							
+							// 如果返回的错误是"文章不存在"，说明文章已经被删除
+							if(errorMsg.includes('不存在')) {
+								// 从列表移除文章
+								articleList.value.splice(index, 1);
+								uni.showToast({
+									title: '删除成功',
+									icon: 'success'
+								});
+								emit('delete', article);
+							} else {
+								uni.showToast({
+									title: errorMsg,
+									icon: 'none',
+									duration: 2000
+								});
+							}
 						})
 						.finally(() => {
 							uni.hideLoading();

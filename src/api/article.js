@@ -334,7 +334,36 @@ export function collectArticle(articleId, isCollect) {
  * @return {Promise} - 返回操作结果的Promise
  */
 export function deleteArticle(articleId) {
-  return http.delete(`/api/article/${articleId}`);
+  // 使用自定义处理确保"文章不存在"也算成功的情况
+  return new Promise((resolve, reject) => {
+    http.delete(`/api/article/${articleId}`)
+      .then(res => {
+        // 如果是成功或文章不存在，都视为删除成功
+        if (res.code === 200 || res.message === '文章不存在') {
+          resolve({
+            code: 200,
+            message: '删除成功',
+            data: null
+          });
+        } else {
+          resolve(res); // 保留原始错误信息
+        }
+      })
+      .catch(err => {
+        // 检查是否包含"文章不存在"的错误消息
+        if (err && (err.message === '文章不存在' || 
+            (err.data && err.data.message === '文章不存在'))) {
+          // 如果文章不存在，也视为删除成功
+          resolve({
+            code: 200,
+            message: '删除成功',
+            data: null
+          });
+        } else {
+          reject(err); // 其他错误正常拒绝
+        }
+      });
+  });
 }
 
 /**
