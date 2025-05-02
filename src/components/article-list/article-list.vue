@@ -7,6 +7,8 @@
 			refresher-enabled
 			:refresher-triggered="isRefreshing" 
 			@refresherrefresh="handleRefresh"
+			:refresher-threshold="100"
+			refresher-background="#f5f5f5"
 		>
 			<!-- 文章列表循环 -->
 			<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
@@ -88,7 +90,7 @@
 
 			<!-- 加载状态 -->
 			<view class="loading-state">
-				<text v-if="isLoading">加载中...</text>
+				<text v-if="isLoading && !isRefreshing">加载中...</text>
 				<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
 				<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
 				
@@ -202,7 +204,7 @@
 		currentPage.value = 1;
 		noMoreData.value = false;
 		isLoading.value = false;
-		isRefreshing.value = false;
+		// 不重置刷新状态，由刷新逻辑自行控制
 	};
 	
 	// 加载文章列表
@@ -273,9 +275,11 @@
 		} finally {
 			isLoading.value = false;
 			
-			// 如果是刷新操作，结束刷新状态
+			// 延迟关闭刷新状态，给用户更好的视觉反馈
 			if (isRefreshing.value) {
-				isRefreshing.value = false;
+				setTimeout(() => {
+					isRefreshing.value = false;
+				}, 800);
 			}
 		}
 	};
@@ -366,10 +370,16 @@
 	
 	// 处理下拉刷新
 	const handleRefresh = () => {
+		if (isRefreshing.value) return; // 避免重复触发
+		
 		isRefreshing.value = true;
 		resetList();
-		loadArticles();
-		emit('refresh');
+		
+		// 延迟执行，防止过快关闭刷新状态
+		setTimeout(() => {
+			loadArticles();
+			emit('refresh');
+		}, 300);
 	};
 	
 	// 处理加载更多

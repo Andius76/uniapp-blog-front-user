@@ -61,139 +61,22 @@
 
 			<!-- 内容区域，使用首页的内容区样式 -->
 			<view class="content-area">
-				<scroll-view scroll-y class="article-list" @scrolltolower="loadMore" refresher-enabled
-					:refresher-triggered="data.isRefreshing" @refresherrefresh="refreshList" :refresher-threshold="100">
-					<!-- 我的帖子列表，使用首页的文章卡片样式 -->
-					<view v-for="(post, index) in data.contentList" :key="index" class="article-card">
-						<!-- 用户信息 -->
-						<view class="user-info">
-							<image class="avatar" :src="post.avatar || '/static/images/avatar.png'" mode="aspectFill">
-							</image>
-							<text class="nickname">{{ post.author }}</text>
-						</view>
-
-						<!-- 文章内容 -->
-						<view class="article-content" @click="viewPostDetail(post.id)">
-							<text class="article-title">{{ post.title }}</text>
-							<text class="article-summary">{{ post.summary }}...全文</text>
-
-							<!-- 文章图片 -->
-							<view class="article-image" v-if="post.image">
-								<image :src="post.image" mode="aspectFill" class="single-image"></image>
-							</view>
-						</view>
-
-						<!-- 文章操作按钮 -->
-						<view class="article-actions">
-							<view class="action-item" @click="handleComment(index)">
-								<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
-								<text>{{ post.commentCount }}</text>
-							</view>
-							<view class="action-item" @click="handleCollect(index)">
-								<uni-icons :type="post.isCollected ? 'star-filled' : 'star'" size="20"
-									:color="post.isCollected ? '#ffc107' : '#666'"></uni-icons>
-								<text :class="{'collected': post.isCollected}">{{ post.collectCount }}</text>
-							</view>
-							<view class="action-item" @click="handleLike(index)">
-								<uni-icons :type="post.isLiked ? 'heart-filled' : 'heart'" size="20"
-									:color="post.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-								<text :class="{'liked': post.isLiked}">{{ post.likeCount }}</text>
-							</view>
-							<!-- 编辑和删除按钮（仅在"我的发表"选项卡中显示） -->
-							<template v-if="data.currentTab === 0">
-								<view class="action-item" @click.stop="handleEditPost(index)">
-									<uni-icons type="compose" size="20" color="#666"></uni-icons>
-								</view>
-								<view class="action-item" @click.stop="handleDeletePost(index)">
-									<uni-icons type="trash" size="20" color="#666"></uni-icons>
-								</view>
-							</template>
-						</view>
-					</view>
-					<!-- 加载状态 -->
-					<view class="loading-state">
-						<text v-if="data.isLoading">加载中...</text>
-						<text v-else-if="data.noMoreData && data.contentList.length > 0">没有更多内容了</text>
-						<text v-else>↓向下滑动加载更多内容↓</text>
-					</view>
-					<!-- 无内容提示 -->
-					<view v-if="data.contentList.length === 0" class="no-content">
-						<uni-icons type="info" size="50" color="#ddd"></uni-icons>
-						<text>暂无内容</text>
-					</view>
-
-
-				</scroll-view>
+				<!-- 使用ArticleList组件 -->
+				<ArticleList
+					ref="articleListRef"
+					:list-type="data.currentTab === 0 ? 'posts' : 'like'"
+					:userId="data.userInfo.id"
+					:show-manage-options="data.currentTab === 0"
+					:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
+					:height="'calc(100vh - 445rpx)'"
+					@article-click="viewArticleDetail"
+					@collect="handleCollect"
+					@like="handleLike"
+					@comment="handleComment"
+					@edit="handleEditArticle"
+					@delete="handleDeleteArticle"
+				/>
 			</view>
-		</view>
-
-		<!-- 内容区域，使用首页的内容区样式 -->
-		<view class="content-area">
-			<scroll-view scroll-y class="article-list" @scrolltolower="loadMore" refresher-enabled
-				:refresher-triggered="data.isRefreshing" @refresherrefresh="refreshList">
-				<!-- 我的帖子列表，使用首页的文章卡片样式 -->
-				<view v-for="(post, index) in data.contentList" :key="index" class="article-card">
-					<!-- 用户信息 -->
-					<view class="user-info">
-						<image class="avatar" :src="post.avatar || '/static/images/avatar.png'" mode="aspectFill">
-						</image>
-						<text class="nickname">{{ post.author }}</text>
-					</view>
-
-					<!-- 文章内容 -->
-					<view class="article-content" @click="viewPostDetail(post.id)">
-						<text class="article-title">{{ post.title }}</text>
-						<text class="article-summary">{{ post.summary }}...全文</text>
-
-						<!-- 文章图片 -->
-						<view class="article-image" v-if="post.image">
-							<image :src="post.image" mode="aspectFill" class="single-image"></image>
-						</view>
-					</view>
-
-					<!-- 文章操作按钮 -->
-					<view class="article-actions">
-						<view class="action-item" @click="handleComment(index)">
-							<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
-							<text>{{ post.commentCount }}</text>
-						</view>
-						<view class="action-item" @click="handleCollect(index)">
-							<uni-icons :type="post.isCollected ? 'star-filled' : 'star'" size="20"
-								:color="post.isCollected ? '#ffc107' : '#666'"></uni-icons>
-							<text :class="{'collected': post.isCollected}">{{ post.collectCount }}</text>
-						</view>
-						<view class="action-item" @click="handleLike(index)">
-							<uni-icons :type="post.isLiked ? 'heart-filled' : 'heart'" size="20"
-								:color="post.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-							<text :class="{'liked': post.isLiked}">{{ post.likeCount }}</text>
-						</view>
-						<!-- 编辑和删除按钮（仅在"我的发表"选项卡中显示） -->
-						<template v-if="data.currentTab === 0">
-							<view class="action-item" @click.stop="handleEditPost(index)">
-								<uni-icons type="compose" size="20" color="#666"></uni-icons>
-								<text>编辑</text>
-							</view>
-							<view class="action-item" @click.stop="handleDeletePost(index)">
-								<uni-icons type="trash" size="20" color="#666"></uni-icons>
-								<text>删除</text>
-							</view>
-						</template>
-					</view>
-				</view>
-
-				<!-- 无内容提示 -->
-				<view v-if="data.contentList.length === 0" class="no-content">
-					<uni-icons type="info" size="50" color="#ddd"></uni-icons>
-					<text>暂无内容</text>
-				</view>
-
-				<!-- 加载状态 -->
-				<view class="loading-state">
-					<text v-if="data.isLoading">加载中...</text>
-					<text v-else-if="data.noMoreData && data.contentList.length > 0">没有更多内容了</text>
-					<text v-else>↓向下滑动加载更多内容↓</text>
-				</view>
-			</scroll-view>
 		</view>
 
 		<!-- 用户设置组件 -->
@@ -249,6 +132,8 @@
 	// 导入API接口
 	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
 	import { onLoad, onShow, onHide, onBackPress } from '@dcloudio/uni-app';
+	// 导入ArticleList组件
+	import ArticleList from '@/components/article-list/article-list.vue';
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
@@ -289,14 +174,6 @@
 		],
 		currentTab: 0, // 默认选中"我的发表"选项卡
 
-		// 内容列表数据与状态
-		contentList: [],
-		isLoading: false,
-		noMoreData: false,
-		currentPage: 1,
-		pageSize: 5,
-		isRefreshing: false,
-
 		// 用户设置面板显示状态
 		showUserSettings: false,
 		settingsInitialView: 'main', // 设置面板初始视图
@@ -306,163 +183,8 @@
 		editingBio: '',
 	});
 
-	// 模拟内容数据
-	const mockContents = {
-		posts: [{
-				id: 1,
-				author: '自己的昵称',
-				avatar: '/static/images/avatar.png',
-				time: '2025-4-20 08:27',
-				title: '我发表的文章标题',
-				summary: '这是我发表的文章内容，展示了一些技术分享和个人见解...',
-				image: '/static/images/default.png',
-				collectCount: 8,
-				commentCount: 12,
-				likeCount: 24,
-				isCollected: false,
-				isLiked: true
-			},
-			{
-				id: 2,
-				author: '自己的昵称',
-				avatar: '/static/images/avatar.png',
-				time: '2025-4-18 15:42',
-				title: '前端学习心得分享',
-				summary: '分享我在学习前端过程中的一些心得体会和实用技巧...',
-				image: '/static/images/default.png',
-				collectCount: 14,
-				commentCount: 5,
-				likeCount: 36,
-				isCollected: true,
-				isLiked: true
-			}
-		],
-		likes: [{
-				id: 4,
-				author: '前端达人',
-				avatar: '/static/images/avatar.png',
-				time: '2025-4-19 14:22',
-				title: 'Vue3新特性解析',
-				summary: 'Vue3带来了Composition API、Teleport、Fragments等新特性...',
-				image: '/static/images/default.png',
-				collectCount: 45,
-				commentCount: 38,
-				likeCount: 156,
-				isCollected: true,
-				isLiked: true
-			},
-			{
-				id: 5,
-				author: '移动开发专家',
-				avatar: '/static/images/avatar.png',
-				time: '2025-4-17 10:08',
-				title: 'uniapp跨平台开发实战经验分享',
-				summary: '使用uniapp开发跨平台应用的实战经验，包括性能优化、组件复用...',
-				image: '/static/images/default.png',
-				collectCount: 32,
-				commentCount: 25,
-				likeCount: 98,
-				isCollected: false,
-				isLiked: true
-			}
-		]
-	};
-
-	/**
-	 * 加载内容列表
-	 */
-	const loadContent = () => {
-		// 如果已经没有更多数据或正在加载中，则不处理
-		if (data.noMoreData || data.isLoading) return;
-
-		data.isLoading = true;
-
-		// 模拟API请求延迟
-		setTimeout(() => {
-			const tabType = data.tabs[data.currentTab].type;
-			const contentSource = mockContents[tabType] || [];
-
-			// 计算本次应加载的内容数据
-			const startIndex = (data.currentPage - 1) * data.pageSize;
-			const endIndex = startIndex + data.pageSize;
-
-			// 获取当前页的数据
-			const pageData = contentSource.slice(startIndex, endIndex);
-
-			// 如果没有获取到数据，说明已经没有更多数据了
-			if (pageData.length === 0) {
-				data.noMoreData = true;
-				data.isLoading = false;
-
-				// 如果是刷新状态，结束刷新
-				if (data.isRefreshing) {
-					data.isRefreshing = false;
-				}
-				return;
-			}
-
-			// 添加到内容列表
-			if (data.currentPage === 1) {
-				data.contentList = [...pageData];
-			} else {
-				data.contentList.push(...pageData);
-			}
-
-			// 更新页码
-			data.currentPage++;
-
-			// 如果获取的数据不足一页，也标记为没有更多数据
-			if (pageData.length < data.pageSize) {
-				data.noMoreData = true;
-			}
-
-			data.isLoading = false;
-
-			// 如果是刷新状态，结束刷新
-			if (data.isRefreshing) {
-				data.isRefreshing = false;
-			}
-		}, 800);
-
-		// TODO: 替换为实际API调用
-		// api.getContent({
-		//   type: data.tabs[data.currentTab].type,
-		//   page: data.currentPage,
-		//   pageSize: data.pageSize
-		// }).then(res => {
-		//   // 处理响应数据
-		// });
-	};
-
-	/**
-	 * 刷新列表
-	 */
-	const refreshList = () => {
-		// 如果已经在刷新或加载中，则不处理
-		if (data.isRefreshing || data.isLoading) return;
-
-		// 设置刷新状态
-		data.isRefreshing = true;
-
-		// 重置数据
-		data.contentList = [];
-		data.currentPage = 1;
-		data.noMoreData = false;
-
-		// 重新加载
-		loadContent();
-
-		// 不在这里显示刷新成功提示，等待数据加载完成后自动关闭刷新状态
-	};
-
-	/**
-	 * 加载更多
-	 */
-	const loadMore = () => {
-		if (!data.noMoreData) {
-			loadContent();
-		}
-	};
+	// 添加articleListRef引用
+	const articleListRef = ref(null);
 
 	/**
 	 * 切换选项卡
@@ -473,340 +195,83 @@
 
 		data.currentTab = index;
 
-		// 重置列表数据
-		data.contentList = [];
-		data.currentPage = 1;
-		data.noMoreData = false;
-
 		// 显示加载提示
 		uni.showLoading({
 			title: '加载中...'
 		});
 
-		// 加载新选项卡的内容
-		loadContent();
-
-		// 隐藏加载提示
-		setTimeout(() => {
-			uni.hideLoading();
-		}, 500);
+		// 重新加载文章列表
+		nextTick(() => {
+			articleListRef.value?.resetList();
+			articleListRef.value?.loadArticles();
+			
+			// 隐藏加载提示
+			setTimeout(() => {
+				uni.hideLoading();
+			}, 500);
+		});
 	};
 
 	/**
-	 * 查看帖子详情
-	 * @param {Number} id - 帖子ID
+	 * 查看文章详情
+	 * @param {Number} articleId - 文章ID
 	 */
-	const viewPostDetail = (id) => {
-		navigateTo(`/pages/article-detail/article-detail?id=${id}`);
+	const viewArticleDetail = (articleId) => {
+		navigateTo(`/pages/article-detail/article-detail?id=${articleId}`);
 	};
 
 	/**
 	 * 处理收藏
-	 * @param {Number} index - 内容索引
+	 * @param {Object} article - 文章对象
 	 */
-	const handleCollect = (index) => {
-		const post = data.contentList[index];
-		post.isCollected = !post.isCollected;
-		post.collectCount += post.isCollected ? 1 : -1;
-
+	const handleCollect = (article) => {
 		uni.showToast({
-			title: post.isCollected ? '收藏成功' : '已取消收藏',
-			icon: post.isCollected ? 'success' : 'none'
+			title: article.isCollected ? '收藏成功' : '已取消收藏',
+			icon: article.isCollected ? 'success' : 'none'
 		});
 
 		// TODO: 实际收藏API调用
-		// api.collectArticle(post.id, post.isCollected).then(res => {
+		// api.collectArticle(article.id, article.isCollected).then(res => {
 		//   console.log('收藏状态已更新');
 		// });
 	};
 
 	/**
 	 * 处理评论
-	 * @param {Number} index - 内容索引
+	 * @param {Object} article - 文章对象
 	 */
-	const handleComment = (index) => {
-		const postId = data.contentList[index].id;
-		uni.showToast({
-			title: '打开评论列表: ID=' + postId,
-			icon: 'none'
-		});
-
-		// TODO: 跳转到评论页面
-		// navigateTo(`/pages/comment/comment?id=${postId}`);
+	const handleComment = (article) => {
+		viewArticleDetail(article.id);
 	};
 
 	/**
 	 * 处理点赞
-	 * @param {Number} index - 内容索引
+	 * @param {Object} article - 文章对象
 	 */
-	const handleLike = (index) => {
-		const post = data.contentList[index];
-		post.isLiked = !post.isLiked;
-		post.likeCount += post.isLiked ? 1 : -1;
-
+	const handleLike = (article) => {
 		uni.showToast({
-			title: post.isLiked ? '点赞成功' : '已取消点赞',
-			icon: post.isLiked ? 'success' : 'none'
+			title: article.isLiked ? '点赞成功' : '已取消点赞',
+			icon: article.isLiked ? 'success' : 'none'
 		});
 
 		// TODO: 实际点赞API调用
-		// api.likeArticle(post.id, post.isLiked).then(res => {
+		// api.likeArticle(article.id, article.isLiked).then(res => {
 		//   console.log('点赞状态已更新');
 		// });
 	};
 
 	/**
-	 * 处理编辑资料
+	 * 处理编辑文章
+	 * @param {Object} article - 文章对象
 	 */
-	const handleEditProfile = () => {
-		navigateTo('/pages/edit-profile/edit-profile');
-	};
-
-	/**
-	 * 打开用户设置面板
-	 */
-	const openUserSettings = () => {
-		// 设置初始视图为编辑个人简介
-		data.settingsInitialView = 'bio';
-		// 显示设置面板
-		data.showUserSettings = true;
-	};
-
-	/**
-	 * 页面导航
-	 * @param {String} url - 导航地址
-	 */
-	const navigateTo = (url) => {
-		// 检查页面是否存在，这里只是模拟
-		if (url.includes('creation-center')) {
-			uni.showToast({
-				title: '进入创作中心',
-				icon: 'none'
-			});
-			return;
-		} else if (url.includes('settings')) {
-			// 显示自定义设置面板
-			data.showUserSettings = true;
-			return;
-		} else if (url.includes('follows')) {
-			// 实际导航到关注列表页面
-			uni.navigateTo({
-				url
-			});
-			return;
-		} else if (url.includes('followers')) {
-			uni.showToast({
-				title: '查看我的粉丝',
-				icon: 'none'
-			});
-			return;
-		} else if (url.includes('collection')) {
-			uni.showToast({
-				title: '查看我的收藏',
-				icon: 'none'
-			});
-			return;
-		} else if (url.includes('edit-profile')) {
-			uni.showToast({
-				title: '编辑个人资料',
-				icon: 'none'
-			});
-			return;
-		} else if (url.includes('article-detail')) {
-			// 直接导航到文章详情页面
-			uni.navigateTo({
-				url
-			});
-			return;
-		}
-
-		// 实际跳转，当后端连接后使用
-		// uni.navigateTo({ url });
-	};
-
-	/**
-	 * 获取基础URL
-	 */
-	const getBaseUrl = () => {
-		// #ifdef APP-PLUS
-		return 'http:// 10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
-		// #endif
-		
-		// #ifdef H5
-		return 'http://localhost:8080';
-		// #endif
-		
-		// #ifdef MP-WEIXIN
-		return 'http://localhost:8080';
-		// #endif
-	};
-
-	/**
-	 * 处理获取到的用户信息，处理头像URL
-	 * @param {Object} userInfo - 用户信息对象
-	 */
-	const processUserInfo = (userInfo) => {
-		// 深拷贝，避免直接修改原对象
-		const processedInfo = { ...userInfo };
-		
-		// 处理头像URL
-		if (processedInfo.avatar) {
-			// 如果已经是完整的URL，直接使用
-			if (processedInfo.avatar.startsWith('http')) {
-				return processedInfo;
-			}
-			
-			// 如果是相对路径，需要拼接基础URL
-			if (processedInfo.avatar.startsWith('/')) {
-				processedInfo.avatar = getBaseUrl() + processedInfo.avatar;
-			} else {
-				// 如果既不是http开头也不是/开头，添加/
-				processedInfo.avatar = getBaseUrl() + '/' + processedInfo.avatar;
-			}
-		} else {
-			// 使用默认头像
-			// #ifdef APP-PLUS
-			processedInfo.avatar = '/static/images/avatar.png';
-			// #endif
-			
-			// #ifdef H5 || MP-WEIXIN
-			processedInfo.avatar = '/static/images/avatar.png';
-			// #endif
-		}
-		
-		return processedInfo;
-	};
-
-	/**
-	 * 修改用户头像
-	 * @param {String} newAvatar - 新头像地址
-	 */
-	const handleAvatarChange = async (newAvatar) => {
-		try {
-			uni.showLoading({ title: '更新中...' });
-			
-			// 调用上传头像API
-			const response = await uploadUserAvatar(newAvatar);
-			
-			if (response.code === 200) {
-				// 更新本地用户信息
-				data.userInfo.avatar = response.data.avatarUrl;
-				
-				uni.showToast({
-					title: '头像更新成功',
-					icon: 'success'
-				});
-			} else {
-				throw new Error(response.message || '头像更新失败');
-			}
-		} catch (error) {
-			console.error('头像更新失败:', error);
-			uni.showToast({
-				title: '头像更新失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
-	};
-
-	/**
-	 * 修改用户昵称
-	 * @param {String} newNickname - 新昵称
-	 */
-	const handleNicknameChange = async (newNickname) => {
-		try {
-			uni.showLoading({ title: '更新中...' });
-			
-			// 调用更新用户资料API
-			const response = await updateUserProfile({ nickname: newNickname });
-			
-			if (response.code === 200) {
-				// 更新本地用户信息
-				data.userInfo.nickname = newNickname;
-				
-				uni.showToast({
-					title: '昵称更新成功',
-					icon: 'success'
-				});
-			} else {
-				throw new Error(response.message || '昵称更新失败');
-			}
-		} catch (error) {
-			console.error('昵称更新失败:', error);
-			uni.showToast({
-				title: '昵称更新失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
-	};
-
-	/**
-	 * 修改用户个人简介
-	 * @param {String} newBio - 新个人简介
-	 */
-	const handleBioChange = async (newBio) => {
-		try {
-			uni.showLoading({ title: '更新中...' });
-			
-			// 如果用户提交空简介，则使用默认值
-			const bioToSubmit = newBio.trim() ? newBio : DEFAULT_BIO;
-			
-			// 调用更新用户资料API
-			const response = await updateUserProfile({ bio: bioToSubmit });
-			
-			if (response.code === 200) {
-				// 更新本地用户信息
-				data.userInfo.bio = bioToSubmit;
-				
-				uni.showToast({
-					title: '个人简介更新成功',
-					icon: 'success'
-				});
-			} else {
-				throw new Error(response.message || '个人简介更新失败');
-			}
-		} catch (error) {
-			console.error('个人简介更新失败:', error);
-			uni.showToast({
-				title: '个人简介更新失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
-	};
-
-	/**
-	 * 处理退出登录
-	 */
-	const handleLogout = () => {
-		// 清除用户数据和本地缓存
-		uni.removeStorageSync('token');
-		uni.removeStorageSync('userInfo');
-
-		// 跳转到登录页
-		uni.reLaunch({
-			url: '/pages/login/login'
-		});
-	};
-
-	/**
-	 * 编辑文章
-	 * @param {Number} index - 文章索引
-	 */
-	const handleEditPost = (index) => {
-		const post = data.contentList[index];
-
+	const handleEditArticle = (article) => {
 		// 组装需要传递的文章数据
 		const articleData = {
-			id: post.id,
-			title: post.title,
-			content: post.summary, // 注意：这里只有摘要，实际应该传完整内容
-			tags: post.tags || [],
-			images: post.image ? [post.image] : []
+			id: article.id,
+			title: article.title,
+			content: article.summary, // 注意：这里只有摘要，实际应该传完整内容
+			tags: article.tags || [],
+			images: article.coverImage ? [article.coverImage] : (article.images || [])
 		};
 
 		// 将文章数据转换为JSON字符串，并进行URI编码
@@ -819,12 +284,10 @@
 	};
 
 	/**
-	 * 删除文章
-	 * @param {Number} index - 文章索引
+	 * 处理删除文章
+	 * @param {Object} article - 文章对象
 	 */
-	const handleDeletePost = (index) => {
-		const post = data.contentList[index];
-
+	const handleDeleteArticle = (article) => {
 		// 显示确认对话框
 		uni.showModal({
 			title: '确认删除',
@@ -834,7 +297,7 @@
 			success: (res) => {
 				if (res.confirm) {
 					// 用户点击确认，执行删除
-					deletePost(post.id, index);
+					deleteArticle(article.id);
 				}
 			}
 		});
@@ -842,10 +305,9 @@
 
 	/**
 	 * 执行文章删除操作
-	 * @param {Number} postId - 文章ID
-	 * @param {Number} index - 文章在列表中的索引
+	 * @param {Number} articleId - 文章ID
 	 */
-	const deletePost = (postId, index) => {
+	const deleteArticle = (articleId) => {
 		// 显示加载提示
 		uni.showLoading({
 			title: '删除中...'
@@ -853,8 +315,9 @@
 
 		// 模拟删除请求
 		setTimeout(() => {
-			// 从列表中移除文章
-			data.contentList.splice(index, 1);
+			// 刷新文章列表
+			articleListRef.value?.resetList();
+			articleListRef.value?.loadArticles();
 
 			// 隐藏加载提示
 			uni.hideLoading();
@@ -866,7 +329,7 @@
 			});
 
 			// TODO: 实际删除API调用
-			// api.deleteArticle(postId).then(res => {
+			// api.deleteArticle(articleId).then(res => {
 			//   console.log('文章删除成功');
 			// }).catch(err => {
 			//   console.error('文章删除失败:', err);
@@ -879,12 +342,12 @@
 	};
 
 	/**
-	 * 显示个人简介编辑弹窗
+	 * 切换个人简介编辑弹窗
 	 */
 	const toggleBioEdit = () => {
-		// 初始化编辑框的值为当前简介
-		data.editingBio = data.userInfo.bio || '';
-		// 显示弹窗
+		// 初始值为当前简介
+		data.editingBio = data.userInfo.bio || DEFAULT_BIO;
+		// 显示个人简介编辑弹窗
 		data.showBioPopup = true;
 	};
 
@@ -896,41 +359,17 @@
 	};
 
 	/**
-	 * 保存个人简介
+	 * 保存用户个人简介
 	 */
 	const saveUserBio = async () => {
-		try {
-			uni.showLoading({ title: '保存中...' });
-			
-			// 如果用户提交空简介，则使用默认值
-			const bioToSubmit = data.editingBio.trim() ? data.editingBio.trim() : DEFAULT_BIO;
-			
-			// 调用更新用户资料API
-			const response = await updateUserProfile({ bio: bioToSubmit });
-			
-			if (response.code === 200) {
-				// 更新本地用户信息
-				data.userInfo.bio = bioToSubmit;
-				
-				uni.showToast({
-					title: '个人简介已更新',
-					icon: 'success'
-				});
-				
-				// 关闭弹窗
-				closeBioPopup();
-			} else {
-				throw new Error(response.message || '个人简介更新失败');
-			}
-		} catch (error) {
-			console.error('个人简介更新失败:', error);
-			uni.showToast({
-				title: '更新失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
+		// 如果是空字符串，则使用默认个人简介
+		const bioValue = data.editingBio.trim() || DEFAULT_BIO;
+		
+		// 调用API保存个人简介
+		await handleBioChange(bioValue);
+		
+		// 关闭弹窗
+		closeBioPopup();
 	};
 
 	/**
@@ -1128,7 +567,10 @@
 			}
 			
 			// 加载默认选项卡的内容
-			loadContent();
+			nextTick(() => {
+				articleListRef.value?.resetList();
+				articleListRef.value?.loadArticles();
+			});
 		} catch (error) {
 			console.error('初始化失败:', error);
 			uni.showToast({
@@ -1193,6 +635,11 @@
 
 		// 每次页面显示时刷新用户信息，确保关注数量等数据最新
 		refreshUserInfo();
+		
+		// 如果文章列表组件已初始化，刷新列表数据
+		if (articleListRef.value) {
+			articleListRef.value.refresh();
+		}
 	});
 
 	/**
@@ -1266,6 +713,224 @@
 			data.showUserSettings = false;
 		}
 	});
+
+	/**
+	 * 处理获取到的用户信息，处理头像URL
+	 * @param {Object} userInfo - 用户信息对象
+	 */
+	const processUserInfo = (userInfo) => {
+		// 深拷贝，避免直接修改原对象
+		const processedInfo = { ...userInfo };
+		
+		// 处理头像URL
+		if (processedInfo.avatar) {
+			// 如果已经是完整的URL，直接使用
+			if (processedInfo.avatar.startsWith('http')) {
+				return processedInfo;
+			}
+			
+			// 如果是相对路径，需要拼接基础URL
+			if (processedInfo.avatar.startsWith('/')) {
+				processedInfo.avatar = getBaseUrl() + processedInfo.avatar;
+			} else {
+				// 如果既不是http开头也不是/开头，添加/
+				processedInfo.avatar = getBaseUrl() + '/' + processedInfo.avatar;
+			}
+		} else {
+			// 使用默认头像
+			// #ifdef APP-PLUS
+			processedInfo.avatar = '/static/images/avatar.png';
+			// #endif
+			
+			// #ifdef H5 || MP-WEIXIN
+			processedInfo.avatar = '/static/images/avatar.png';
+			// #endif
+		}
+		
+		return processedInfo;
+	};
+
+	/**
+	 * 修改用户头像
+	 * @param {String} newAvatar - 新头像地址
+	 */
+	const handleAvatarChange = async (newAvatar) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 调用上传头像API
+			const response = await uploadUserAvatar(newAvatar);
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.avatar = response.data.avatarUrl;
+				
+				uni.showToast({
+					title: '头像更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '头像更新失败');
+			}
+		} catch (error) {
+			console.error('头像更新失败:', error);
+			uni.showToast({
+				title: '头像更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
+	/**
+	 * 修改用户昵称
+	 * @param {String} newNickname - 新昵称
+	 */
+	const handleNicknameChange = async (newNickname) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 调用更新用户资料API
+			const response = await updateUserProfile({ nickname: newNickname });
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.nickname = newNickname;
+				
+				uni.showToast({
+					title: '昵称更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '昵称更新失败');
+			}
+		} catch (error) {
+			console.error('昵称更新失败:', error);
+			uni.showToast({
+				title: '昵称更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
+	/**
+	 * 修改用户个人简介
+	 * @param {String} newBio - 新个人简介
+	 */
+	const handleBioChange = async (newBio) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 如果用户提交空简介，则使用默认值
+			const bioToSubmit = newBio.trim() ? newBio : DEFAULT_BIO;
+			
+			// 调用更新用户资料API
+			const response = await updateUserProfile({ bio: bioToSubmit });
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.bio = bioToSubmit;
+				
+				uni.showToast({
+					title: '个人简介更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '个人简介更新失败');
+			}
+		} catch (error) {
+			console.error('个人简介更新失败:', error);
+			uni.showToast({
+				title: '个人简介更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
+	/**
+	 * 处理退出登录
+	 */
+	const handleLogout = () => {
+		// 清除用户数据和本地缓存
+		uni.removeStorageSync('token');
+		uni.removeStorageSync('userInfo');
+
+		// 跳转到登录页
+		uni.reLaunch({
+			url: '/pages/login/login'
+		});
+	};
+
+	/**
+	 * 获取基础URL
+	 */
+	const getBaseUrl = () => {
+		// #ifdef APP-PLUS
+		return 'http:// 10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
+		// #endif
+		
+		// #ifdef H5
+		return 'http://localhost:8080';
+		// #endif
+		
+		// #ifdef MP-WEIXIN
+		return 'http://localhost:8080';
+		// #endif
+	};
+
+	// 页面导航
+	const navigateTo = (url) => {
+		// 检查页面是否存在，这里只是模拟
+		if (url.includes('creation-center')) {
+			uni.showToast({
+				title: '进入创作中心',
+				icon: 'none'
+			});
+			return;
+		} else if (url.includes('settings')) {
+			// 显示自定义设置面板
+			data.showUserSettings = true;
+			return;
+		} else if (url.includes('follows')) {
+			// 实际导航到关注列表页面
+			uni.navigateTo({
+				url
+			});
+			return;
+		} else if (url.includes('followers')) {
+			uni.showToast({
+				title: '查看我的粉丝',
+				icon: 'none'
+			});
+			return;
+		} else if (url.includes('collection')) {
+			uni.showToast({
+				title: '查看我的收藏',
+				icon: 'none'
+			});
+			return;
+		} else if (url.includes('edit-profile')) {
+			uni.showToast({
+				title: '编辑个人资料',
+				icon: 'none'
+			});
+			return;
+		} else if (url.includes('article-detail')) {
+			// 直接导航到文章详情页面
+			uni.navigateTo({
+				url
+			});
+			return;
+		}
+
+		// 实际跳转，当后端连接后使用
+		// uni.navigateTo({ url });
+	};
 </script>
 
 <style lang="scss">
