@@ -228,7 +228,7 @@
 	};
 	
 	// 加载文章列表
-	const loadArticles = async (force = false, oldData = []) => {
+	const loadArticles = async (force = false) => {
 		// 如果已经没有更多数据或正在加载中，则不处理
 		if (noMoreData.value || isLoading.value) {
 			console.log('跳过加载：', noMoreData.value ? '没有更多数据' : '正在加载中');
@@ -293,10 +293,11 @@
 				console.log('加载推荐文章');
 			}
 			
-			// 添加时间戳参数
+			// 添加时间戳参数和强制刷新标志
 			if (force) {
 				params.timestamp = new Date().getTime();
-				console.log('添加时间戳参数防止缓存:', params.timestamp);
+				params.forceRefresh = true;
+				console.log('添加时间戳和强制刷新参数:', params.timestamp);
 			}
 			
 			// 打印完整的请求信息，便于调试
@@ -307,7 +308,7 @@
 			console.log('列表类型:', props.listType);
 			
 			// 发起请求
-			const response = await request(apiPath, params);
+			const response = await request(apiPath, params, force);
 			
 			// 打印响应信息
 			console.log('======= 响应信息 =======');
@@ -324,10 +325,9 @@
 				// 更详细地验证响应数据
 				if (!response.data.list) {
 					console.warn('API响应缺少list字段:', response.data);
-					if (force && oldData.length > 0) {
-						// 强制刷新但返回数据无效，恢复原有数据
-						console.log('返回数据无效，恢复原有数据');
-						articleList.value = oldData;
+					// 如果是强制刷新但无数据，返回空列表
+					if (force) {
+						articleList.value = [];
 						return Promise.resolve();
 					}
 				}
@@ -335,19 +335,6 @@
 				// 处理文章数据并添加到文章列表
 				const newArticles = processArticleData(response.data.list || []);
 				console.log(`获取到${newArticles.length}篇文章`);
-				
-				// 验证获取的数据
-				if (newArticles.length === 0 && force && oldData.length > 0) {
-					// 如果是强制刷新但获取到空数据，且原有数据非空，提示用户并恢复原有数据
-					console.log('服务器返回空数据，恢复原有数据展示');
-					uni.showToast({
-						title: '暂无新内容',
-						icon: 'none',
-						duration: 1500
-					});
-					articleList.value = oldData;
-					return Promise.resolve();
-				}
 				
 				if (currentPage.value === 1) {
 					// 第一页数据，替换列表
@@ -385,12 +372,6 @@
 					icon: 'none'
 				});
 				
-				// 如果是强制刷新但失败，恢复原有数据
-				if (force && oldData.length > 0) {
-					console.log('加载失败，恢复原有数据');
-					articleList.value = oldData;
-				}
-				
 				return Promise.reject(new Error(response.message || '加载失败'));
 			}
 		} catch (error) {
@@ -399,12 +380,6 @@
 				title: '网络异常，请稍后再试',
 				icon: 'none'
 			});
-			
-			// 如果是强制刷新但失败，恢复原有数据
-			if (force && oldData.length > 0) {
-				console.log('请求异常，恢复原有数据');
-				articleList.value = oldData;
-			}
 			
 			return Promise.reject(error);
 		} finally {
@@ -437,7 +412,7 @@
 	};
 	
 	// 网络请求封装
-	const request = async (url, params = {}) => {
+	const request = async (url, params = {}, force = false) => {
 		try {
 			// 获取基础URL
 			const baseUrl = getBaseUrl();
@@ -467,18 +442,25 @@
 					reject(new Error('请求超时，请检查网络连接'));
 				}, 15000); // 15秒超时
 				
+				// 请求头
+				const headers = {
+					'Authorization': token ? `Bearer ${token}` : '',
+					'Content-Type': 'application/json'
+				};
+				
+				// 如果是强制刷新，添加防缓存头
+				if (force) {
+					headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+					headers['Pragma'] = 'no-cache';
+					headers['Expires'] = '0';
+					headers['If-Modified-Since'] = '0';
+				}
+				
 				uni.request({
 					url: requestUrl,
 					method: 'GET',
 					timeout: 15000, // 15秒超时设置
-					header: {
-						'Authorization': token ? `Bearer ${token}` : '',
-						'Content-Type': 'application/json',
-						// 添加防缓存头
-						'Cache-Control': 'no-cache',
-						'Pragma': 'no-cache',
-						'If-Modified-Since': '0'
-					},
+					header: headers,
 					success: (res) => {
 						clearTimeout(timeoutId); // 清除超时计时器
 						
@@ -560,64 +542,108 @@
 	const handleRefresh = () => {
 		if (isRefreshing.value) return; // 避免重复触发
 		
-		console.log('开始下拉刷新...');
+		console.log('开始完全重置刷新...');
 		isRefreshing.value = true;
 		
-		// 重置相关状态，但先保留原有数据，避免刷新失败时列表为空
-		// 不要在这里清空articleList，而是在请求成功后再替换
-		const originalData = [...articleList.value]; // 保存原有数据
+		// 完全重置组件状态
+		articleList.value = [];
 		currentPage.value = 1;
 		noMoreData.value = false;
 		
-		// 设置超时保护，确保刷新状态不会一直存在
-		const refreshTimeout = setTimeout(() => {
-			isRefreshing.value = false;
-			isLoading.value = false;
-			// 如果此时列表为空，恢复原有数据
-			if (articleList.value.length === 0) {
-				articleList.value = originalData;
-				console.log('刷新超时，恢复原有数据');
-			}
-			console.log('刷新超时保护触发');
-		}, 10000); // 10秒后强制结束刷新状态
+		// 通知用户正在刷新
+		uni.showToast({
+			title: '正在刷新...',
+			icon: 'loading',
+			duration: 1000
+		});
 		
-		// 延迟执行，给用户更好的视觉反馈
+		// 模拟浏览器刷新效果 - 短暂延迟后完全重新加载
 		setTimeout(() => {
-			// 显示加载状态
-			isLoading.value = true;
-			console.log('开始重新加载数据...');
+			// 发起带有缓存破坏参数的全新请求
+			const randomParam = Math.random().toString(36).substring(2, 15);
 			
-			// 加载新数据，强制添加时间戳参数避免缓存
-			loadArticles(true, originalData)
-				.then(() => {
-					// 刷新完成后通知父组件
-					console.log('刷新请求成功，数据已更新');
-					emit('refresh');
+			// 构建请求参数和API路径
+			let apiPath = '/api/article';
+			const requestParams = {
+				page: 1,
+				pageSize: pageSize.value,
+				_nocache: randomParam,
+				_t: Date.now()
+			};
+			
+			// 根据列表类型设置正确的参数
+			if (props.listType === 'myPosts') {
+				const currentUserId = getCurrentUserId();
+				if (!currentUserId) {
+					console.error('用户未登录，无法刷新');
+					isRefreshing.value = false;
 					uni.showToast({
-						title: '刷新成功',
-						icon: 'success',
-						duration: 1500
-					});
-				})
-				.catch(error => {
-					console.error('刷新文章列表失败:', error);
-					// 显示错误提示
-					uni.showToast({
-						title: '刷新失败，请稍后再试',
+						title: '请先登录',
 						icon: 'none'
 					});
-					// 恢复原有数据
-					if (articleList.value.length === 0) {
-						articleList.value = originalData;
-						console.log('刷新失败，恢复原有数据');
+					return;
+				}
+				apiPath = `/api/article/user/${currentUserId}/articles`;
+				requestParams.type = 'posts';
+			} else if (props.userId) {
+				apiPath = `/api/article/user/${props.userId}/articles`;
+				requestParams.type = props.listType === 'like' ? 'likes' : 'posts';
+			} else if (props.listType === 'collection') {
+				apiPath = '/api/article/collections';
+			} else if (props.listType === 'follow') {
+				apiPath = '/api/article/follow';
+			} else if (props.listType === 'hot') {
+				requestParams.sort = 'hot';
+			} else if (props.listType === 'new') {
+				requestParams.sort = 'new';
+			} else if (props.listType === 'tag' && props.tagName) {
+				requestParams.tag = props.tagName;
+			}
+			
+			console.log('刷新请求路径:', apiPath);
+			console.log('刷新请求参数:', requestParams);
+			
+			// 直接发起完全的新请求
+			request(apiPath, requestParams, true)
+				.then(response => {
+					// 处理响应数据
+					if (response.code === 200 && response.data && response.data.list) {
+						// 使用全新数据替换列表
+						articleList.value = processArticleData(response.data.list || []);
+						
+						// 更新分页信息
+						currentPage.value = 2; // 已加载第1页，下次加载第2页
+						
+						// 检查是否还有更多数据
+						const backendPageSize = response.data.pageSize || pageSize.value;
+						if (!response.data.list || response.data.list.length < backendPageSize) {
+							noMoreData.value = true;
+						}
+						
+						// 显示成功提示
+						uni.showToast({
+							title: '刷新成功',
+							icon: 'success',
+							duration: 1500
+						});
+					} else {
+						// 处理错误情况
+						throw new Error(response.message || '刷新失败');
 					}
 				})
+				.catch(error => {
+					console.error('刷新失败:', error);
+					uni.showToast({
+						title: '刷新失败，请重试',
+						icon: 'none',
+						duration: 2000
+					});
+				})
 				.finally(() => {
-					// 确保无论成功还是失败，都重置状态
-					clearTimeout(refreshTimeout); // 清除超时保护
+					// 无论成功或失败，重置刷新状态
 					isRefreshing.value = false;
 					isLoading.value = false;
-					console.log('刷新流程结束');
+					emit('refresh'); // 通知父组件刷新已完成
 				});
 		}, 300);
 	};
@@ -915,24 +941,28 @@
 								
 								// 显示成功提示
 								uni.showToast({
-									title: '删除成功',
+									title: '文章已删除',
 									icon: 'success'
 								});
 								
 								// 发出删除事件
 								emit('delete', article);
 							} else {
+								console.error('删除失败:', res);
 								uni.showToast({
 									title: res.message || '删除失败',
-									icon: 'none'
+									icon: 'none',
+									duration: 2000
 								});
 							}
 						})
 						.catch(err => {
 							console.error('删除文章失败:', err);
+							const errorMsg = err.data?.message || err.message || '网络异常，请稍后再试';
 							uni.showToast({
-								title: '网络异常，请稍后再试',
-								icon: 'none'
+								title: errorMsg,
+								icon: 'none',
+								duration: 2000
 							});
 						})
 						.finally(() => {
@@ -957,7 +987,8 @@
 	defineExpose({
 		loadArticles,
 		resetList,
-		refresh: handleRefresh
+		refresh: handleRefresh,
+		getArticleList: () => articleList.value
 	});
 </script>
 

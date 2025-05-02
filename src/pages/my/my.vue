@@ -187,11 +187,67 @@
 	const articleListRef = ref(null);
 
 	/**
+	 * 手动刷新文章列表，模拟浏览器刷新行为
+	 */
+	const refreshArticleList = () => {
+		if (!articleListRef.value) return;
+		
+		// 显示加载提示
+		uni.showLoading({
+			title: '刷新页面...',
+			mask: true
+		});
+		
+		// 先保存当前选项卡索引
+		const currentTabIndex = data.currentTab;
+		
+		// 模拟页面完全重载 - 先清空数据，再重新加载
+		// 清空用户信息
+		data.userInfo = {
+			...data.userInfo,
+			followCount: 0,
+			followerCount: 0,
+			collectionCount: 0
+		};
+		
+		// 短暂延迟模拟页面加载过程
+		setTimeout(async () => {
+			try {
+				// 1. 重新获取用户信息
+				const userResponse = await getUserInfo();
+				if (userResponse.code === 200) {
+					const processedUserInfo = processUserInfo(userResponse.data);
+					data.userInfo = {
+						...processedUserInfo,
+						followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
+						collectionCount: processedUserInfo.collectionCount || 0,
+					};
+				}
+				
+				// 2. 强制刷新文章列表
+				articleListRef.value.refresh();
+				
+			} catch (error) {
+				console.error('刷新页面失败:', error);
+			} finally {
+				// 隐藏加载提示
+				setTimeout(() => {
+					uni.hideLoading();
+				}, 300);
+			}
+		}, 300);
+	};
+
+	/**
 	 * 切换选项卡
 	 * @param {Number} index - 选项卡索引
 	 */
 	const switchTab = (index) => {
-		if (data.currentTab === index) return;
+		if (data.currentTab === index) {
+			// 如果点击当前选中的选项卡，则视为刷新操作
+			refreshArticleList();
+			return;
+		}
 
 		data.currentTab = index;
 
@@ -428,25 +484,43 @@
 			const response = await deleteArticle(article.id);
 			
 			if (response.code === 200) {
-				// 刷新文章列表
-				nextTick(() => {
-					articleListRef.value?.resetList();
-					articleListRef.value?.loadArticles();
-				});
-				
 				// 显示成功提示
 				uni.showToast({
-					title: '删除成功',
+					title: '文章已删除',
 					icon: 'success'
 				});
+				
+				// 不立即重新加载，而是先直接从列表中移除该文章
+				if (articleListRef.value) {
+					// 获取内部文章列表并移除当前文章
+					const articleList = articleListRef.value.getArticleList();
+					const index = articleList.findIndex(item => item.id === article.id);
+					if (index !== -1) {
+						articleList.splice(index, 1);
+					}
+					
+					// 延迟刷新整个列表
+					setTimeout(() => {
+						articleListRef.value.resetList();
+						articleListRef.value.loadArticles();
+					}, 500);
+				}
 			} else {
-				throw new Error(response.message || '删除失败');
+				console.error('删除失败:', response);
+				uni.showToast({
+					title: response.message || '删除失败，请重试',
+					icon: 'none',
+					duration: 2000
+				});
 			}
 		} catch (apiError) {
 			console.error('删除文章失败:', apiError);
+			// 检查错误响应中是否有message
+			const errorMsg = apiError.data?.message || apiError.message || '删除失败，请重试';
 			uni.showToast({
-				title: '删除失败，请重试',
-				icon: 'none'
+				title: errorMsg,
+				icon: 'none',
+				duration: 2000
 			});
 		} finally {
 			uni.hideLoading();
