@@ -642,16 +642,10 @@
 		// 每次页面显示时刷新用户信息，确保关注数量等数据最新
 		refreshUserInfo();
 		
-		// 使用延迟刷新文章列表，确保从发布页返回时能正确刷新数据
+		// 恢复刷新文章列表的代码，确保从发布页返回时刷新数据
 		if (articleListRef.value) {
-			console.log('检测到页面显示，准备刷新文章列表');
-			// 使用setTimeout延迟执行，确保页面完全加载后再刷新
-			setTimeout(() => {
-				// 重置列表并重新加载
-				articleListRef.value.resetList();
-				articleListRef.value.loadArticles();
-				console.log('文章列表刷新完成');
-			}, 300);
+			console.log('检测到页面显示，刷新文章列表');
+			articleListRef.value.refresh();
 		} else {
 			console.warn('文章列表组件未初始化，无法刷新');
 		}
