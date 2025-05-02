@@ -204,14 +204,18 @@
 		currentPage.value = 1;
 		noMoreData.value = false;
 		isLoading.value = false;
-		// 不重置刷新状态，由刷新逻辑自行控制
+		// 注意：不重置isRefreshing状态，由刷新逻辑自行控制
 	};
 	
 	// 加载文章列表
-	const loadArticles = async () => {
+	const loadArticles = async (force = false, oldData = []) => {
 		// 如果已经没有更多数据或正在加载中，则不处理
-		if (noMoreData.value || isLoading.value) return;
+		if (noMoreData.value || isLoading.value) {
+			console.log('跳过加载：', noMoreData.value ? '没有更多数据' : '正在加载中');
+			return Promise.resolve();
+		}
 		
+		console.log('开始加载文章列表，页码:', currentPage.value, force ? '(强制刷新)' : '');
 		isLoading.value = true;
 		
 		try {
@@ -229,21 +233,35 @@
 				// 获取指定用户的文章
 				apiPath = `/api/article/user/${props.userId}/articles`;
 				params.type = props.listType === 'like' ? 'likes' : 'posts';
+				console.log(`加载用户(${props.userId})的${params.type}类型文章`);
 			} else if (props.listType === 'collection') {
 				// 获取收藏的文章
 				apiPath = '/api/article/collections';
+				console.log('加载收藏的文章');
 			} else if (props.listType === 'follow') {
 				// 获取关注的用户发布的文章
 				apiPath = '/api/article/follow';
+				console.log('加载关注用户的文章');
 			} else if (props.listType === 'hot') {
 				// 获取热门文章
 				params.sort = 'hot';
+				console.log('加载热门文章');
 			} else if (props.listType === 'new') {
 				// 获取最新文章
 				params.sort = 'new';
+				console.log('加载最新文章');
 			} else if (props.listType === 'tag' && props.tagName) {
 				// 获取特定标签的文章
 				params.tag = props.tagName;
+				console.log(`加载标签(${props.tagName})的文章`);
+			} else {
+				console.log('加载推荐文章');
+			}
+			
+			// 添加时间戳参数
+			if (force) {
+				params.timestamp = new Date().getTime();
+				console.log('添加时间戳参数防止缓存:', params.timestamp);
 			}
 			
 			// 发起请求
@@ -251,19 +269,47 @@
 			
 			// 处理响应数据
 			if (response.code === 200 && response.data) {
+				// 更详细地验证响应数据
+				if (!response.data.list) {
+					console.warn('API响应缺少list字段:', response.data);
+					if (force && oldData.length > 0) {
+						// 强制刷新但返回数据无效，恢复原有数据
+						console.log('返回数据无效，恢复原有数据');
+						articleList.value = oldData;
+						return Promise.resolve();
+					}
+				}
+				
 				// 处理文章数据并添加到文章列表
 				const newArticles = processArticleData(response.data.list || []);
+				console.log(`获取到${newArticles.length}篇文章`);
+				
+				// 验证获取的数据
+				if (newArticles.length === 0 && force && oldData.length > 0) {
+					// 如果是强制刷新但获取到空数据，且原有数据非空，提示用户并恢复原有数据
+					console.log('服务器返回空数据，恢复原有数据展示');
+					uni.showToast({
+						title: '暂无新内容',
+						icon: 'none',
+						duration: 1500
+					});
+					articleList.value = oldData;
+					return Promise.resolve();
+				}
 				
 				if (currentPage.value === 1) {
 					// 第一页数据，替换列表
+					console.log('替换整个文章列表');
 					articleList.value = newArticles;
 				} else {
 					// 追加数据到列表
+					console.log('追加文章到列表');
 					articleList.value = [...articleList.value, ...newArticles];
 				}
 				
 				// 更新页码
 				currentPage.value++;
+				console.log('页码更新为:', currentPage.value);
 				
 				// 判断是否还有更多数据
 				// 如果后端返回了pageSize，使用它进行判断
@@ -272,32 +318,47 @@
 				// 如果没有数据或数据量小于页大小，认为没有更多数据了
 				if (!response.data.list || response.data.list.length < backendPageSize) {
 					noMoreData.value = true;
+					console.log('已加载全部数据');
 				}
 				
 				// 触发loadMore事件
 				emit('loadMore');
+				
+				return Promise.resolve();
 			} else {
 				// 处理错误情况
+				console.error('加载失败:', response.message);
 				uni.showToast({
 					title: response.message || '加载失败',
 					icon: 'none'
 				});
+				
+				// 如果是强制刷新但失败，恢复原有数据
+				if (force && oldData.length > 0) {
+					console.log('加载失败，恢复原有数据');
+					articleList.value = oldData;
+				}
+				
+				return Promise.reject(new Error(response.message || '加载失败'));
 			}
 		} catch (error) {
-			console.error('获取文章列表失败:', error);
+			console.error('获取文章列表异常:', error);
 			uni.showToast({
 				title: '网络异常，请稍后再试',
 				icon: 'none'
 			});
-		} finally {
-			isLoading.value = false;
 			
-			// 延迟关闭刷新状态，给用户更好的视觉反馈
-			if (isRefreshing.value) {
-				setTimeout(() => {
-					isRefreshing.value = false;
-				}, 800);
+			// 如果是强制刷新但失败，恢复原有数据
+			if (force && oldData.length > 0) {
+				console.log('请求异常，恢复原有数据');
+				articleList.value = oldData;
 			}
+			
+			return Promise.reject(error);
+		} finally {
+			// 确保无论成功或失败都会重置加载状态
+			isLoading.value = false;
+			console.log('加载状态已重置');
 		}
 	};
 	
@@ -325,56 +386,105 @@
 	
 	// 网络请求封装
 	const request = async (url, params = {}) => {
-		// 获取基础URL
-		const baseUrl = getBaseUrl();
-		
-		// 获取token
-		const token = uni.getStorageSync('token');
-		
-		// 构建请求URL（添加查询参数）
-		let requestUrl = baseUrl + url;
-		if (Object.keys(params).length > 0) {
-			const queryString = Object.keys(params)
-				.map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
-				.join('&');
-			requestUrl += `?${queryString}`;
-		}
-		
-		// 返回Promise
-		return new Promise((resolve, reject) => {
-			uni.request({
-				url: requestUrl,
-				method: 'GET',
-				header: {
-					'Authorization': token ? `Bearer ${token}` : '',
-					'Content-Type': 'application/json'
-				},
-				success: (res) => {
-					// 处理API响应
-					if (res.statusCode === 200) {
-						resolve(res.data || {code: 200, message: "success", data: {total: 0, list: []}});
-					} else if (res.statusCode === 401) {
-						// 未授权，可能是token过期
-						uni.showToast({
-							title: '请先登录',
-							icon: 'none'
-						});
+		try {
+			// 获取基础URL
+			const baseUrl = getBaseUrl();
+			
+			// 获取token
+			const token = uni.getStorageSync('token');
+			
+			// 构建请求URL（添加查询参数）
+			let requestUrl = baseUrl + url;
+			if (Object.keys(params).length > 0) {
+				const queryString = Object.keys(params)
+					.map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+					.join('&');
+				requestUrl += `?${queryString}`;
+			}
+			
+			console.log('发起API请求:', requestUrl);
+			
+			// 返回Promise
+			return new Promise((resolve, reject) => {
+				// 请求计时器，用于监控请求时间
+				const startTime = Date.now();
+				
+				// 设置请求超时
+				let timeoutId = setTimeout(() => {
+					console.error('请求超时:', requestUrl);
+					reject(new Error('请求超时，请检查网络连接'));
+				}, 15000); // 15秒超时
+				
+				uni.request({
+					url: requestUrl,
+					method: 'GET',
+					timeout: 15000, // 15秒超时设置
+					header: {
+						'Authorization': token ? `Bearer ${token}` : '',
+						'Content-Type': 'application/json',
+						// 添加防缓存头
+						'Cache-Control': 'no-cache',
+						'Pragma': 'no-cache',
+						'If-Modified-Since': '0'
+					},
+					success: (res) => {
+						clearTimeout(timeoutId); // 清除超时计时器
 						
-						// 可以在这里添加重定向到登录页的逻辑
-						// uni.navigateTo({url: '/pages/login/login'});
+						// 计算请求耗时
+						const requestTime = Date.now() - startTime;
+						console.log(`API响应状态: ${res.statusCode}, 耗时: ${requestTime}ms`);
 						
-						resolve({code: 401, message: "需要登录", data: null});
-					} else {
-						// 其他错误
-						resolve({code: res.statusCode, message: res.data?.message || "请求失败", data: null});
+						// 处理API响应
+						if (res.statusCode === 200) {
+							// 验证返回数据结构
+							if (!res.data) {
+								console.warn('API返回空数据');
+								resolve({code: 200, message: "success", data: {total: 0, list: []}});
+								return;
+							}
+							
+							// 检查data字段
+							if (!res.data.data && res.data.code === 200) {
+								console.warn('API返回的data字段为空');
+								res.data.data = {total: 0, list: []};
+							}
+							
+							console.log('API请求成功，数据条数:', res.data?.data?.list?.length || 0);
+							resolve(res.data);
+						} else if (res.statusCode === 401) {
+							// 未授权，可能是token过期
+							console.log('API请求未授权(401)');
+							uni.showToast({
+								title: '请先登录',
+								icon: 'none'
+							});
+							
+							// 可以在这里添加重定向到登录页的逻辑
+							// uni.navigateTo({url: '/pages/login/login'});
+							
+							resolve({code: 401, message: "需要登录", data: null});
+						} else {
+							// 其他错误
+							console.log('API请求失败，状态码:', res.statusCode);
+							resolve({code: res.statusCode, message: res.data?.message || "请求失败", data: null});
+						}
+					},
+					fail: (err) => {
+						clearTimeout(timeoutId); // 清除超时计时器
+						
+						console.error('API请求网络错误:', err);
+						// 网络错误时明确拒绝Promise
+						reject(err);
+					},
+					complete: () => {
+						// 可以在这里添加全局的请求完成逻辑
 					}
-				},
-				fail: (err) => {
-					console.error('API请求失败:', err);
-					reject(err);
-				}
+				});
 			});
-		});
+		} catch (error) {
+			console.error('请求异常:', error);
+			return Promise.reject(error);
+		}
 	};
 	
 	/**
@@ -398,13 +508,65 @@
 	const handleRefresh = () => {
 		if (isRefreshing.value) return; // 避免重复触发
 		
+		console.log('开始下拉刷新...');
 		isRefreshing.value = true;
-		resetList();
 		
-		// 延迟执行，防止过快关闭刷新状态
+		// 重置相关状态，但先保留原有数据，避免刷新失败时列表为空
+		// 不要在这里清空articleList，而是在请求成功后再替换
+		const originalData = [...articleList.value]; // 保存原有数据
+		currentPage.value = 1;
+		noMoreData.value = false;
+		
+		// 设置超时保护，确保刷新状态不会一直存在
+		const refreshTimeout = setTimeout(() => {
+			isRefreshing.value = false;
+			isLoading.value = false;
+			// 如果此时列表为空，恢复原有数据
+			if (articleList.value.length === 0) {
+				articleList.value = originalData;
+				console.log('刷新超时，恢复原有数据');
+			}
+			console.log('刷新超时保护触发');
+		}, 10000); // 10秒后强制结束刷新状态
+		
+		// 延迟执行，给用户更好的视觉反馈
 		setTimeout(() => {
-			loadArticles();
-			emit('refresh');
+			// 显示加载状态
+			isLoading.value = true;
+			console.log('开始重新加载数据...');
+			
+			// 加载新数据，强制添加时间戳参数避免缓存
+			loadArticles(true, originalData)
+				.then(() => {
+					// 刷新完成后通知父组件
+					console.log('刷新请求成功，数据已更新');
+					emit('refresh');
+					uni.showToast({
+						title: '刷新成功',
+						icon: 'success',
+						duration: 1500
+					});
+				})
+				.catch(error => {
+					console.error('刷新文章列表失败:', error);
+					// 显示错误提示
+					uni.showToast({
+						title: '刷新失败，请稍后再试',
+						icon: 'none'
+					});
+					// 恢复原有数据
+					if (articleList.value.length === 0) {
+						articleList.value = originalData;
+						console.log('刷新失败，恢复原有数据');
+					}
+				})
+				.finally(() => {
+					// 确保无论成功还是失败，都重置状态
+					clearTimeout(refreshTimeout); // 清除超时保护
+					isRefreshing.value = false;
+					isLoading.value = false;
+					console.log('刷新流程结束');
+				});
 		}, 300);
 	};
 	
