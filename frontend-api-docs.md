@@ -1588,3 +1588,144 @@
   - 评论成功后会自动更新文章的评论数
   - 如果是回复评论，需要同时提供parentId和replyUserId
   - **⚠️ 当前状态：已实现**
+
+## 可复用组件
+
+### 文章列表组件 (ArticleList)
+
+**组件说明：** 可复用的文章列表组件，支持多种列表类型、标签筛选、用户文章等功能
+
+1. **组件路径：** `/components/article-list/article-list.vue`
+
+2. **组件属性：**
+
+| 属性名           | 类型            | 默认值       | 说明                                     |
+|-----------------|-----------------|-------------|------------------------------------------|
+| listType        | String          | 'recommend' | 列表类型: recommend(推荐)、follow(关注)、hot(热门)、new(最新)、tag(标签)、collection(收藏) |
+| tagName         | String          | ''          | 标签名称，当listType为tag时使用           |
+| userId          | Number/String   | null        | 用户ID，当获取指定用户的文章时使用        |
+| showManageOptions | Boolean       | false       | 是否显示管理选项（编辑、删除）           |
+| emptyText       | String          | '暂无内容'   | 空列表提示文本                           |
+| autoLoad        | Boolean         | true        | 是否自动加载（组件挂载后是否自动请求数据）|
+| height          | String          | 'calc(100vh - 165rpx)' | 列表高度                      |
+
+3. **组件事件：**
+
+| 事件名         | 参数                    | 说明                          |
+|---------------|-------------------------|------------------------------|
+| refresh       | 无                      | 列表刷新时触发                |
+| loadMore      | 无                      | 加载更多内容时触发            |
+| articleClick  | articleId (文章ID)      | 点击文章时触发                |
+| authorClick   | authorId (作者ID)       | 点击作者头像或昵称时触发      |
+| tagClick      | tag (标签名称)          | 点击文章标签时触发            |
+| share         | article (文章对象)      | 点击分享按钮时触发            |
+| comment       | article (文章对象)      | 点击评论按钮时触发            |
+| collect       | article (文章对象)      | 点击收藏按钮时触发            |
+| like          | article (文章对象)      | 点击点赞按钮时触发            |
+| edit          | article (文章对象)      | 点击编辑按钮时触发            |
+| delete        | article (文章对象)      | 点击删除按钮时触发            |
+| follow        | author (作者对象)       | 点击关注/取消关注按钮时触发   |
+
+4. **组件方法：**
+
+| 方法名       | 参数     | 返回值  | 说明                        |
+|-------------|----------|--------|----------------------------|
+| loadArticles | 无       | 无     | 加载文章列表数据             |
+| resetList   | 无       | 无     | 重置列表数据并回到第一页      |
+| refresh     | 无       | 无     | 刷新列表数据                 |
+
+5. **使用示例：**
+
+```html
+<template>
+  <view class="container">
+    <ArticleList
+      ref="articleListRef"
+      list-type="recommend"
+      @article-click="handleArticleClick"
+      @author-click="handleAuthorClick"
+      @tag-click="handleTagClick"
+    />
+  </view>
+</template>
+
+<script setup>
+  import { ref } from 'vue';
+  import ArticleList from '@/components/article-list/article-list.vue';
+  
+  const articleListRef = ref(null);
+  
+  const handleArticleClick = (articleId) => {
+    // 处理文章点击事件
+    uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${articleId}` });
+  };
+  
+  const handleAuthorClick = (authorId) => {
+    // 处理作者点击事件
+    uni.navigateTo({ url: `/pages/user-profile/user-profile?id=${authorId}` });
+  };
+  
+  const handleTagClick = (tag) => {
+    // 处理标签点击事件
+    console.log(`查看标签: ${tag}`);
+  };
+</script>
+```
+
+6. **数据结构：**
+
+组件内部使用的文章数据结构：
+
+```js
+{
+  id: 1,                               // 文章ID
+  title: '文章标题',                     // 文章标题
+  summary: '文章摘要...',                // 文章摘要
+  content: '文章内容...',                // 文章内容
+  coverImage: '/uploads/cover.jpg',     // 封面图片
+  images: ['/uploads/img1.jpg', ...],   // 文章图片数组（多图模式）
+  tags: ['标签1', '标签2'],              // 文章标签
+  likeCount: 156,                       // 点赞数量
+  commentCount: 38,                     // 评论数量
+  collectCount: 45,                     // 收藏数量
+  isLiked: false,                       // 当前用户是否已点赞
+  isCollected: false,                   // 当前用户是否已收藏
+  createTime: '2024-04-20 10:00:00',    // 创建时间
+  updateTime: '2024-04-20 10:00:00',    // 更新时间
+  author: {                             // 作者信息
+    id: 10001,                          // 作者ID
+    nickname: '用户昵称',                // 作者昵称
+    avatar: '/uploads/avatar.jpg',      // 作者头像
+    isFollowed: false                   // 当前用户是否已关注作者
+  }
+}
+```
+
+7. **功能说明：**
+
+   - 支持多种列表类型：推荐、关注、热门、最新、标签筛选、收藏文章
+   - 支持获取指定用户发布或点赞的文章列表
+   - 自动处理分页加载和加载更多功能
+   - 支持下拉刷新和到底加载更多
+   - 自动处理文章封面图片和多图显示
+   - 支持关注用户、点赞文章、收藏文章等交互功能
+   - 支持显示文章管理功能（编辑、删除）
+   - 根据登录状态自动处理用户关注显示
+   - 优化了空列表状态和加载状态的显示
+   - 支持自定义列表高度，适应不同的页面布局需求
+
+8. **数据源与API适配：**
+
+   - 根据`blog_uniapp_db.sql`中的表结构，组件内部会自动适配后端返回的数据
+   - 包括文章表(`tb_article`)、标签表(`tb_tag`)、文章-标签关联表(`tb_article_tag`)、点赞表(`tb_article_like`)和收藏表(`tb_article_collect`)
+   - 自动处理点赞和收藏状态，避免每次查询时需要额外请求
+   - 根据不同的列表类型自动选择对应的API接口
+
+9. **运行时优化：**
+
+   - 使用响应式数据确保性能优化
+   - 图片加载优化，使用`mode="aspectFill"`确保图片显示一致
+   - 支持标签点击跳转到标签筛选页
+   - 用户头像和昵称点击跳转到用户资料页
+   - 自动处理文章摘要显示和"全文"显示
+   - 优化了按钮点击体验和反馈提示
