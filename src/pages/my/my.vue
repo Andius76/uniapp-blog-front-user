@@ -67,7 +67,8 @@
 					:key="data.currentTab" 
 					:list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
 					:userId="data.userInfo.id"
-					:show-manage-options="data.currentTab === 0"
+					:show-manage-options="true"
+					:show-edit-for-all-users="true"
 					:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
 					:height="'calc(100vh - 445rpx)'"
 					@article-click="viewArticleDetail"
@@ -901,6 +902,8 @@
 			return;
 		}
 		
+		// 移除作者限制检查，允许任何已登录用户编辑文章
+		/* 
 		// 确保是当前用户的文章
 		if (article.author?.id !== data.userInfo.id) {
 			uni.showToast({
@@ -909,6 +912,7 @@
 			});
 			return;
 		}
+		*/
 		
 		// 显示编辑中的加载提示
 		uni.showLoading({
@@ -922,18 +926,41 @@
 				uni.hideLoading();
 				
 				if (res.code === 200) {
-					// 准备文章数据
-					const articleData = encodeURIComponent(JSON.stringify({
+					// 准备文章数据 - 确保所有必要的字段都存在
+					const articleData = {
 						id: article.id,
-						title: article.title,
-						content: res.data.content || article.content,
-						htmlContent: res.data.htmlContent || article.content,
+						title: article.title || '',
+						content: res.data.content || article.content || '',
+						htmlContent: res.data.htmlContent || article.content || '',
 						tags: article.tags || [],
-						coverImage: article.coverImage
-					}));
+						coverImage: article.coverImage || '',
+						// 添加额外的元数据，帮助编辑页判断
+						authorId: article.author?.id,
+						authorName: article.author?.nickname,
+						mode: 'edit', // 显式标记为编辑模式
+						originalData: JSON.stringify(res.data) // 保存原始数据用于比较变更
+					};
+					
+					// 记录日志用于调试
+					console.log('准备编辑文章数据:', articleData);
+					
+					// 使用encodeURIComponent包装数据
+					const encodedData = encodeURIComponent(JSON.stringify(articleData));
 					
 					// 跳转到编辑页面
-					navigateTo(`/pages/publish/publish?mode=edit&articleData=${articleData}`);
+					uni.navigateTo({
+						url: `/pages/publish/publish?mode=edit&articleData=${encodedData}`,
+						success: () => {
+							console.log('成功跳转到编辑页面');
+						},
+						fail: (err) => {
+							console.error('跳转编辑页面失败:', err);
+							uni.showToast({
+								title: '打开编辑页面失败',
+								icon: 'none'
+							});
+						}
+					});
 				} else {
 					throw new Error(res.message || '获取文章详情失败');
 				}
@@ -943,14 +970,18 @@
 				uni.hideLoading();
 				
 				// 使用可用的数据尝试编辑
-				const fallbackData = encodeURIComponent(JSON.stringify({
+				const fallbackData = {
 					id: article.id,
-					title: article.title,
+					title: article.title || '',
 					content: article.content || '',
 					htmlContent: article.htmlContent || article.content || '',
 					tags: article.tags || [],
-					coverImage: article.coverImage
-				}));
+					coverImage: article.coverImage || '',
+					mode: 'edit',
+					isSimpleData: true // 标记为简化数据
+				};
+				
+				const encodedData = encodeURIComponent(JSON.stringify(fallbackData));
 				
 				uni.showToast({
 					title: '获取完整内容失败，使用简略内容',
@@ -959,7 +990,16 @@
 				});
 				
 				setTimeout(() => {
-					navigateTo(`/pages/publish/publish?mode=edit&articleData=${fallbackData}`);
+					uni.navigateTo({
+						url: `/pages/publish/publish?mode=edit&articleData=${encodedData}`,
+						fail: (err) => {
+							console.error('跳转编辑页面失败:', err);
+							uni.showToast({
+								title: '打开编辑页面失败',
+								icon: 'none'
+							});
+						}
+					});
 				}, 1000);
 			});
 	};

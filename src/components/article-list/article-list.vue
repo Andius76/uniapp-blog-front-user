@@ -68,9 +68,9 @@
 						<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
 					</view>
 					
-					<!-- 编辑按钮（当显示管理选项且是当前用户的文章时） -->
+					<!-- 编辑按钮（根据权限条件显示） -->
 					<view class="action-item manage-btn" 
-						v-if="showManageOptions && isCurrentUser(article.author?.id)"
+						v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
 						@click.stop="handleEdit(index)">
 						<uni-icons type="compose" size="20" color="#000"></uni-icons>
 					</view>
@@ -124,6 +124,11 @@
 		},
 		// 是否显示管理选项（编辑、删除）
 		showManageOptions: {
+			type: Boolean,
+			default: false
+		},
+		// 是否允许所有已登录用户编辑文章
+		showEditForAllUsers: {
 			type: Boolean,
 			default: false
 		},

@@ -1060,6 +1060,128 @@
   - 其他参数要求同发布文章接口
   - **✅ 当前状态：已实现**
 
+### 2.1 文章编辑流程
+
+**功能说明：** 前端编辑文章的完整流程及实现细节
+
+1. **流程概述：**
+   - 用户点击文章的"编辑"按钮
+   - 前端发送GET请求获取完整文章内容
+   - 跳转到发布页面（编辑模式）
+   - 用户编辑内容
+   - 用户点击"保存"按钮
+   - 前端发送PUT请求更新文章内容
+
+2. **编辑入口：**
+   - 在文章列表或文章详情页提供编辑按钮
+   - 编辑按钮仅对文章作者或有权限的用户显示
+   - 点击编辑按钮时，调用`handleEditArticle`函数
+
+3. **获取文章详情：**
+   - 调用`getArticleDetail(articleId)`获取完整文章内容
+   - API路径：`GET /api/article/{articleId}`
+   - 确保获取HTML内容和标签等完整信息
+
+4. **编辑页面传参：**
+   - 将文章数据编码并传递到发布页面
+   ```js
+   const articleData = {
+     id: article.id,
+     title: article.title,
+     content: article.content,
+     htmlContent: article.htmlContent,
+     tags: article.tags,
+     coverImage: article.coverImage,
+     mode: 'edit' // 标记为编辑模式
+   };
+   
+   uni.navigateTo({
+     url: `/pages/publish/publish?mode=edit&articleData=${encodeURIComponent(JSON.stringify(articleData))}`
+   });
+   ```
+
+5. **发布页面编辑模式：**
+   - 发布页面根据`mode=edit`参数判断是新增还是编辑
+   - 解析`articleData`参数并填充到编辑器中
+   - 编辑模式下显示"更新文章"而非"发布文章"
+   - 提供预览功能和表单验证
+
+6. **提交更新：**
+   - 用户点击"更新文章"按钮
+   - 前端收集表单数据并验证
+   - 处理新上传的图片（如果有）
+   - 调用`updateArticle`函数发送更新请求
+   ```js
+   updateArticle({
+     id: articleId,
+     title: title,
+     content: content,
+     htmlContent: htmlContent,
+     tags: tags,
+     coverImage: coverImage
+   }).then(res => {
+     if (res.code === 200) {
+       uni.showToast({ title: '更新成功', icon: 'success' });
+       // 跳转到文章详情页或返回上一页
+     }
+   });
+   ```
+
+7. **错误处理：**
+   - 获取文章详情失败时提供降级方案
+   - 使用可用的简略内容进行编辑
+   - 提供友好的错误提示
+   - 网络错误时保存草稿，防止内容丢失
+
+8. **权限控制：**
+   - 根据`showEditForAllUsers`属性控制编辑权限
+   - 可配置为仅文章作者可编辑，或所有已登录用户可编辑
+   - 前端通过`isCurrentUser`函数判断当前用户是否为文章作者
+
+9. **安全考虑：**
+   - 前端仅提供编辑入口，实际权限由后端控制
+   - 所有编辑操作都需要有效的token
+   - 后端会验证用户是否有权限编辑指定文章
+
+10. **实现示例：**
+    ```js
+    /**
+     * 处理编辑文章
+     * @param {Object} article - 文章对象
+     */
+    const handleEditArticle = (article) => {
+      // 确保用户已登录
+      const token = uni.getStorageSync('token');
+      if (!token) return;
+      
+      // 显示加载提示
+      uni.showLoading({ title: '准备编辑...' });
+      
+      // 获取完整文章内容
+      getArticleDetail(article.id)
+        .then(res => {
+          if (res.code === 200) {
+            // 准备文章数据并跳转到编辑页面
+            const articleData = {
+              id: article.id,
+              title: article.title,
+              content: res.data.content,
+              htmlContent: res.data.htmlContent,
+              tags: article.tags || [],
+              coverImage: article.coverImage
+            };
+            
+            uni.navigateTo({
+              url: `/pages/publish/publish?mode=edit&articleData=${encodeURIComponent(JSON.stringify(articleData))}`
+            });
+          }
+        })
+        .finally(() => uni.hideLoading());
+    };
+    ```
+
+- **✅ 当前状态：已实现并优化**
+
 ### 3. 上传文章图片
 
 **接口说明：** 上传文章中使用的图片，包括正文图片和封面图片
@@ -1908,3 +2030,172 @@
    - 使用`getCurrentUser()`方法获取当前登录用户，用于判断文章是否为当前用户所发表
    - 页面实现了物理返回键和返回手势的拦截处理，提高用户体验
    - 用户头像和个人简介都有默认值，确保UI显示的完整性
+
+## 性能优化与问题修复
+
+### 我的页面文章列表重复渲染问题
+
+1. **问题描述：**
+   - "我的"页面中文章列表在某些情况下会重复渲染
+   - 刷新操作没有正确的防抖控制，导致多次触发API请求
+   - 页面反复刷新造成性能问题和用户体验下降
+
+2. **解决方案：**
+   - 添加`isRefreshing`标志变量防止重复刷新
+   - 设置页面刷新状态的防抖间隔（2秒）
+   - 使用`resetList`和`loadArticles`替代直接调用`refresh`方法
+   - 优化ArticleList组件的刷新逻辑，确保只在必要时重新请求数据
+
+3. **代码实现：**
+   ```js
+   // 处理下拉刷新
+   const handleRefresh = () => {
+     if (isRefreshing.value) return; // 避免重复触发
+     
+     isRefreshing.value = true;
+     
+     // 完全重置组件状态
+     articleList.value = [];
+     currentPage.value = 1;
+     noMoreData.value = false;
+     
+     // 重新加载数据
+     setTimeout(() => {
+       loadArticles(true)
+         .finally(() => {
+           isRefreshing.value = false;
+           emit('refresh'); // 通知父组件刷新已完成
+         });
+     }, 300);
+   };
+   ```
+
+### 浏览器刷新时重复请求API问题
+
+1. **问题描述：**
+   - 页面刷新时会重复发起API请求
+   - 没有有效的防止重复加载机制
+   - 在网络不稳定情况下可能导致数据重复或请求冲突
+
+2. **解决方案：**
+   - 添加`isFirstLoad`标志识别首次加载
+   - 引入全局加载锁机制`globalLoadingLock`
+   - 创建统一的数据加载入口`loadUserDataAndArticles()`
+   - 使用`v-if`控制ArticleList组件渲染时机
+   - 添加组件key属性确保正确重新渲染
+
+3. **代码实现：**
+   ```js
+   // 全局加载锁和首次加载标记
+   const globalLoadingLock = ref(false);
+   const isFirstLoad = ref(true);
+   
+   // 统一的数据加载入口
+   const loadUserDataAndArticles = async () => {
+     if (globalLoadingLock.value) return;
+     
+     globalLoadingLock.value = true;
+     try {
+       await refreshUserInfo();
+       if (articleListRef.value) {
+         await articleListRef.value.resetList();
+         await articleListRef.value.loadArticles();
+       }
+     } finally {
+       globalLoadingLock.value = false;
+       isFirstLoad.value = false;
+     }
+   };
+   
+   // 在页面显示时处理加载
+   onShow(() => {
+     if (isFirstLoad.value) {
+       loadUserDataAndArticles();
+     } else {
+       refreshUserInfo(); // 仅刷新用户信息，不重载文章列表
+     }
+   });
+   ```
+
+### 创作中心功能实现
+
+1. **功能说明：**
+   - 将"我的"页面中的创作中心按钮链接到发布页面
+   - 改进页面间导航逻辑，确保用户体验流畅
+
+2. **实现方式：**
+   - 修改`navigateTo`方法，使点击创作中心按钮跳转到`/pages/publish/publish`
+   - 增加了发布按钮的样式和交互反馈
+
+3. **代码实现：**
+   ```js
+   // 导航到创作中心
+   const navigateToPublish = () => {
+     uni.navigateTo({
+       url: '/pages/publish/publish'
+     });
+   };
+   ```
+
+### 文章编辑权限改进
+
+1. **功能说明：**
+   - 改进文章编辑权限控制逻辑，使编辑权限更灵活
+   - 保留删除功能仅对文章作者开放的限制
+
+2. **实现方式：**
+   - 添加`:show-edit-for-all-users="true"`属性到ArticleList组件
+   - 修改ArticleList组件，增加`showEditForAllUsers`属性
+   - 移除了`handleEditArticle`函数中的作者身份检查
+
+3. **代码实现：**
+   ```js
+   // 组件属性
+   const props = defineProps({
+     // 是否允许所有已登录用户编辑文章
+     showEditForAllUsers: {
+       type: Boolean,
+       default: false
+     },
+     // 其他属性...
+   });
+   
+   // 处理编辑文章
+   const handleEdit = async (index) => {
+     const article = articleList.value[index];
+     
+     // 判断编辑权限
+     if (!props.showEditForAllUsers && !isCurrentUser(article.author?.id)) {
+       uni.showToast({
+         title: '只能编辑自己的文章',
+         icon: 'none'
+       });
+       return;
+     }
+     
+     // 编辑逻辑...
+   };
+   ```
+
+### 组件优化
+
+1. **ArticleList组件优化：**
+   - 添加防抖和节流控制，避免频繁刷新
+   - 改进了网络错误处理和请求重试机制
+   - 添加请求超时处理，提高组件稳定性
+   - 优化了加载状态显示逻辑
+   - 增强了条件渲染效率，减少不必要的DOM操作
+   - 添加了组件卸载时的事件清理，防止内存泄漏
+
+2. **"我的"页面优化：**
+   - 使用节流控制用户信息刷新频率
+   - 添加缓存机制降低API请求频率
+   - 优化页面加载顺序，提高用户体验
+   - 改进了返回键和手势处理逻辑
+   - 增强了错误处理和降级显示能力
+
+3. **数据一致性优化：**
+   - 使用事件总线（uni.$on/uni.$emit）实现组件间通信
+   - 文章状态变更时自动刷新相关列表
+   - 确保用户数据在多个页面间的一致性
+   - 提供统一的API响应处理逻辑，确保数据格式一致
