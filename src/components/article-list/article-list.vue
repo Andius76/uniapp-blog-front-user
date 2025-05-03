@@ -41,13 +41,14 @@
 						</view>
 					</view>
 
-					<!-- 单图布局 -->
-					<view class="article-image" v-if="article.coverImage">
-						<image :src="article.coverImage" mode="aspectFill" class="single-image"></image>
+					<!-- 封面图片 - 始终显示，无论是coverImage还是默认图片 -->
+					<view class="article-image">
+						<image :src="article.coverImage || '/static/images/default-cover.png'" 
+							mode="aspectFill" class="single-image"></image>
 					</view>
 
-					<!-- 多图布局 -->
-					<view class="image-grid" v-else-if="article.images && article.images.length > 0">
+					<!-- 多图布局 - 仅在没有coverImage但有images时显示 -->
+					<view class="image-grid" v-if="!article.coverImage && article.images && article.images.length > 0">
 						<image v-for="(img, imgIndex) in article.images.slice(0, 3)" :key="imgIndex" :src="img"
 							mode="aspectFill" class="grid-image"></image>
 					</view>
@@ -410,14 +411,20 @@
 		const currentUserInfo = uni.getStorageSync('userInfo') || {};
 		
 		return articles.map(article => {
-			// 处理封面图片 - 优先使用coverImage字段，如果没有再从images数组取第一张
-			// 确保后端直接返回的coverImage能正确显示
-			if (!article.coverImage && article.images && article.images.length > 0) {
-				article.coverImage = article.images[0];
+			// 为所有文章添加默认封面或使用文章中的图片
+			// 先检查是否有封面图片字段
+			if (!article.coverImage) {
+				// 如果没有coverImage，尝试从images数组中获取第一张
+				if (article.images && article.images.length > 0) {
+					article.coverImage = article.images[0];
+				} else {
+					// 没有任何图片，使用默认封面的相对路径
+					article.coverImage = '/static/images/default-cover.png';
+				}
 			}
 			
-			// 如果coverImage字段存在但是不包含完整URL，补全路径
-			if (article.coverImage && !article.coverImage.startsWith('http')) {
+			// 如果coverImage字段存在但是不包含完整URL且不是默认图片路径，补全路径
+			if (article.coverImage && !article.coverImage.startsWith('http') && !article.coverImage.startsWith('/static')) {
 				if (article.coverImage.startsWith('/')) {
 					article.coverImage = getBaseUrl() + article.coverImage;
 				} else {
@@ -451,9 +458,7 @@
 			}
 			
 			// 调试输出，方便查看coverImage
-			if (article.coverImage) {
-				console.log(`文章ID: ${article.id}, 标题: ${article.title}, 封面图片: ${article.coverImage}`);
-			}
+			console.log(`文章ID: ${article.id}, 标题: ${article.title}, 封面图片: ${article.coverImage}`);
 			
 			return article;
 		});
@@ -1161,13 +1166,15 @@
 					}
 				}
 
-				// 单图布局
+				// 封面图片 - 始终显示，无论是coverImage还是默认图片
 				.article-image {
 					width: 100%;
 					height: 300rpx;
-					border-radius: 10rpx;
+					border-radius: 12rpx;
 					overflow: hidden;
+					margin-top: 20rpx;
 					margin-bottom: 20rpx;
+					box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
 
 					.single-image {
 						width: 100%;
@@ -1176,17 +1183,19 @@
 					}
 				}
 
-				// 多图布局
+				// 多图布局 - 仅在没有coverImage但有images时显示
 				.image-grid {
 					display: flex;
 					justify-content: space-between;
+					margin-top: 20rpx;
 					margin-bottom: 20rpx;
 
 					.grid-image {
 						width: 32%;
 						height: 200rpx;
-						border-radius: 10rpx;
+						border-radius: 12rpx;
 						background-color: #eee;
+						box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 					}
 				}
 			}
