@@ -21,130 +21,144 @@
         <text>刷新成功</text>
       </view>
       
-      <!-- 文章标题区域 -->
-      <view class="article-header">
-        <text class="article-title">{{ data.article.title }}</text>
-        <view class="meta-info">
-          <text class="author">{{ data.article.author.nickname }}</text>
-          <text class="publish-time">{{ data.article.publishTime }}</text>
-        </view>
+      <!-- 加载中提示 -->
+      <view class="loading-container" v-if="data.loading">
+        <uni-icons type="spinner-cycle" size="40" color="#999"></uni-icons>
+        <text>加载中...</text>
       </view>
-
-      <!-- 正文内容区域 -->
-      <view class="content-section">
-        <text class="article-content">{{ data.article.content }}</text>
-        <view class="image-container" v-if="data.article.images">
-          <image 
-            v-for="(img, index) in data.article.images" 
-            :key="index"
-            :src="img"
-            mode="aspectFill"
-            class="content-image"
-          />
-        </view>
-      </view>
-
-      <!-- 标签区域 -->
-      <view class="tag-section" v-if="data.article.tags.length">
-        <text class="section-title">文章标签</text>
-        <view class="tag-list">
-          <view 
-            v-for="(tag, index) in data.article.tags"
-            :key="index"
-            class="tag-item"
-          >
-            {{ tag }}
+      
+      <!-- 文章内容区域 -->
+      <block v-else-if="data.article.id">
+        <!-- 文章标题区域 -->
+        <view class="article-header">
+          <text class="article-title">{{ data.article.title }}</text>
+          <view class="meta-info">
+            <text class="author">{{ data.article.author.nickname }}</text>
+            <text class="publish-time">{{ formatDate(data.article.createTime) }}</text>
           </view>
         </view>
-      </view>
 
-      <!-- 互动操作栏 -->
-      <view class="action-bar">
-        <view class="action-item" @click="handleLike">
-          <uni-icons :type="data.article.isLiked ? 'heart-filled' : 'heart'" size="24" 
-            :color="data.article.isLiked ? '#ff6b6b' : '#666'"/>
-          <text>{{ data.article.likeCount }}</text>
+        <!-- 正文内容区域 -->
+        <view class="content-section">
+          <text class="article-content">{{ data.article.content }}</text>
+          <view class="image-container" v-if="data.article.coverImage">
+            <image 
+              :src="data.article.coverImage"
+              mode="aspectFill"
+              class="content-image"
+            />
+          </view>
         </view>
-        <view class="action-item" @click="handleCollect">
-          <uni-icons :type="data.article.isCollected ? 'star-filled' : 'star'" size="24"
-            :color="data.article.isCollected ? '#ffc107' : '#666'"/>
-          <text>{{ data.article.collectCount }}</text>
-        </view>
-        <view class="action-item" @click="handleComment">
-          <uni-icons type="chatbubble" size="24" color="#666"/>
-          <text>{{ data.article.commentCount }}</text>
-        </view>
-      </view>
 
-      <!-- 评论列表 -->
-      <view class="comment-section">
-        <text class="section-title">评论（{{ data.article.commentCount }}）</text>
-        <view class="comment-list">
-          <view v-for="(comment, index) in data.comments" :key="index" class="comment-card">
-            <view class="comment-item">
-            <image :src="comment.avatar" class="comment-avatar"/>
-            <view class="comment-content">
-                <view class="comment-header">
-              <text class="comment-author">{{ comment.author }}</text>
-                  <view class="comment-actions">
-                    <view class="like-action" @click="handleCommentLike(index)">
-                      <uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16" 
-                        :color="comment.isLiked ? '#ff6b6b' : '#999'"/>
-                      <text :class="{'liked': comment.isLiked}">{{ comment.likeCount || 0 }}</text>
+        <!-- 标签区域 -->
+        <view class="tag-section" v-if="data.article.tags && data.article.tags.length">
+          <text class="section-title">文章标签</text>
+          <view class="tag-list">
+            <view 
+              v-for="(tag, index) in data.article.tags"
+              :key="index"
+              class="tag-item"
+            >
+              {{ tag.name }}
+            </view>
+          </view>
+        </view>
+
+        <!-- 互动操作栏 -->
+        <view class="action-bar">
+          <view class="action-item" @click="handleLike">
+            <uni-icons :type="data.article.isLiked ? 'heart-filled' : 'heart'" size="24" 
+              :color="data.article.isLiked ? '#ff6b6b' : '#666'"/>
+            <text>{{ data.article.likeCount }}</text>
+          </view>
+          <view class="action-item" @click="handleCollect">
+            <uni-icons :type="data.article.isCollected ? 'star-filled' : 'star'" size="24"
+              :color="data.article.isCollected ? '#ffc107' : '#666'"/>
+            <text>{{ data.article.collectCount }}</text>
+          </view>
+          <view class="action-item" @click="handleComment">
+            <uni-icons type="chatbubble" size="24" color="#666"/>
+            <text>{{ data.article.commentCount }}</text>
+          </view>
+        </view>
+
+        <!-- 评论列表 -->
+        <view class="comment-section">
+          <text class="section-title">评论（{{ data.article.commentCount }}）</text>
+          <view class="comment-list">
+            <view v-for="(comment, index) in data.comments" :key="comment.id" class="comment-card">
+              <view class="comment-item">
+                <image :src="comment.avatar" class="comment-avatar"/>
+                <view class="comment-content">
+                  <view class="comment-header">
+                    <text class="comment-author">{{ comment.author }}</text>
+                    <view class="comment-actions">
+                      <view class="like-action" @click="handleCommentLike(index)">
+                        <uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16" 
+                          :color="comment.isLiked ? '#ff6b6b' : '#999'"/>
+                        <text :class="{'liked': comment.isLiked}">{{ comment.likeCount || 0 }}</text>
+                      </view>
                     </view>
                   </view>
-                </view>
-              <text class="comment-text">{{ comment.content }}</text>
-                <view class="comment-footer">
-              <text class="comment-time">{{ comment.time }}</text>
-                  <text class="reply-btn" @click="replyToComment(index)">回复</text>
-                </view>
-              </view>
-            </view>
-            
-            <!-- 评论回复区域 -->
-            <view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
-              <view v-for="(reply, replyIndex) in comment.replies" :key="replyIndex" class="reply-item">
-                <view class="reply-content">
-                  <text class="reply-author">{{ reply.author }}</text>
-                  <text v-if="reply.replyTo" class="reply-to">回复</text>
-                  <text v-if="reply.replyTo" class="reply-to-author">@{{ reply.replyTo }}</text>
-                  <text class="reply-text">：{{ reply.content }}</text>
-                </view>
-                <view class="reply-footer">
-                  <text class="reply-time">{{ reply.time }}</text>
-                  <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
+                  <text class="comment-text">{{ comment.content }}</text>
+                  <view class="comment-footer">
+                    <text class="comment-time">{{ formatDate(comment.createTime) }}</text>
+                    <text class="reply-btn" @click="replyToComment(index)">回复</text>
+                  </view>
                 </view>
               </view>
               
-              <!-- 查看更多回复 -->
-              <view v-if="comment.replies.length > 2 && !comment.showAllReplies" class="more-replies" 
-                    @click="showAllReplies(index)">
-                <text>查看更多回复</text>
+              <!-- 评论回复区域 -->
+              <view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
+                <view v-for="(reply, replyIndex) in comment.replies" :key="reply.id" class="reply-item">
+                  <view class="reply-content">
+                    <text class="reply-author">{{ reply.author }}</text>
+                    <text v-if="reply.replyUser" class="reply-to">回复</text>
+                    <text v-if="reply.replyUser" class="reply-to-author">@{{ reply.replyUser }}</text>
+                    <text class="reply-text">：{{ reply.content }}</text>
+                  </view>
+                  <view class="reply-footer">
+                    <text class="reply-time">{{ formatDate(reply.createTime) }}</text>
+                    <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
+                  </view>
+                </view>
+                
+                <!-- 查看更多回复 -->
+                <view v-if="comment.replies.length > 2 && !comment.showAllReplies" class="more-replies" 
+                      @click="showAllReplies(index)">
+                  <text>查看更多回复</text>
+                </view>
               </view>
             </view>
           </view>
-        </view>
-        
-        <!-- 无评论提示 -->
-        <view v-if="data.comments.length === 0" class="no-comment">
-          <uni-icons type="chat" size="40" color="#ddd"></uni-icons>
-          <text>暂无评论，快来发表第一条评论吧</text>
-        </view>
-        
-        <!-- 加载更多 -->
-        <view v-if="data.comments.length > 0" class="load-more">
-          <view v-if="data.isLoadingMore" class="loading">
-            <uni-icons type="spinner-cycle" size="20" color="#999"></uni-icons>
-            <text>加载中...</text>
+          
+          <!-- 无评论提示 -->
+          <view v-if="data.comments.length === 0" class="no-comment">
+            <uni-icons type="chat" size="40" color="#ddd"></uni-icons>
+            <text>暂无评论，快来发表第一条评论吧</text>
           </view>
-          <view v-else-if="data.hasMoreComments" class="load-more-text" @click="loadMoreComments">
-            <text>点击加载更多</text>
-          </view>
-          <view v-else class="no-more">
-            <text>已经到底啦</text>
+          
+          <!-- 加载更多 -->
+          <view v-if="data.comments.length > 0" class="load-more">
+            <view v-if="data.isLoadingMore" class="loading">
+              <uni-icons type="spinner-cycle" size="20" color="#999"></uni-icons>
+              <text>加载中...</text>
+            </view>
+            <view v-else-if="data.hasMoreComments" class="load-more-text" @click="loadMoreComments">
+              <text>点击加载更多</text>
+            </view>
+            <view v-else class="no-more">
+              <text>已经到底啦</text>
+            </view>
           </view>
         </view>
+      </block>
+      
+      <!-- 加载失败提示 -->
+      <view class="error-container" v-else-if="data.error">
+        <uni-icons type="closeempty" size="40" color="#dd6161"></uni-icons>
+        <text>{{ data.error }}</text>
+        <button class="retry-btn" @click="fetchArticleDetail">重新加载</button>
       </view>
     </scroll-view>
     
@@ -166,351 +180,588 @@
 </template>
 
 <script setup>
-import { reactive, onMounted } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { reactive, onMounted } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
+import { getArticleDetail, likeArticle, collectArticle, getArticleComments, commentArticle, likeComment } from '@/api/article';
 
 const data = reactive({
+  loading: true,  // 是否正在加载文章
+  error: null,    // 加载错误信息
+  articleId: 0,   // 文章ID
   article: {
     id: 0,
-    title: '文章标题',
-    content: '这里是文章正文内容...',
+    title: '',
+    content: '',
     author: {
-      nickname: '作者昵称',
-      avatar: '/static/images/avatar.png'
+      nickname: '',
+      avatar: ''
     },
-    publishTime: '2024-03-20 14:30',
-    tags: ['技术', '前端'],
-    images: ['/static/images/default.png'],
-    likeCount: 156,
-    collectCount: 89,
-    commentCount: 45,
+    createTime: '',
+    tags: [],
+    coverImage: '',
+    likeCount: 0,
+    collectCount: 0,
+    commentCount: 0,
     isLiked: false,
     isCollected: false
   },
-  comments: [
-    {
-      id: 1,
-      author: '用户A',
-      avatar: '/static/images/avatar.png',
-      content: '非常棒的文章，学习了很多知识！',
-      time: '1小时前',
-      likeCount: 12,
-      isLiked: false,
-      showAllReplies: false,
-      replies: [
-        {
-          id: 11,
-          author: '用户B',
-          replyTo: '用户A',
-          content: '同感，我也学到了很多',
-          time: '50分钟前'
-        },
-        {
-          id: 12,
-          author: '用户C',
-          replyTo: '用户B',
-          content: '期待作者的下一篇文章',
-          time: '30分钟前'
-        }
-      ]
-    },
-    {
-      id: 2,
-      author: '用户D',
-      avatar: '/static/images/avatar.png',
-      content: '文章解释得很清楚，希望作者能多写一些这方面的内容',
-      time: '2小时前',
-      likeCount: 8,
-      isLiked: false,
-      replies: []
-    }
-  ],
+  comments: [],
   commentContent: '', // 评论输入内容
   replyTarget: '', // 回复的目标用户
   replyToCommentIndex: -1, // 回复的评论索引
   replyToReplyIndex: -1, // 回复的回复索引
+  replyUserId: null, // 回复的用户ID
+  parentId: null, // 父评论ID
   inputBottom: 0, // 键盘高度调整
   refreshing: false, // 是否正在刷新中
   showRefreshSuccess: false, // 是否显示刷新成功提示
   
-  // 新增评论加载相关状态
+  // 评论加载相关状态
   currentPage: 1, // 当前评论页码
   pageSize: 10, // 每页评论数量
   hasMoreComments: true, // 是否还有更多评论
-  isLoadingMore: false, // 是否正在加载更多评论
-})
+  isLoadingMore: false // 是否正在加载更多评论
+});
+
+// 日期格式化函数
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now - date; // 时间差（毫秒）
+  
+  // 小于1分钟
+  if (diff < 60 * 1000) {
+    return '刚刚';
+  }
+  
+  // 小于1小时
+  if (diff < 60 * 60 * 1000) {
+    return `${Math.floor(diff / (60 * 1000))}分钟前`;
+  }
+  
+  // 小于24小时
+  if (diff < 24 * 60 * 60 * 1000) {
+    return `${Math.floor(diff / (60 * 60 * 1000))}小时前`;
+  }
+  
+  // 小于30天
+  if (diff < 30 * 24 * 60 * 60 * 1000) {
+    return `${Math.floor(diff / (24 * 60 * 60 * 1000))}天前`;
+  }
+  
+  // 大于30天，显示具体日期
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hour = date.getHours().toString().padStart(2, '0');
+  const minute = date.getMinutes().toString().padStart(2, '0');
+  
+  // 如果是今年，不显示年份
+  if (year === now.getFullYear()) {
+    return `${month}月${day}日 ${hour}:${minute}`;
+  }
+  
+  return `${year}年${month}月${day}日 ${hour}:${minute}`;
+};
+
+// 加载文章详情
+const fetchArticleDetail = async () => {
+  data.loading = true;
+  data.error = null;
+  
+  try {
+    const response = await getArticleDetail(data.articleId);
+    
+    if (response.code === 200 && response.data) {
+      // 更新文章信息
+      data.article = response.data;
+      
+      // 加载评论
+      fetchComments();
+    } else {
+      data.error = response.message || '获取文章详情失败';
+    }
+  } catch (error) {
+    console.error('获取文章详情出错:', error);
+    data.error = '网络错误，请稍后重试';
+  } finally {
+    data.loading = false;
+  }
+};
+
+// 加载评论列表
+const fetchComments = async () => {
+  try {
+    data.isLoadingMore = true;
+    
+    const response = await getArticleComments(data.articleId, {
+      page: data.currentPage,
+      pageSize: data.pageSize
+    });
+    
+    if (response.code === 200 && response.data) {
+      const { records, total, current, size } = response.data;
+      
+      // 将数据转换为组件需要的格式
+      const formattedComments = records.map(comment => {
+        // 主评论
+        const formattedComment = {
+          id: comment.id,
+          author: comment.user.nickname,
+          avatar: comment.user.avatar || '/static/images/avatar.png',
+          content: comment.content,
+          createTime: comment.createTime,
+          likeCount: comment.likeCount || 0,
+          isLiked: comment.isLiked || false,
+          userId: comment.userId,
+          showAllReplies: false,
+          replies: []
+        };
+        
+        // 回复
+        if (comment.replies && comment.replies.length > 0) {
+          formattedComment.replies = comment.replies.map(reply => ({
+            id: reply.id,
+            author: reply.user.nickname,
+            content: reply.content,
+            createTime: reply.createTime,
+            userId: reply.userId,
+            replyUser: reply.replyUser ? reply.replyUser.nickname : null,
+            replyUserId: reply.replyUserId
+          }));
+        }
+        
+        return formattedComment;
+      });
+      
+      // 第一页直接替换，其他页追加
+      if (data.currentPage === 1) {
+        data.comments = formattedComments;
+      } else {
+        data.comments = [...data.comments, ...formattedComments];
+      }
+      
+      // 判断是否还有更多评论
+      const totalPages = Math.ceil(total / size);
+      data.hasMoreComments = current < totalPages;
+    } else {
+      uni.showToast({
+        title: response.message || '获取评论失败',
+        icon: 'none'
+      });
+    }
+  } catch (error) {
+    console.error('获取评论出错:', error);
+    uni.showToast({
+      title: '网络错误，请稍后重试',
+      icon: 'none'
+    });
+  } finally {
+    data.isLoadingMore = false;
+  }
+};
 
 onLoad((options) => {
   if (options?.id) {
-    // TODO: 根据ID获取文章详情
-    console.log('加载文章ID:', options.id)
+    data.articleId = options.id;
+    fetchArticleDetail();
+  } else {
+    data.error = '未找到文章ID';
+    data.loading = false;
   }
   
   // 显示评论区
   if (options?.showComments) {
     // 可以滚动到评论区
     setTimeout(() => {
-      const query = uni.createSelectorQuery()
-      query.select('.comment-section').boundingClientRect()
-      query.selectViewport().scrollOffset()
+      const query = uni.createSelectorQuery();
+      query.select('.comment-section').boundingClientRect();
+      query.selectViewport().scrollOffset();
       query.exec(res => {
         if (res && res[0]) {
           uni.pageScrollTo({
             scrollTop: res[0].top,
             duration: 300
-          })
+          });
         }
-      })
-    }, 500)
+      });
+    }, 500);
   }
-})
+});
 
 // 处理文章点赞
-const handleLike = () => {
-  data.article.isLiked = !data.article.isLiked
-  data.article.likeCount += data.article.isLiked ? 1 : -1
-  uni.showToast({
-    title: data.article.isLiked ? '点赞成功' : '已取消点赞',
-    icon: data.article.isLiked ? 'success' : 'none'
-  })
-}
+const handleLike = async () => {
+  // 检查用户是否登录
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      });
+    }, 1500);
+    return;
+  }
+  
+  try {
+    // 更新界面
+    const newIsLiked = !data.article.isLiked;
+    data.article.isLiked = newIsLiked;
+    data.article.likeCount += newIsLiked ? 1 : -1;
+    
+    // 发送请求
+    const response = await likeArticle(data.articleId, newIsLiked);
+    
+    if (response.code !== 200) {
+      // 请求失败，恢复状态
+      data.article.isLiked = !newIsLiked;
+      data.article.likeCount += newIsLiked ? -1 : 1;
+      
+      uni.showToast({
+        title: response.message || (newIsLiked ? '点赞失败' : '取消点赞失败'),
+        icon: 'none'
+      });
+    }
+  } catch (error) {
+    console.error('点赞操作出错:', error);
+    // 发生错误，恢复状态
+    const newIsLiked = !data.article.isLiked;
+    data.article.isLiked = newIsLiked;
+    data.article.likeCount += newIsLiked ? 1 : -1;
+    
+    uni.showToast({
+      title: '网络错误，请稍后重试',
+      icon: 'none'
+    });
+  }
+};
 
 // 处理文章收藏
-const handleCollect = () => {
-  data.article.isCollected = !data.article.isCollected
-  data.article.collectCount += data.article.isCollected ? 1 : -1
-  uni.showToast({
-    title: data.article.isCollected ? '收藏成功' : '已取消收藏',
-    icon: data.article.isCollected ? 'success' : 'none'
-  })
-}
+const handleCollect = async () => {
+  // 检查用户是否登录
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      });
+    }, 1500);
+    return;
+  }
+  
+  try {
+    // 更新界面
+    const newIsCollected = !data.article.isCollected;
+    data.article.isCollected = newIsCollected;
+    data.article.collectCount += newIsCollected ? 1 : -1;
+    
+    // 发送请求
+    const response = await collectArticle(data.articleId, newIsCollected);
+    
+    if (response.code !== 200) {
+      // 请求失败，恢复状态
+      data.article.isCollected = !newIsCollected;
+      data.article.collectCount += newIsCollected ? -1 : 1;
+      
+      uni.showToast({
+        title: response.message || (newIsCollected ? '收藏失败' : '取消收藏失败'),
+        icon: 'none'
+      });
+    }
+  } catch (error) {
+    console.error('收藏操作出错:', error);
+    // 发生错误，恢复状态
+    const newIsCollected = !data.article.isCollected;
+    data.article.isCollected = newIsCollected;
+    data.article.collectCount += newIsCollected ? 1 : -1;
+    
+    uni.showToast({
+      title: '网络错误，请稍后重试',
+      icon: 'none'
+    });
+  }
+};
 
 // 处理评论
 const handleComment = () => {
-  // 聚焦到评论输入框
-  const inputEl = document.querySelector('.comment-input')
-  if (inputEl) {
-    inputEl.focus()
+  // 检查用户是否登录
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      });
+    }, 1500);
+    return;
   }
-}
+  
+  // 聚焦到评论输入框
+  const inputEl = document.querySelector('.comment-input');
+  if (inputEl) {
+    inputEl.focus();
+  }
+};
 
 // 返回上一页
 const goBack = () => {
   uni.navigateBack({
     delta: 1
   });
-}
+};
 
 // 处理评论点赞
-const handleCommentLike = (index) => {
-  const comment = data.comments[index]
-  comment.isLiked = !comment.isLiked
-  comment.likeCount += comment.isLiked ? 1 : -1
+const handleCommentLike = async (index) => {
+  // 检查用户是否登录
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      });
+    }, 1500);
+    return;
+  }
   
-  uni.showToast({
-    title: comment.isLiked ? '点赞成功' : '已取消点赞',
-    icon: 'none',
-    duration: 1000
-  })
-}
+  const comment = data.comments[index];
+  if (!comment) return;
+  
+  try {
+    // 更新界面
+    const newIsLiked = !comment.isLiked;
+    comment.isLiked = newIsLiked;
+    comment.likeCount += newIsLiked ? 1 : -1;
+    
+    // 发送请求
+    const response = await likeComment(comment.id, newIsLiked);
+    
+    if (response.code !== 200) {
+      // 请求失败，恢复状态
+      comment.isLiked = !newIsLiked;
+      comment.likeCount += newIsLiked ? -1 : 1;
+      
+      uni.showToast({
+        title: response.message || (newIsLiked ? '点赞失败' : '取消点赞失败'),
+        icon: 'none'
+      });
+    }
+  } catch (error) {
+    console.error('评论点赞操作出错:', error);
+    // 发生错误，恢复状态
+    const newIsLiked = !comment.isLiked;
+    comment.isLiked = newIsLiked;
+    comment.likeCount += newIsLiked ? 1 : -1;
+    
+    uni.showToast({
+      title: '网络错误，请稍后重试',
+      icon: 'none'
+    });
+  }
+};
 
 // 回复评论
 const replyToComment = (index) => {
-  const comment = data.comments[index]
-  data.replyTarget = comment.author
-  data.replyToCommentIndex = index
-  data.replyToReplyIndex = -1
+  // 检查用户是否登录
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      });
+    }, 1500);
+    return;
+  }
+  
+  const comment = data.comments[index];
+  if (!comment) return;
+  
+  data.replyTarget = comment.author;
+  data.replyToCommentIndex = index;
+  data.replyToReplyIndex = -1;
+  data.parentId = comment.id;
+  data.replyUserId = comment.userId;
   
   // 聚焦到输入框
-  const inputEl = document.querySelector('.comment-input')
+  const inputEl = document.querySelector('.comment-input');
   if (inputEl) {
-    inputEl.focus()
+    inputEl.focus();
   }
-}
+};
 
 // 回复回复
 const replyToReply = (commentIndex, replyIndex) => {
-  const comment = data.comments[commentIndex]
-  const reply = comment.replies[replyIndex]
-  data.replyTarget = reply.author
-  data.replyToCommentIndex = commentIndex
-  data.replyToReplyIndex = replyIndex
+  // 检查用户是否登录
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      });
+    }, 1500);
+    return;
+  }
+  
+  const comment = data.comments[commentIndex];
+  if (!comment || !comment.replies || !comment.replies[replyIndex]) return;
+  
+  const reply = comment.replies[replyIndex];
+  data.replyTarget = reply.author;
+  data.replyToCommentIndex = commentIndex;
+  data.replyToReplyIndex = replyIndex;
+  data.parentId = comment.id;
+  data.replyUserId = reply.userId;
   
   // 聚焦到输入框
-  const inputEl = document.querySelector('.comment-input')
+  const inputEl = document.querySelector('.comment-input');
   if (inputEl) {
-    inputEl.focus()
+    inputEl.focus();
   }
-}
+};
 
 // 提交评论
-const submitComment = () => {
-  if (!data.commentContent.trim()) return
-  
-  // 根据是否是回复决定操作
-  if (data.replyToCommentIndex >= 0) {
-    // 添加回复
-    const now = new Date()
-    const timeStr = `${now.getHours()}:${now.getMinutes()}`
-    
-    const newReply = {
-      id: Math.floor(Math.random() * 1000) + 100,
-      author: '当前用户', // 这里应该是登录用户的信息
-      content: data.commentContent,
-      time: '刚刚',
-      replyTo: data.replyTarget
-    }
-    
-    data.comments[data.replyToCommentIndex].replies.push(newReply)
-    
-    // 更新文章评论计数
-    data.article.commentCount++
-    
+const submitComment = async () => {
+  // 检查用户是否登录
+  const token = uni.getStorageSync('token');
+  if (!token) {
     uni.showToast({
-      title: '回复成功',
-      icon: 'success'
-    })
-  } else {
-    // 添加新评论
-    const newComment = {
-      id: Math.floor(Math.random() * 1000) + 100,
-      author: '当前用户', // 这里应该是登录用户的信息
-      avatar: '/static/images/avatar.png',
-      content: data.commentContent,
-      time: '刚刚',
-      likeCount: 0,
-      isLiked: false,
-      replies: []
-    }
-    
-    data.comments.unshift(newComment)
-    
-    // 更新文章评论计数
-    data.article.commentCount++
-    
-    uni.showToast({
-      title: '评论成功',
-      icon: 'success'
-    })
+      title: '请先登录',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      });
+    }, 1500);
+    return;
   }
   
-  // 清空输入框和状态
-  data.commentContent = ''
-  data.replyTarget = ''
-  data.replyToCommentIndex = -1
-  data.replyToReplyIndex = -1
-}
+  if (!data.commentContent.trim()) return;
+  
+  try {
+    const commentData = {
+      content: data.commentContent,
+      parentId: data.parentId,
+      replyUserId: data.replyUserId
+    };
+    
+    const response = await commentArticle(data.articleId, commentData);
+    
+    if (response.code === 200) {
+      uni.showToast({
+        title: '评论成功',
+        icon: 'success'
+      });
+      
+      // 清空输入框和状态
+      data.commentContent = '';
+      data.replyTarget = '';
+      data.replyToCommentIndex = -1;
+      data.replyToReplyIndex = -1;
+      data.parentId = null;
+      data.replyUserId = null;
+      
+      // 刷新评论列表
+      data.currentPage = 1;
+      fetchComments();
+      
+      // 更新文章评论计数
+      data.article.commentCount++;
+    } else {
+      uni.showToast({
+        title: response.message || '评论失败',
+        icon: 'none'
+      });
+    }
+  } catch (error) {
+    console.error('提交评论出错:', error);
+    uni.showToast({
+      title: '网络错误，请稍后重试',
+      icon: 'none'
+    });
+  }
+};
 
 // 显示所有回复
 const showAllReplies = (index) => {
-  data.comments[index].showAllReplies = true
-}
+  if (data.comments[index]) {
+    data.comments[index].showAllReplies = true;
+  }
+};
 
 // 处理输入框获得焦点
 const handleInputFocus = (e) => {
   // 处理键盘弹出
-  data.inputBottom = e.detail.height || 0
-}
+  data.inputBottom = e.detail.height || 0;
+};
 
 // 处理输入框失去焦点
 const handleInputBlur = () => {
-  data.inputBottom = 0
-}
+  data.inputBottom = 0;
+};
 
 // 处理下拉刷新事件
 const onRefresh = () => {
-  data.refreshing = true
-  
-  // 模拟加载数据
-  setTimeout(() => {
-    // 这里可以加入重新获取文章详情和评论的逻辑
-    refreshArticleData()
-  }, 1500)
-}
+  data.refreshing = true;
+  fetchArticleDetail();
+};
 
 // 刷新文章数据
-const refreshArticleData = () => {
-  // 在实际应用中，这里应该调用API重新获取文章信息和评论
-  // 模拟刷新成功
-  console.log('刷新文章数据')
-  
-  // 刷新完成后显示成功提示
-  data.refreshing = false
-  data.showRefreshSuccess = true
-  
-  // 2秒后隐藏成功提示
-  setTimeout(() => {
-    data.showRefreshSuccess = false
-  }, 2000)
-}
+const refreshArticleData = async () => {
+  try {
+    await fetchArticleDetail();
+    
+    // 刷新完成后显示成功提示
+    data.refreshing = false;
+    data.showRefreshSuccess = true;
+    
+    // 2秒后隐藏成功提示
+    setTimeout(() => {
+      data.showRefreshSuccess = false;
+    }, 2000);
+  } catch (error) {
+    console.error('刷新文章数据出错:', error);
+    data.refreshing = false;
+  }
+};
 
 // 刷新恢复事件
 const onRestore = () => {
-  console.log('刷新控件恢复默认状态')
-}
+  console.log('刷新控件恢复默认状态');
+};
 
 // 加载更多评论
 const loadMoreComments = () => {
   // 如果没有更多评论或正在加载中，则不执行
-  if (!data.hasMoreComments || data.isLoadingMore) return
+  if (!data.hasMoreComments || data.isLoadingMore) return;
   
-  data.isLoadingMore = true
-  console.log('加载更多评论，页码：', data.currentPage + 1)
-  
-  // 模拟获取更多评论
-  setTimeout(() => {
-    // 在实际项目中，这里应该调用API获取下一页评论
-    // fetchMoreComments(data.currentPage + 1, data.pageSize)
-    
-    // 模拟新评论数据
-    const newComments = getMockComments(data.currentPage + 1)
-    
-    if (newComments.length > 0) {
-      // 添加新评论到列表
-      data.comments = [...data.comments, ...newComments]
-      data.currentPage += 1
-      
-      // 模拟是否还有更多评论（示例：只加载3页）
-      data.hasMoreComments = data.currentPage < 3
-    } else {
-      data.hasMoreComments = false
-    }
-    
-    data.isLoadingMore = false
-  }, 1000)
-}
-
-// 模拟获取评论数据（实际开发中应替换为API调用）
-const getMockComments = (page) => {
-  // 第一页已经在初始数据中，这里模拟后续页面
-  if (page <= 1) return []
-  
-  const mockComments = []
-  
-  // 每页生成3条模拟评论
-  for (let i = 0; i < 3; i++) {
-    const commentId = 100 + (page - 1) * 3 + i
-    mockComments.push({
-      id: commentId,
-      author: `用户${commentId}`,
-      avatar: '/static/images/avatar.png',
-      content: `这是第${page}页的第${i+1}条评论，用于测试加载更多功能`,
-      time: '刚刚',
-      likeCount: Math.floor(Math.random() * 20),
-      isLiked: false,
-      replies: page === 2 ? [
-        {
-          id: commentId * 10 + 1,
-          author: `回复用户${commentId*10+1}`,
-          content: '感谢分享！',
-          time: '刚刚'
-        }
-      ] : []
-    })
-  }
-  
-  return mockComments
-}
+  // 加载下一页
+  data.currentPage++;
+  fetchComments();
+};
 </script>
 
 <style lang="scss">
@@ -556,6 +807,8 @@ const getMockComments = (page) => {
     font-weight: bold;
     color: #333;
     line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .meta-info {
@@ -583,16 +836,26 @@ const getMockComments = (page) => {
     font-size: 32rpx;
     color: #333;
     line-height: 1.8;
+    // 添加文本换行属性，解决溢出问题
+    white-space: normal;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    text-align: justify;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .image-container {
     margin-top: 40rpx;
+    width: 100%;
     
     .content-image {
       width: 100%;
       height: 400rpx;
       border-radius: 16rpx;
       margin-bottom: 20rpx;
+      object-fit: cover; // 确保图片比例适当
     }
   }
 }
@@ -621,6 +884,10 @@ const getMockComments = (page) => {
     margin-bottom: 20rpx;
     font-size: 26rpx;
     color: #666;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -686,6 +953,8 @@ const getMockComments = (page) => {
     
     .comment-content {
       flex: 1;
+      width: 0; // 确保弹性布局中的元素不会超出容器
+      overflow: hidden;
 }
 
 .comment-header {
@@ -699,6 +968,9 @@ const getMockComments = (page) => {
         font-size: 28rpx;
   font-weight: bold;
   color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .comment-actions {
@@ -725,6 +997,9 @@ const getMockComments = (page) => {
         color: #333;
   line-height: 1.5;
   word-break: break-all;
+  word-wrap: break-word;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .comment-footer {
@@ -915,5 +1190,34 @@ const getMockComments = (page) => {
 .no-more {
   font-size: 26rpx;
   color: #999;
+}
+
+// 加载和错误状态样式
+.loading-container, .error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  height: 300px;
+  
+  text {
+    margin-top: 20px;
+    font-size: 28rpx;
+    color: #999;
+  }
+}
+
+.error-container text {
+  color: #dd6161;
+}
+
+.retry-btn {
+  margin-top: 30rpx;
+  background-color: #4361ee;
+  color: #fff;
+  font-size: 28rpx;
+  padding: 12rpx 40rpx;
+  border-radius: 40rpx;
 }
 </style>

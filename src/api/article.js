@@ -297,7 +297,7 @@ export function getArticleList(params) {
 
 /**
  * 获取文章详情
- * @param {number} articleId - 文章ID
+ * @param {number|string} articleId - 文章ID
  * @return {Promise} - 返回包含文章详情的Promise
  */
 export function getArticleDetail(articleId) {
@@ -305,27 +305,31 @@ export function getArticleDetail(articleId) {
 }
 
 /**
- * 点赞/取消点赞文章
- * @param {number} articleId - 文章ID
+ * 点赞或取消点赞文章
+ * @param {number|string} articleId - 文章ID
  * @param {boolean} isLike - 是否点赞，true为点赞，false为取消点赞
  * @return {Promise} - 返回操作结果的Promise
  */
 export function likeArticle(articleId, isLike) {
-  return isLike ? 
-    http.post(`/api/article/like/${articleId}`) : 
-    http.delete(`/api/article/like/${articleId}`);
+  if (isLike) {
+    return http.post(`/api/article/like/${articleId}`);
+  } else {
+    return http.delete(`/api/article/like/${articleId}`);
+  }
 }
 
 /**
- * 收藏/取消收藏文章
- * @param {number} articleId - 文章ID
+ * 收藏或取消收藏文章
+ * @param {number|string} articleId - 文章ID
  * @param {boolean} isCollect - 是否收藏，true为收藏，false为取消收藏
  * @return {Promise} - 返回操作结果的Promise
  */
 export function collectArticle(articleId, isCollect) {
-  return isCollect ? 
-    http.post(`/api/article/collect/${articleId}`) : 
-    http.delete(`/api/article/collect/${articleId}`);
+  if (isCollect) {
+    return http.post(`/api/article/collect/${articleId}`);
+  } else {
+    return http.delete(`/api/article/collect/${articleId}`);
+  }
 }
 
 /**
@@ -368,27 +372,46 @@ export function deleteArticle(articleId) {
 
 /**
  * 获取文章评论列表
- * @param {number} articleId - 文章ID
+ * @param {number|string} articleId - 文章ID
  * @param {Object} params - 查询参数
- * @param {number} params.page - 页码，默认1
- * @param {number} params.pageSize - 每页条数，默认10
+ * @param {number} params.page - 页码，从1开始
+ * @param {number} params.pageSize - 每页条数
  * @return {Promise} - 返回包含评论列表的Promise
  */
-export function getArticleComments(articleId, params) {
-  return http.get(`/api/article/${articleId}/comments`, params);
+export function getArticleComments(articleId, params = {}) {
+  return http.get(`/api/article/comments/${articleId}`, {
+    params: { 
+      page: params.page || 1,
+      pageSize: params.pageSize || 10
+    }
+  });
 }
 
 /**
  * 发表评论
- * @param {number} articleId - 文章ID
+ * @param {number|string} articleId - 文章ID
  * @param {Object} commentData - 评论数据
  * @param {string} commentData.content - 评论内容
- * @param {number} [commentData.parentId] - 父评论ID（回复评论时必需）
- * @param {number} [commentData.replyUserId] - 被回复用户ID（回复评论时必需）
- * @return {Promise} - 返回包含新评论信息的Promise
+ * @param {number|null} commentData.parentId - 父评论ID，回复评论时使用
+ * @param {number|null} commentData.replyUserId - 回复的用户ID
+ * @return {Promise} - 返回评论结果的Promise
  */
 export function commentArticle(articleId, commentData) {
-  return http.post(`/api/article/${articleId}/comment`, commentData);
+  return http.post(`/api/article/comment/${articleId}`, commentData);
+}
+
+/**
+ * 点赞或取消点赞评论
+ * @param {number|string} commentId - 评论ID
+ * @param {boolean} isLike - 是否点赞，true为点赞，false为取消点赞
+ * @return {Promise} - 返回操作结果的Promise
+ */
+export function likeComment(commentId, isLike) {
+  if (isLike) {
+    return http.post(`/api/comment/like/${commentId}`);
+  } else {
+    return http.delete(`/api/comment/like/${commentId}`);
+  }
 }
 
 /**
