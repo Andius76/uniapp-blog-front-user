@@ -688,9 +688,9 @@
 	const navigateTo = (url) => {
 		// 检查页面是否存在，这里只是模拟
 		if (url.includes('creation-center')) {
-			uni.showToast({
-				title: '进入创作中心',
-				icon: 'none'
+			// 修改为跳转到发布页面
+			uni.navigateTo({
+				url: '/pages/publish/publish'
 			});
 			return;
 		} else if (url.includes('settings')) {
