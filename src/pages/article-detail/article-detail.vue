@@ -40,7 +40,14 @@
 
         <!-- 正文内容区域 -->
         <view class="content-section">
-          <text class="article-content">{{ data.article.content }}</text>
+          <!-- 简单文本渲染 -->
+          <view v-if="!data.article.htmlContent">
+            <text class="article-content">{{ data.article.content }}</text>
+          </view>
+          
+          <!-- 富文本渲染预留 -->
+          <rich-text v-else class="article-rich-content" :nodes="formatHtmlContent(data.article.htmlContent)"></rich-text>
+          
           <view class="image-container" v-if="data.article.coverImage">
             <image 
               :src="data.article.coverImage"
@@ -762,6 +769,20 @@ const loadMoreComments = () => {
   data.currentPage++;
   fetchComments();
 };
+
+// 格式化HTML内容，处理特殊标签
+const formatHtmlContent = (htmlContent) => {
+  if (!htmlContent) return '';
+  
+  // 当前阶段，仅简单处理掉HTML标签，保留文本
+  // 这种简单处理适用于只有基本p标签的情况
+  let content = htmlContent;
+  
+  // 清除所有HTML标签，只保留文本
+  content = content.replace(/<\/?[^>]+(>|$)/g, '');
+  
+  return content;
+};
 </script>
 
 <style lang="scss">
@@ -1219,5 +1240,23 @@ const loadMoreComments = () => {
   font-size: 28rpx;
   padding: 12rpx 40rpx;
   border-radius: 40rpx;
+}
+
+.article-rich-content {
+  font-size: 32rpx;
+  color: #333;
+  line-height: 1.8;
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-align: justify;
+  width: 100%;
+  box-sizing: border-box;
+  
+  // 富文本内部元素样式
+  :deep(p) {
+    margin-bottom: 24rpx;
+  }
 }
 </style>
