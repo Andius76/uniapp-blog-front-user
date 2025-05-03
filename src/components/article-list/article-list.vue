@@ -44,7 +44,9 @@
 					<!-- 封面图片 - 始终显示，无论是coverImage还是默认图片 -->
 					<view class="article-image">
 						<image :src="article.coverImage" 
-							mode="aspectFill" class="single-image" @error="handleImageError(index)"></image>
+							mode="aspectFill" class="single-image" 
+							@error="handleImageError(index)"
+							:style="{ 'object-fit': 'cover' }"></image>
 					</view>
 
 					<!-- 多图布局 - 仅在没有coverImage但有images时显示 -->
@@ -415,6 +417,12 @@
 			const original = JSON.parse(JSON.stringify(article));
 			console.log('原始文章数据:', original);
 			
+			// 检查数据库字段映射 - 后端用cover_image，前端用coverImage
+			if (article.cover_image && !article.coverImage) {
+				console.log(`检测到cover_image字段映射问题[${article.id}], 进行修正`);
+				article.coverImage = article.cover_image;
+			}
+			
 			// 为所有文章添加默认封面或使用文章中的图片
 			// 先检查是否有封面图片字段
 			if (!article.coverImage) {
@@ -433,8 +441,25 @@
 				// 移除URL中可能存在的多余空格
 				article.coverImage = article.coverImage.trim();
 				
-				// 如果不是完整URL或静态资源路径，补全前缀
-				if (!article.coverImage.startsWith('http') && !article.coverImage.startsWith('/static')) {
+				// 确保不是null或undefined
+				if (article.coverImage === 'null' || article.coverImage === 'undefined') {
+					console.log(`检测到无效封面URL[${article.id}], 将使用默认封面`);
+					article.coverImage = null;
+					return article;
+				}
+				
+				// 完整URL处理：如果已经是完整URL（包含http）则不处理
+				if (article.coverImage.startsWith('http')) {
+					// 已经是完整URL，不需要修改
+					console.log(`保留完整URL[${article.id}]:`, article.coverImage);
+				} 
+				// 静态资源处理：如果是静态资源路径则不处理
+				else if (article.coverImage.startsWith('/static')) {
+					// 静态资源路径，不需要修改
+					console.log(`保留静态资源路径[${article.id}]:`, article.coverImage);
+				}
+				// 其他情况：添加基础URL前缀
+				else {
 					let oldUrl = article.coverImage;
 					if (article.coverImage.startsWith('/')) {
 						article.coverImage = getBaseUrl() + article.coverImage;
@@ -442,12 +467,6 @@
 						article.coverImage = getBaseUrl() + '/' + article.coverImage;
 					}
 					console.log(`封面URL更新[${article.id}]: ${oldUrl} -> ${article.coverImage}`);
-				}
-				
-				// 尝试修复常见URL问题
-				if (article.coverImage.includes('undefined') || article.coverImage.includes('null')) {
-					console.error(`检测到无效的URL部分[${article.id}]:`, article.coverImage);
-					// 不尝试修复，记录错误便于后台排查
 				}
 				
 				// 检查常见的双斜杠问题
@@ -493,7 +512,49 @@
 	const handleImageError = (index) => {
 		const article = articleList.value[index];
 		console.error(`封面图片加载失败[${article.id}][${article.title}]:`, article.coverImage);
-		// 记录错误但不替换URL，保留原始错误方便调试
+		
+		// 记录原始URL用于调试
+		const originalUrl = article.coverImage;
+		
+		// 输出所有可能的图片相关属性以排查问题
+		console.log('文章对象包含的图片相关属性:', {
+			id: article.id,
+			title: article.title,
+			coverImage: article.coverImage,
+			cover_image: article.cover_image,
+			images: article.images,
+			hasImages: article.images && article.images.length > 0
+		});
+		
+		// 如果加载失败，可能是URL问题，尝试修复一些常见问题
+		if (article.coverImage && article.coverImage.includes('http://localhost:8080')) {
+			// 替换localhost可能不可访问的问题
+			const fixedUrl = article.coverImage.replace('http://localhost:8080', getBaseUrl());
+			console.log(`尝试修复localhost URL: ${article.coverImage} -> ${fixedUrl}`);
+			article.coverImage = fixedUrl;
+			return; // 不立即使用备选图，给修复的URL一次机会
+		}
+		
+		// 设置一个默认图片作为替代
+		if (article.images && article.images.length > 0) {
+			// 如果文章有其他图片，尝试使用第一张图片作为封面
+			console.log(`尝试使用文章的第一张图片作为封面替代:`, article.images[0]);
+			const imageUrl = article.images[0];
+			// 如果图片URL不是http开头，添加基础URL
+			if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/static')) {
+				if (imageUrl.startsWith('/')) {
+					article.coverImage = getBaseUrl() + imageUrl;
+				} else {
+					article.coverImage = getBaseUrl() + '/' + imageUrl;
+				}
+			} else {
+				article.coverImage = imageUrl;
+			}
+		} else {
+			// 如果没有其他图片，使用现有的静态图片作为默认封面
+			console.log(`使用默认图片作为封面(原URL:${originalUrl})`);
+			article.coverImage = '/static/images/img1.png';
+		}
 	};
 	
 	// 网络请求封装
@@ -1114,13 +1175,18 @@
 					overflow: hidden;
 					margin-top: 20rpx;
 					margin-bottom: 20rpx;
-					box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.15); // 增强阴影效果
 					background-color: #f0f0f0; // 图片加载前显示的背景色
 
 					.single-image {
 						width: 100%;
 						height: 100%;
-						object-fit: cover;
+						object-fit: cover; // 确保图片正确填充容器
+						transition: transform 0.3s; // 添加过渡效果
+						
+						&:hover {
+							transform: scale(1.02); // 鼠标悬停时轻微放大效果
+						}
 					}
 				}
 
