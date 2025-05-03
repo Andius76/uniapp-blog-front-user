@@ -215,12 +215,22 @@
 			resetList();
 			loadArticles();
 		});
+		
+		// 监听用户信息更新事件
+		uni.$on('user_info_updated', () => {
+			console.log('接收到用户信息更新事件，重新处理文章列表中的用户信息');
+			// 重新处理当前列表中的用户信息
+			if (articleList.value.length > 0) {
+				articleList.value = processArticleData([...articleList.value]);
+			}
+		});
 	});
 	
 	// 组件卸载时移除事件监听
 	onBeforeUnmount(() => {
 		uni.$off('article_published');
 		uni.$off('article_updated');
+		uni.$off('user_info_updated');
 	});
 	
 	// 重置列表数据
@@ -396,6 +406,9 @@
 	
 	// 处理文章数据
 	const processArticleData = (articles) => {
+		// 获取当前登录用户信息，用于同步头像
+		const currentUserInfo = uni.getStorageSync('userInfo') || {};
+		
 		return articles.map(article => {
 			// 处理封面图片 - 优先使用coverImage字段，如果没有再从images数组取第一张
 			// 确保后端直接返回的coverImage能正确显示
@@ -420,6 +433,21 @@
 					avatar: article.avatar || '/static/images/avatar.png',
 					isFollowed: false
 				};
+			}
+			
+			// 同步当前登录用户的头像和昵称
+			if (currentUserInfo.id && article.author.id === currentUserInfo.id) {
+				article.author.avatar = currentUserInfo.avatar || article.author.avatar;
+				article.author.nickname = currentUserInfo.nickname || article.author.nickname;
+			}
+			
+			// 确保头像地址是完整URL
+			if (article.author.avatar && !article.author.avatar.startsWith('http') && !article.author.avatar.startsWith('/static')) {
+				if (article.author.avatar.startsWith('/')) {
+					article.author.avatar = getBaseUrl() + article.author.avatar;
+				} else {
+					article.author.avatar = getBaseUrl() + '/' + article.author.avatar;
+				}
 			}
 			
 			// 调试输出，方便查看coverImage
