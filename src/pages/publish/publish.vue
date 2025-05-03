@@ -306,6 +306,8 @@
 		images: [],
 		tags: [],
 		coverImage: null,
+		originalCoverImage: null, // 保存原始封面地址，编辑时使用
+		isCoverDeleted: false, // 标记封面是否被删除
 		wordCount: 0 // 字数统计
 	});
 
@@ -1085,6 +1087,9 @@
 								
 								// 设置封面图片
 								articleData.coverImage = tempFilePath;
+								// 重置封面删除标记
+								articleData.isCoverDeleted = false;
+								
 								uni.hideLoading();
 								
 								uni.showToast({
@@ -1106,6 +1111,9 @@
 							fail: () => {
 								// 获取图片信息失败，仍然设置封面
 								articleData.coverImage = tempFilePath;
+								// 重置封面删除标记
+								articleData.isCoverDeleted = false;
+								
 								uni.hideLoading();
 								
 								uni.showToast({
@@ -1126,6 +1134,8 @@
 						setTimeout(() => {
 							uni.hideLoading();
 							articleData.coverImage = tempFilePath;
+							// 重置封面删除标记
+							articleData.isCoverDeleted = false;
 							
 							uni.showToast({
 								title: '封面设置成功',
@@ -1140,19 +1150,45 @@
 	
 	// 删除封面图片
 	const removeCoverImage = () => {
-		uni.showModal({
-			title: '删除封面',
-			content: '确定要删除封面图片吗？',
-			success: (res) => {
-				if (res.confirm) {
-					articleData.coverImage = null;
-					uni.showToast({
-						title: '封面已删除',
-						icon: 'success'
-					});
+		// 如果在编辑模式并且有原始封面，提供更多选项
+		if (mode.value === 'edit' && articleData.originalCoverImage) {
+			uni.showModal({
+				title: '删除封面',
+				content: '确定要删除封面图片吗？',
+				success: (res) => {
+					if (res.confirm) {
+						// 完全删除封面
+						articleData.coverImage = null;
+						// 标记封面为已删除状态
+						articleData.isCoverDeleted = true;
+						console.log('封面已删除，标记删除状态:', articleData.isCoverDeleted);
+						uni.showToast({
+							title: '封面已删除',
+							icon: 'success'
+						});
+					}
 				}
-			}
-		});
+			});
+		} else {
+			// 常规删除确认
+			uni.showModal({
+				title: '删除封面',
+				content: '确定要删除封面图片吗？',
+				success: (res) => {
+					if (res.confirm) {
+						articleData.coverImage = null;
+						// 编辑模式下也标记为已删除
+						if (mode.value === 'edit') {
+							articleData.isCoverDeleted = true;
+						}
+						uni.showToast({
+							title: '封面已删除',
+							icon: 'success'
+						});
+					}
+				}
+			});
+		}
 	};
 
 	// =================== 页面退出与保存相关方法 =================== //
@@ -1335,9 +1371,21 @@
 				htmlContent: articleData.htmlContent,
 				tags: articleData.tags,
 				images: articleData.images,
-				coverImage: articleData.coverImage,
 				wordCount: articleData.wordCount
 			};
+			
+			// 处理封面图片：如果封面已删除，明确设置为null；如果有新封面，使用新封面；否则保留原封面
+			if (articleData.isCoverDeleted) {
+				// 如果明确标记了删除封面，则设置为null
+				requestData.coverImage = null;
+				console.log('封面已标记为删除，提交请求时设置coverImage为null');
+			} else if (articleData.coverImage) {
+				// 有新封面，使用新封面
+				requestData.coverImage = articleData.coverImage;
+			} else if (mode.value === 'edit' && articleData.originalCoverImage && !articleData.isCoverDeleted) {
+				// 编辑模式下，使用原始封面（如果没有被标记为删除）
+				requestData.coverImage = articleData.originalCoverImage;
+			}
 			
 			// 如果是编辑模式，添加文章ID
 			if (mode.value === 'edit' && articleData.id) {
@@ -1425,9 +1473,21 @@
 			content: articleData.content,
 			htmlContent: articleData.htmlContent,
 			tags: articleData.tags,
-			coverImage: articleData.coverImage,
 			wordCount: articleData.wordCount
 		};
+		
+		// 处理封面图片：如果封面已删除，明确设置为null；如果有新封面，使用新封面；否则保留原封面
+		if (articleData.isCoverDeleted) {
+			// 如果明确标记了删除封面，则设置为null
+			requestData.coverImage = null;
+			console.log('封面已标记为删除，提交请求时设置coverImage为null');
+		} else if (articleData.coverImage) {
+			// 有新封面，使用新封面
+			requestData.coverImage = articleData.coverImage;
+		} else if (mode.value === 'edit' && articleData.originalCoverImage && !articleData.isCoverDeleted) {
+			// 编辑模式下，使用原始封面（如果没有被标记为删除）
+			requestData.coverImage = articleData.originalCoverImage;
+		}
 		
 		// 如果是编辑模式，添加文章ID
 		if (mode.value === 'edit' && articleData.id) {
