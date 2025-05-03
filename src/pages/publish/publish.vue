@@ -365,25 +365,100 @@
 			.context(res => {
 				editorCtx = res.context;
 				console.log('编辑器上下文已初始化', editorCtx ? '成功' : '失败');
-				// 设置初始内容
-				if (articleData.htmlContent) {
-					editorCtx.setContents({
-						html: articleData.htmlContent,
-						fail: err => {
-							console.error('设置内容失败:', err);
-						},
-						complete: () => {
-							// 内容加载完成后，调整高度
-							adjustEditorHeight();
-						}
+				
+				// 先显示加载提示
+				if (mode.value === 'edit') {
+					uni.showLoading({
+						title: '加载文章内容...',
+						mask: true
 					});
-				} else {
-					// 如果没有初始内容，也要调整一次高度
-					adjustEditorHeight();
 				}
+				
+				// 延迟设置内容，确保编辑器已完全初始化
+				setTimeout(() => {
+					// 设置初始内容
+					if (articleData.htmlContent) {
+						console.log('设置编辑器内容', articleData.htmlContent.substring(0, 50) + '...');
+						
+						// 设置编辑器内容
+						setEditorContent(articleData.htmlContent);
+					} else if (mode.value === 'edit') {
+						// 编辑模式下尝试从临时存储恢复内容
+						try {
+							const tempArticleData = uni.getStorageSync('temp_edit_article_data');
+							if (tempArticleData) {
+								const parsedTempData = JSON.parse(tempArticleData);
+								if (parsedTempData.htmlContent) {
+									console.log('从临时存储恢复编辑内容');
+									articleData.htmlContent = parsedTempData.htmlContent;
+									setEditorContent(parsedTempData.htmlContent);
+									return;
+								}
+							}
+						} catch (error) {
+							console.error('恢复临时编辑内容失败', error);
+						}
+						
+						// 如果仍然没有内容，显示提示
+						uni.hideLoading();
+						uni.showToast({
+							title: '文章内容加载失败',
+							icon: 'none'
+						});
+					} else {
+						// 如果没有初始内容，也要调整一次高度
+						adjustEditorHeight();
+						if (mode.value === 'edit') {
+							uni.hideLoading();
+						}
+					}
+				}, 300); // 延迟300ms等待编辑器完全初始化
 			})
 			.exec();
 		// #endif
+	};
+	
+	// 设置编辑器内容的辅助函数
+	const setEditorContent = (htmlContent, retryCount = 0) => {
+		if (!editorCtx) {
+			console.error('编辑器上下文未初始化');
+			uni.hideLoading();
+			return;
+		}
+		
+		editorCtx.setContents({
+			html: htmlContent,
+			success: () => {
+				console.log('编辑器内容设置成功');
+				// 再次延迟调整高度，确保内容已渲染
+				setTimeout(() => {
+					adjustEditorHeight();
+					if (mode.value === 'edit') {
+						uni.hideLoading();
+					}
+				}, 300);
+			},
+			fail: err => {
+				console.error('设置内容失败:', err);
+				
+				// 重试逻辑
+				if (retryCount < 3) {
+					console.log(`重试设置编辑器内容 (${retryCount + 1}/3)`);
+					setTimeout(() => {
+						setEditorContent(htmlContent, retryCount + 1);
+					}, 500); // 增加延迟时间重试
+				} else {
+					// 重试失败，显示错误提示
+					console.error('设置编辑器内容多次失败');
+					uni.hideLoading();
+					uni.showToast({
+						title: '内容加载失败，请刷新页面',
+						icon: 'none',
+						duration: 2000
+					});
+				}
+			}
+		});
 	};
 
 	// 编辑器内容变化
@@ -1477,7 +1552,17 @@
 				articleData.id = parsedData.id;
 				articleData.title = parsedData.title || '';
 				articleData.content = parsedData.content || '';
-				articleData.htmlContent = parsedData.htmlContent || parsedData.content || '';
+				
+				// 确保HTML内容是有效的
+				if (parsedData.htmlContent && parsedData.htmlContent.trim() !== '') {
+					articleData.htmlContent = parsedData.htmlContent;
+				} else if (parsedData.content) {
+					// 如果没有HTML内容但有普通内容，将普通内容转为HTML
+					articleData.htmlContent = `<p>${parsedData.content.replace(/\n/g, '</p><p>')}</p>`;
+				} else {
+					articleData.htmlContent = '<p></p>'; // 确保至少有一个空段落
+				}
+				
 				articleData.wordCount = parsedData.wordCount || parsedData.content?.length || 0;
 				
 				// 填充标签
@@ -1496,7 +1581,17 @@
 					articleData.coverImage = parsedData.coverImage;
 				}
 				
-				console.log('编辑模式：加载文章数据', articleData);
+				console.log('编辑模式：加载文章数据', {
+					id: articleData.id,
+					title: articleData.title,
+					content: articleData.content ? articleData.content.substring(0, 50) + '...' : '无内容',
+					htmlContent: articleData.htmlContent ? articleData.htmlContent.substring(0, 50) + '...' : '无HTML内容',
+					tags: articleData.tags,
+					coverImage: articleData.coverImage ? '有封面' : '无封面'
+				});
+				
+				// 设置全局变量标记编辑模式
+				uni.setStorageSync('temp_edit_article_data', JSON.stringify(articleData));
 			} catch (error) {
 				console.error('解析文章数据失败', error);
 				uni.showToast({
