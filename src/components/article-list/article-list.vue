@@ -397,9 +397,19 @@
 	// 处理文章数据
 	const processArticleData = (articles) => {
 		return articles.map(article => {
-			// 处理文章图片
+			// 处理封面图片 - 优先使用coverImage字段，如果没有再从images数组取第一张
+			// 确保后端直接返回的coverImage能正确显示
 			if (!article.coverImage && article.images && article.images.length > 0) {
 				article.coverImage = article.images[0];
+			}
+			
+			// 如果coverImage字段存在但是不包含完整URL，补全路径
+			if (article.coverImage && !article.coverImage.startsWith('http')) {
+				if (article.coverImage.startsWith('/')) {
+					article.coverImage = getBaseUrl() + article.coverImage;
+				} else {
+					article.coverImage = getBaseUrl() + '/' + article.coverImage;
+				}
 			}
 			
 			// 处理作者信息，确保有默认值
@@ -410,6 +420,11 @@
 					avatar: article.avatar || '/static/images/avatar.png',
 					isFollowed: false
 				};
+			}
+			
+			// 调试输出，方便查看coverImage
+			if (article.coverImage) {
+				console.log(`文章ID: ${article.id}, 标题: ${article.title}, 封面图片: ${article.coverImage}`);
 			}
 			
 			return article;
@@ -868,8 +883,20 @@
 							content: res.data.data.content || article.content,
 							htmlContent: res.data.data.htmlContent || article.content,
 							tags: article.tags || [],
-							coverImage: article.coverImage
+							// 优先使用API响应中的coverImage
+							coverImage: res.data.data.coverImage || article.coverImage
 						};
+						
+						// 处理封面图片URL如果需要
+						if (articleData.coverImage && !articleData.coverImage.startsWith('http')) {
+							if (articleData.coverImage.startsWith('/')) {
+								articleData.coverImage = getBaseUrl() + articleData.coverImage;
+							} else {
+								articleData.coverImage = getBaseUrl() + '/' + articleData.coverImage;
+							}
+						}
+						
+						console.log('编辑文章数据:', articleData);
 						
 						// 触发事件
 						emit('edit', articleData);

@@ -933,13 +933,38 @@
 						content: res.data.content || article.content || '',
 						htmlContent: res.data.htmlContent || article.content || '',
 						tags: article.tags || [],
-						coverImage: article.coverImage || '',
+						// 优先使用API响应中的coverImage，确保获取完整路径
+						coverImage: res.data.coverImage || article.coverImage || '',
 						// 添加额外的元数据，帮助编辑页判断
 						authorId: article.author?.id,
 						authorName: article.author?.nickname,
 						mode: 'edit', // 显式标记为编辑模式
 						originalData: JSON.stringify(res.data) // 保存原始数据用于比较变更
 					};
+					
+					// 处理封面图片URL
+					if (articleData.coverImage && !articleData.coverImage.startsWith('http')) {
+						// 获取基础URL
+						const baseUrl = (() => {
+							// #ifdef APP-PLUS
+							return 'http://10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
+							// #endif
+							
+							// #ifdef H5
+							return 'http://localhost:8080';
+							// #endif
+							
+							// #ifdef MP-WEIXIN
+							return 'http://localhost:8080';
+							// #endif
+						})();
+						
+						if (articleData.coverImage.startsWith('/')) {
+							articleData.coverImage = baseUrl + articleData.coverImage;
+						} else {
+							articleData.coverImage = baseUrl + '/' + articleData.coverImage;
+						}
+					}
 					
 					// 记录日志用于调试
 					console.log('准备编辑文章数据:', articleData);
