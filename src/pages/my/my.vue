@@ -61,9 +61,10 @@
 
 			<!-- 内容区域，使用首页的内容区样式 -->
 			<view class="content-area">
-				<!-- 使用ArticleList组件 -->
-				<ArticleList
+				<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
+				<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender"
 					ref="articleListRef"
+					:key="data.currentTab" 
 					:list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
 					:userId="data.userInfo.id"
 					:show-manage-options="data.currentTab === 0"
@@ -122,7 +123,8 @@
 		ref,
 		onUnmounted,
 		nextTick,
-		watch
+		watch,
+		onBeforeMount
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
@@ -131,7 +133,7 @@
 	// 导入API接口
 	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
 	import { deleteArticle, getArticleDetail } from '@/api/article';
-	import { onLoad, onShow, onHide, onBackPress } from '@dcloudio/uni-app';
+	import { onLoad, onShow, onHide, onBackPress, onPageShow } from '@dcloudio/uni-app';
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
 
@@ -148,6 +150,48 @@
 	let lockTimeoutId = null;
 	// 存储刷新定时器ID
 	let refreshTimeoutId = null;
+	// 添加首次加载标志
+	const isFirstLoad = ref(true);
+	// 添加全局防抖标记，使用闭包确保跨页面刷新时重置
+	const globalLoadingLock = (() => {
+		let isLocked = false;
+		let lockTimer = null;
+		
+		// 设置锁定方法
+		const lock = (duration = 3000) => {
+			if (lockTimer) clearTimeout(lockTimer);
+			isLocked = true;
+			lockTimer = setTimeout(() => {
+				isLocked = false;
+				lockTimer = null;
+			}, duration);
+			return true;
+		};
+		
+		// 检查是否锁定
+		const isActive = () => isLocked;
+		
+		// 解除锁定
+		const unlock = () => {
+			isLocked = false;
+			if (lockTimer) {
+				clearTimeout(lockTimer);
+				lockTimer = null;
+			}
+		};
+		
+		// 重置
+		const reset = () => {
+			unlock();
+		};
+		
+		return {
+			lock,
+			isActive,
+			unlock,
+			reset
+		};
+	})();
 
 	// 使用reactive统一管理数据
 	const data = reactive({
@@ -181,61 +225,520 @@
 		// 修改为使用原生弹窗的状态控制
 		showBioPopup: false,
 		editingBio: '',
+		
+		// 添加一个标志，用于防止重复刷新
+		isRefreshing: false,
+		
+		// 添加最近请求时间戳，用于限制频率
+		lastRequestTime: 0,
+		
+		// 添加控制ArticleList渲染的标志
+		preventArticleListRender: true,
 	});
 
 	// 添加articleListRef引用
 	const articleListRef = ref(null);
 
 	/**
+	 * 加载用户数据和文章列表
+	 * 统一的数据加载入口，确保只调用一次
+	 */
+	const loadUserDataAndArticles = async () => {
+		// 如果已经在加载中，跳过
+		if (globalLoadingLock.isActive()) {
+			console.log('全局加载锁激活中，跳过加载');
+			return;
+		}
+		
+		// 设置加载锁，防止重复加载
+		globalLoadingLock.lock(3000);
+		
+		// 设置首次加载标志
+		isFirstLoad.value = true;
+		
+		// 设置刷新状态
+		data.isRefreshing = true;
+		
+		// 记录请求时间
+		data.lastRequestTime = Date.now();
+		
+		// 防止ArticleList渲染
+		data.preventArticleListRender = true;
+		
+		console.log('=== 开始统一加载用户数据和文章 ===');
+		
+		try {
+			// 显示加载提示
+			uni.showLoading({
+				title: '加载中...'
+			});
+			
+			// 1. 获取用户信息
+			const userResponse = await getUserInfo();
+			if (userResponse.code === 200) {
+				const processedUserInfo = processUserInfo(userResponse.data);
+				data.userInfo = {
+					...processedUserInfo,
+					followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
+					collectionCount: processedUserInfo.collectionCount || 0,
+				};
+				
+				// 更新本地存储
+				uni.setStorageSync('userInfo', {
+					id: data.userInfo.id,
+					nickname: data.userInfo.nickname,
+					avatar: data.userInfo.avatar,
+					email: data.userInfo.email
+				});
+			}
+			
+			// 2. 等待DOM更新，确保引用有效
+			await nextTick();
+			
+			// 3. 延迟加载文章列表，确保组件已经完全挂载
+			setTimeout(() => {
+				// 允许ArticleList渲染
+				data.preventArticleListRender = false;
+				
+				// 4. 等待下一个DOM更新周期，文章列表组件会自动加载
+				nextTick(() => {
+					console.log('文章列表组件已渲染，将自动加载数据');
+					
+					// 隐藏加载提示
+					uni.hideLoading();
+				
+					// 延迟重置刷新状态
+					setTimeout(() => {
+						data.isRefreshing = false;
+						isFirstLoad.value = false;
+						console.log('重置刷新状态和首次加载标志');
+					}, 2000);
+				});
+			}, 300);
+		} catch (error) {
+			console.error('统一加载失败:', error);
+			uni.showToast({
+				title: '加载失败，请重试',
+				icon: 'none'
+			});
+			uni.hideLoading();
+			
+			// 出错时也要重置状态
+			data.isRefreshing = false;
+			isFirstLoad.value = false;
+			data.preventArticleListRender = false;
+			globalLoadingLock.unlock();
+		}
+	};
+
+	// 在onBeforeMount阶段拦截，避免多个生命周期重复加载
+	onBeforeMount(() => {
+		console.log('页面开始挂载前');
+		// 重置全局加载锁
+		globalLoadingLock.reset();
+	});
+
+	// 页面初始化
+	onMounted(async () => {
+		// 使用统一的数据加载入口
+		await loadUserDataAndArticles();
+		
+		// 初始化webview (只保留与数据加载无关的操作)
+		// #ifdef APP-PLUS
+		setTimeout(() => {
+			currentWebview = plus.webview.currentWebview();
+			if (currentWebview) {
+				originalGestureConfig = currentWebview.getStyle().popGesture;
+				console.log('初始化webview完成，原始手势配置:', originalGestureConfig);
+			}
+		}, 200);
+		// #endif
+	});
+
+	onLoad((options) => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			
+			setTimeout(() => {
+				uni.redirectTo({
+					url: `/pages/login/login?redirect=${encodeURIComponent('/pages/my/my')}`
+				});
+			}, 1500);
+			
+			return false;
+		}
+		
+		// onLoad中不再重复加载数据
+		console.log('页面onLoad，不重复加载数据');
+	});
+
+	// 页面显示时
+	onShow(() => {
+		// 如果是首次加载或者全局锁定中，跳过刷新
+		if (isFirstLoad.value || globalLoadingLock.isActive()) {
+			console.log('首次加载或全局锁定中，onShow跳过文章列表刷新');
+			return;
+		}
+		
+		// 检查请求频率限制 - 如果距离上次请求不足1秒，则跳过刷新
+		const now = Date.now();
+		if (now - data.lastRequestTime < 1000) {
+			console.log('请求过于频繁，跳过本次刷新');
+			return;
+		}
+		
+		// 如果从设置页面返回，确保临时锁定手势
+		if (data.showUserSettings === false && isBackGestureLocked.value) {
+			console.log('页面显示，保持手势锁定');
+		}
+
+		// 打印当前用户信息，用于调试
+		console.log('===== 页面显示 =====');
+		console.log('当前用户ID:', data.userInfo.id);
+		console.log('当前选项卡:', data.currentTab, data.tabs[data.currentTab]?.name);
+		console.log('文章列表组件是否初始化:', !!articleListRef.value);
+
+		// 每次页面显示时刷新用户信息，确保关注数量等数据最新
+		refreshUserInfo();
+		
+		// 防止重复刷新文章列表 - 使用频率限制而不是标志位
+		if (articleListRef.value) {
+			// 记录本次请求时间
+			data.lastRequestTime = now;
+			
+			// 检查组件上的加载状态 - 如果组件有自己的加载状态属性，可以进一步阻止重复加载
+			// 这里需要根据实际的ArticleList组件实现来调整
+			const isComponentLoading = articleListRef.value.isLoading || articleListRef.value.loading || false;
+			
+			if (!isComponentLoading && !data.isRefreshing) {
+				// 设置刷新状态为true，防止短时间内重复刷新
+				data.isRefreshing = true;
+				
+				console.log('检测到页面显示，刷新文章列表');
+				// 设置一个小延迟，避免可能的竞态条件
+				setTimeout(() => {
+					articleListRef.value.resetList();
+					// 添加延迟再加载文章，避免可能的并发请求
+					setTimeout(() => {
+						articleListRef.value.loadArticles();
+					}, 50);
+				}, 50);
+				
+				// 2秒后重置刷新状态，允许下次刷新
+				setTimeout(() => {
+					data.isRefreshing = false;
+				}, 2000);
+			} else if (isComponentLoading) {
+				console.log('组件正在加载中，跳过本次刷新');
+			} else {
+				console.log('已在刷新中，跳过本次刷新');
+			}
+		} else {
+			console.warn('文章列表组件未初始化，无法刷新');
+		}
+	});
+
+	/**
+	 * 刷新用户信息
+	 * 用于从其他页面返回时更新关注数量等数据
+	 * 使用节流控制，避免短时间内多次刷新
+	 */
+	const refreshUserInfo = async () => {
+		// 如果已经有刷新请求在进行中，取消该请求
+		if (refreshTimeoutId) {
+			clearTimeout(refreshTimeoutId);
+		}
+		
+		// 设置300ms的节流延迟，确保不会在页面切换时频繁请求
+		refreshTimeoutId = setTimeout(async () => {
+			try {
+				// 无需显示loading，静默刷新
+				const response = await getUserInfo();
+				
+				if (response.code === 200) {
+					// 处理空的个人简介，使用默认值
+					if (!response.data.bio) {
+						response.data.bio = DEFAULT_BIO;
+					}
+					
+					// 处理头像URL
+					const processedUserInfo = processUserInfo(response.data);
+					
+					// 适配后端返回的字段名称
+					const userData = {
+						...processedUserInfo,
+						// 后端返回fansCount，前端使用followerCount
+						followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
+						// 后端没有收藏数，默认为0
+						collectionCount: processedUserInfo.collectionCount || 0,
+					};
+					
+					// 检查关注数是否发生变化，有变化再更新UI
+					const hasFollowCountChanged = data.userInfo.followCount !== userData.followCount;
+					
+					// 更新用户完整信息
+					data.userInfo = userData;
+					
+					// 更新本地存储
+					uni.setStorageSync('userInfo', {
+						id: userData.id,
+						nickname: userData.nickname,
+						avatar: userData.avatar,
+						email: userData.email
+					});
+					
+					// 如果关注数量变化，在控制台输出日志方便调试
+					if (hasFollowCountChanged) {
+						console.log('关注数量已更新:', userData.followCount);
+					}
+				}
+			} catch (error) {
+				console.error('刷新用户信息失败:', error);
+				// 静默失败，不影响用户体验
+			} finally {
+				refreshTimeoutId = null;
+			}
+		}, 300);
+	};
+
+	// 页面隐藏时(切换选项卡)
+	onHide(() => {
+		// 页面隐藏时，如果设置面板是打开状态，关闭它
+		if (data.showUserSettings) {
+			console.log('页面切换，自动关闭设置面板');
+			data.showUserSettings = false;
+		}
+	});
+
+	/**
+	 * 处理获取到的用户信息，处理头像URL
+	 * @param {Object} userInfo - 用户信息对象
+	 */
+	const processUserInfo = (userInfo) => {
+		// 深拷贝，避免直接修改原对象
+		const processedInfo = { ...userInfo };
+		
+		// 处理头像URL
+		if (processedInfo.avatar) {
+			// 如果已经是完整的URL，直接使用
+			if (processedInfo.avatar.startsWith('http')) {
+				return processedInfo;
+			}
+			
+			// 如果是相对路径，需要拼接基础URL
+			if (processedInfo.avatar.startsWith('/')) {
+				processedInfo.avatar = getBaseUrl() + processedInfo.avatar;
+			} else {
+				// 如果既不是http开头也不是/开头，添加/
+				processedInfo.avatar = getBaseUrl() + '/' + processedInfo.avatar;
+			}
+		} else {
+			// 使用默认头像
+			// #ifdef APP-PLUS
+			processedInfo.avatar = '/static/images/avatar.png';
+			// #endif
+			
+			// #ifdef H5 || MP-WEIXIN
+			processedInfo.avatar = '/static/images/avatar.png';
+			// #endif
+		}
+		
+		return processedInfo;
+	};
+
+	/**
+	 * 修改用户头像
+	 * @param {String} newAvatar - 新头像地址
+	 */
+	const handleAvatarChange = async (newAvatar) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 调用上传头像API
+			const response = await uploadUserAvatar(newAvatar);
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.avatar = response.data.avatarUrl;
+				
+				uni.showToast({
+					title: '头像更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '头像更新失败');
+			}
+		} catch (error) {
+			console.error('头像更新失败:', error);
+			uni.showToast({
+				title: '头像更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
+	/**
+	 * 修改用户昵称
+	 * @param {String} newNickname - 新昵称
+	 */
+	const handleNicknameChange = async (newNickname) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 调用更新用户资料API
+			const response = await updateUserProfile({ nickname: newNickname });
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.nickname = newNickname;
+				
+				uni.showToast({
+					title: '昵称更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '昵称更新失败');
+			}
+		} catch (error) {
+			console.error('昵称更新失败:', error);
+			uni.showToast({
+				title: '昵称更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
+	/**
+	 * 修改用户个人简介
+	 * @param {String} newBio - 新个人简介
+	 */
+	const handleBioChange = async (newBio) => {
+		try {
+			uni.showLoading({ title: '更新中...' });
+			
+			// 如果用户提交空简介，则使用默认值
+			const bioToSubmit = newBio.trim() ? newBio : DEFAULT_BIO;
+			
+			// 调用更新用户资料API
+			const response = await updateUserProfile({ bio: bioToSubmit });
+			
+			if (response.code === 200) {
+				// 更新本地用户信息
+				data.userInfo.bio = bioToSubmit;
+				
+				uni.showToast({
+					title: '个人简介更新成功',
+					icon: 'success'
+				});
+			} else {
+				throw new Error(response.message || '个人简介更新失败');
+			}
+		} catch (error) {
+			console.error('个人简介更新失败:', error);
+			uni.showToast({
+				title: '个人简介更新失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
+	/**
+	 * 处理退出登录
+	 */
+	const handleLogout = () => {
+		// 清除用户数据和本地缓存
+		uni.removeStorageSync('token');
+		uni.removeStorageSync('userInfo');
+
+		// 跳转到登录页
+		uni.reLaunch({
+			url: '/pages/login/login'
+		});
+	};
+
+	/**
+	 * 获取基础URL
+	 */
+	const getBaseUrl = () => {
+		// #ifdef APP-PLUS
+		return 'http://10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
+		// #endif
+		
+		// #ifdef H5
+		return 'http://localhost:8080';
+		// #endif
+		
+		// #ifdef MP-WEIXIN
+		return 'http://localhost:8080';
+		// #endif
+	};
+
+	// 页面导航
+	const navigateTo = (url) => {
+		// 检查页面是否存在，这里只是模拟
+		if (url.includes('creation-center')) {
+			uni.showToast({
+				title: '进入创作中心',
+				icon: 'none'
+			});
+			return;
+		} else if (url.includes('settings')) {
+			// 显示自定义设置面板
+			data.showUserSettings = true;
+			return;
+		} else if (url.includes('follows')) {
+			// 实际导航到关注列表页面
+			uni.navigateTo({
+				url
+			});
+			return;
+		} else if (url.includes('followers')) {
+			uni.showToast({
+				title: '查看我的粉丝',
+				icon: 'none'
+			});
+			return;
+		} else if (url.includes('collection')) {
+			uni.showToast({
+				title: '查看我的收藏',
+				icon: 'none'
+			});
+			return;
+		} else if (url.includes('edit-profile')) {
+			uni.showToast({
+				title: '编辑个人资料',
+				icon: 'none'
+			});
+			return;
+		} else if (url.includes('article-detail')) {
+			// 直接导航到文章详情页面
+			uni.navigateTo({
+				url
+			});
+			return;
+		}
+
+		// 实际跳转，当后端连接后使用
+		// uni.navigateTo({ url });
+	};
+
+	/**
 	 * 手动刷新文章列表，模拟浏览器刷新行为
 	 */
 	const refreshArticleList = () => {
-		if (!articleListRef.value) return;
-		
-		// 显示加载提示
-		uni.showLoading({
-			title: '刷新页面...',
-			mask: true
-		});
-		
-		// 先保存当前选项卡索引
-		const currentTabIndex = data.currentTab;
-		
-		// 模拟页面完全重载 - 先清空数据，再重新加载
-		// 清空用户信息
-		data.userInfo = {
-			...data.userInfo,
-			followCount: 0,
-			followerCount: 0,
-			collectionCount: 0
-		};
-		
-		// 短暂延迟模拟页面加载过程
-		setTimeout(async () => {
-			try {
-				// 1. 重新获取用户信息
-				const userResponse = await getUserInfo();
-				if (userResponse.code === 200) {
-					const processedUserInfo = processUserInfo(userResponse.data);
-					data.userInfo = {
-						...processedUserInfo,
-						followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
-						collectionCount: processedUserInfo.collectionCount || 0,
-					};
-				}
-				
-				// 2. 强制刷新文章列表
-				articleListRef.value.refresh();
-				
-			} catch (error) {
-				console.error('刷新页面失败:', error);
-			} finally {
-				// 隐藏加载提示
-				setTimeout(() => {
-					uni.hideLoading();
-				}, 300);
-			}
-		}, 300);
+		// 使用统一的加载入口进行刷新
+		loadUserDataAndArticles();
 	};
 
 	/**
@@ -256,16 +759,10 @@
 			title: '加载中...'
 		});
 
-		// 重新加载文章列表
-		nextTick(() => {
-			articleListRef.value?.resetList();
-			articleListRef.value?.loadArticles();
-			
-			// 隐藏加载提示
-			setTimeout(() => {
-				uni.hideLoading();
-			}, 500);
-		});
+		// 由于添加了key属性，组件会重新创建，不需要手动调用重置和加载方法
+		setTimeout(() => {
+			uni.hideLoading();
+		}, 500);
 	};
 
 	/**
@@ -678,123 +1175,8 @@
 		// 其他平台使用普通跳转
 		navigateTo('/pages/follows/follows');
 	};
-
-	// 页面初始化
-	onMounted(async () => {
-		try {
-			// 初始化webview
-			// #ifdef APP-PLUS
-			setTimeout(() => {
-				currentWebview = plus.webview.currentWebview();
-				if (currentWebview) {
-					originalGestureConfig = currentWebview.getStyle().popGesture;
-					console.log('初始化webview完成，原始手势配置:', originalGestureConfig);
-				}
-			}, 200);
-			// #endif
-			
-			// 显示加载提示
-			uni.showLoading({
-				title: '加载中...'
-			});
-			
-			// 先从本地存储获取基本用户信息
-			const localUserInfo = uni.getStorageSync('userInfo');
-			if (localUserInfo) {
-				// 初始化用户基本信息
-				data.userInfo = {
-					...data.userInfo,
-					nickname: localUserInfo.nickname || '',
-					avatar: localUserInfo.avatar || '/static/images/avatar.png',
-					email: localUserInfo.email || '',
-					id: localUserInfo.id || 0
-				};
-			}
-			
-			// 再尝试从API获取完整用户信息（包括关注数、粉丝数等）
-			try {
-				const response = await getUserInfo();
-				
-				if (response.code === 200) {
-					// 处理空的个人简介，使用默认值
-					if (!response.data.bio) {
-						response.data.bio = DEFAULT_BIO;
-					}
-					
-					// 处理头像URL
-					const processedUserInfo = processUserInfo(response.data);
-					
-					// 适配后端返回的字段名称
-					const userData = {
-						...processedUserInfo,
-						// 后端返回fansCount，前端使用followerCount
-						followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
-						// 后端没有收藏数，默认为0
-						collectionCount: processedUserInfo.collectionCount || 0,
-					};
-					
-					// 更新用户完整信息
-					data.userInfo = userData;
-					
-					// 更新本地存储
-					uni.setStorageSync('userInfo', {
-						id: userData.id,
-						nickname: userData.nickname,
-						avatar: userData.avatar,
-						email: userData.email
-					});
-				}
-			} catch (apiError) {
-				console.error('获取API用户信息失败:', apiError);
-				// API请求失败，但已有基本信息，继续使用
-				if (!data.userInfo.bio) {
-					data.userInfo.bio = DEFAULT_BIO;
-				}
-			}
-			
-			// 加载默认选项卡的内容
-			nextTick(() => {
-				articleListRef.value?.resetList();
-				articleListRef.value?.loadArticles();
-			});
-		} catch (error) {
-			console.error('初始化失败:', error);
-			uni.showToast({
-				title: '获取用户信息失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
-	});
-
-	onLoad((options) => {
-		// 检查登录状态
-		const token = uni.getStorageSync('token');
-		if (!token) {
-			uni.showToast({
-				title: '请先登录',
-				icon: 'none'
-			});
-			
-			setTimeout(() => {
-				uni.redirectTo({
-					url: `/pages/login/login?redirect=${encodeURIComponent('/pages/my/my')}`
-				});
-			}, 1500);
-			
-			return false;
-		}
-		
-		// 正常页面逻辑...
-	});
-
-	// 在onMounted中添加事件监听
-	onMounted(() => {
-		// 加载用户数据等其他初始化操作
-		// 不再需要自定义事件监听
-	});
-
+	
+	// 添加清理操作
 	onUnmounted(() => {
 		// 清理定时器
 		if (lockTimeoutId) {
@@ -808,324 +1190,12 @@
 			refreshTimeoutId = null;
 		}
 		
+		// 重置全局加载锁
+		globalLoadingLock.reset();
+		
 		// 恢复原始手势设置
 		restoreBackGesture();
 	});
-	
-	// 页面显示时
-	onShow(() => {
-		// 如果从设置页面返回，确保临时锁定手势
-		if (data.showUserSettings === false && isBackGestureLocked.value) {
-			console.log('页面显示，保持手势锁定');
-		}
-
-		// 打印当前用户信息，用于调试
-		console.log('===== 页面显示 =====');
-		console.log('当前用户ID:', data.userInfo.id);
-		console.log('当前选项卡:', data.currentTab, data.tabs[data.currentTab]?.name);
-		console.log('文章列表组件是否初始化:', !!articleListRef.value);
-
-		// 每次页面显示时刷新用户信息，确保关注数量等数据最新
-		refreshUserInfo();
-		
-		// 恢复刷新文章列表的代码，确保从发布页返回时刷新数据
-		if (articleListRef.value) {
-			console.log('检测到页面显示，刷新文章列表');
-			articleListRef.value.refresh();
-		} else {
-			console.warn('文章列表组件未初始化，无法刷新');
-		}
-	});
-
-	/**
-	 * 刷新用户信息
-	 * 用于从其他页面返回时更新关注数量等数据
-	 * 使用节流控制，避免短时间内多次刷新
-	 */
-	const refreshUserInfo = async () => {
-		// 如果已经有刷新请求在进行中，取消该请求
-		if (refreshTimeoutId) {
-			clearTimeout(refreshTimeoutId);
-		}
-		
-		// 设置300ms的节流延迟，确保不会在页面切换时频繁请求
-		refreshTimeoutId = setTimeout(async () => {
-			try {
-				// 无需显示loading，静默刷新
-				const response = await getUserInfo();
-				
-				if (response.code === 200) {
-					// 处理空的个人简介，使用默认值
-					if (!response.data.bio) {
-						response.data.bio = DEFAULT_BIO;
-					}
-					
-					// 处理头像URL
-					const processedUserInfo = processUserInfo(response.data);
-					
-					// 适配后端返回的字段名称
-					const userData = {
-						...processedUserInfo,
-						// 后端返回fansCount，前端使用followerCount
-						followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
-						// 后端没有收藏数，默认为0
-						collectionCount: processedUserInfo.collectionCount || 0,
-					};
-					
-					// 检查关注数是否发生变化，有变化再更新UI
-					const hasFollowCountChanged = data.userInfo.followCount !== userData.followCount;
-					
-					// 更新用户完整信息
-					data.userInfo = userData;
-					
-					// 更新本地存储
-					uni.setStorageSync('userInfo', {
-						id: userData.id,
-						nickname: userData.nickname,
-						avatar: userData.avatar,
-						email: userData.email
-					});
-					
-					// 如果关注数量变化，在控制台输出日志方便调试
-					if (hasFollowCountChanged) {
-						console.log('关注数量已更新:', userData.followCount);
-					}
-				}
-			} catch (error) {
-				console.error('刷新用户信息失败:', error);
-				// 静默失败，不影响用户体验
-			} finally {
-				refreshTimeoutId = null;
-			}
-		}, 300);
-	};
-
-	// 页面隐藏时(切换选项卡)
-	onHide(() => {
-		// 页面隐藏时，如果设置面板是打开状态，关闭它
-		if (data.showUserSettings) {
-			console.log('页面切换，自动关闭设置面板');
-			data.showUserSettings = false;
-		}
-	});
-
-	/**
-	 * 处理获取到的用户信息，处理头像URL
-	 * @param {Object} userInfo - 用户信息对象
-	 */
-	const processUserInfo = (userInfo) => {
-		// 深拷贝，避免直接修改原对象
-		const processedInfo = { ...userInfo };
-		
-		// 处理头像URL
-		if (processedInfo.avatar) {
-			// 如果已经是完整的URL，直接使用
-			if (processedInfo.avatar.startsWith('http')) {
-				return processedInfo;
-			}
-			
-			// 如果是相对路径，需要拼接基础URL
-			if (processedInfo.avatar.startsWith('/')) {
-				processedInfo.avatar = getBaseUrl() + processedInfo.avatar;
-			} else {
-				// 如果既不是http开头也不是/开头，添加/
-				processedInfo.avatar = getBaseUrl() + '/' + processedInfo.avatar;
-			}
-		} else {
-			// 使用默认头像
-			// #ifdef APP-PLUS
-			processedInfo.avatar = '/static/images/avatar.png';
-			// #endif
-			
-			// #ifdef H5 || MP-WEIXIN
-			processedInfo.avatar = '/static/images/avatar.png';
-			// #endif
-		}
-		
-		return processedInfo;
-	};
-
-	/**
-	 * 修改用户头像
-	 * @param {String} newAvatar - 新头像地址
-	 */
-	const handleAvatarChange = async (newAvatar) => {
-		try {
-			uni.showLoading({ title: '更新中...' });
-			
-			// 调用上传头像API
-			const response = await uploadUserAvatar(newAvatar);
-			
-			if (response.code === 200) {
-				// 更新本地用户信息
-				data.userInfo.avatar = response.data.avatarUrl;
-				
-				uni.showToast({
-					title: '头像更新成功',
-					icon: 'success'
-				});
-			} else {
-				throw new Error(response.message || '头像更新失败');
-			}
-		} catch (error) {
-			console.error('头像更新失败:', error);
-			uni.showToast({
-				title: '头像更新失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
-	};
-
-	/**
-	 * 修改用户昵称
-	 * @param {String} newNickname - 新昵称
-	 */
-	const handleNicknameChange = async (newNickname) => {
-		try {
-			uni.showLoading({ title: '更新中...' });
-			
-			// 调用更新用户资料API
-			const response = await updateUserProfile({ nickname: newNickname });
-			
-			if (response.code === 200) {
-				// 更新本地用户信息
-				data.userInfo.nickname = newNickname;
-				
-				uni.showToast({
-					title: '昵称更新成功',
-					icon: 'success'
-				});
-			} else {
-				throw new Error(response.message || '昵称更新失败');
-			}
-		} catch (error) {
-			console.error('昵称更新失败:', error);
-			uni.showToast({
-				title: '昵称更新失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
-	};
-
-	/**
-	 * 修改用户个人简介
-	 * @param {String} newBio - 新个人简介
-	 */
-	const handleBioChange = async (newBio) => {
-		try {
-			uni.showLoading({ title: '更新中...' });
-			
-			// 如果用户提交空简介，则使用默认值
-			const bioToSubmit = newBio.trim() ? newBio : DEFAULT_BIO;
-			
-			// 调用更新用户资料API
-			const response = await updateUserProfile({ bio: bioToSubmit });
-			
-			if (response.code === 200) {
-				// 更新本地用户信息
-				data.userInfo.bio = bioToSubmit;
-				
-				uni.showToast({
-					title: '个人简介更新成功',
-					icon: 'success'
-				});
-			} else {
-				throw new Error(response.message || '个人简介更新失败');
-			}
-		} catch (error) {
-			console.error('个人简介更新失败:', error);
-			uni.showToast({
-				title: '个人简介更新失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
-	};
-
-	/**
-	 * 处理退出登录
-	 */
-	const handleLogout = () => {
-		// 清除用户数据和本地缓存
-		uni.removeStorageSync('token');
-		uni.removeStorageSync('userInfo');
-
-		// 跳转到登录页
-		uni.reLaunch({
-			url: '/pages/login/login'
-		});
-	};
-
-	/**
-	 * 获取基础URL
-	 */
-	const getBaseUrl = () => {
-		// #ifdef APP-PLUS
-		return 'http://10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
-		// #endif
-		
-		// #ifdef H5
-		return 'http://localhost:8080';
-		// #endif
-		
-		// #ifdef MP-WEIXIN
-		return 'http://localhost:8080';
-		// #endif
-	};
-
-	// 页面导航
-	const navigateTo = (url) => {
-		// 检查页面是否存在，这里只是模拟
-		if (url.includes('creation-center')) {
-			uni.showToast({
-				title: '进入创作中心',
-				icon: 'none'
-			});
-			return;
-		} else if (url.includes('settings')) {
-			// 显示自定义设置面板
-			data.showUserSettings = true;
-			return;
-		} else if (url.includes('follows')) {
-			// 实际导航到关注列表页面
-			uni.navigateTo({
-				url
-			});
-			return;
-		} else if (url.includes('followers')) {
-			uni.showToast({
-				title: '查看我的粉丝',
-				icon: 'none'
-			});
-			return;
-		} else if (url.includes('collection')) {
-			uni.showToast({
-				title: '查看我的收藏',
-				icon: 'none'
-			});
-			return;
-		} else if (url.includes('edit-profile')) {
-			uni.showToast({
-				title: '编辑个人资料',
-				icon: 'none'
-			});
-			return;
-		} else if (url.includes('article-detail')) {
-			// 直接导航到文章详情页面
-			uni.navigateTo({
-				url
-			});
-			return;
-		}
-
-		// 实际跳转，当后端连接后使用
-		// uni.navigateTo({ url });
-	};
 </script>
 
 <style lang="scss">
