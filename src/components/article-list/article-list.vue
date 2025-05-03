@@ -43,8 +43,8 @@
 
 					<!-- 封面图片 - 始终显示，无论是coverImage还是默认图片 -->
 					<view class="article-image">
-						<image :src="article.coverImage || '/static/images/default-cover.png'" 
-							mode="aspectFill" class="single-image"></image>
+						<image :src="article.coverImage" 
+							mode="aspectFill" class="single-image" @error="handleImageError(index)"></image>
 					</view>
 
 					<!-- 多图布局 - 仅在没有coverImage但有images时显示 -->
@@ -411,24 +411,49 @@
 		const currentUserInfo = uni.getStorageSync('userInfo') || {};
 		
 		return articles.map(article => {
+			// 记录原始数据，方便调试
+			const original = JSON.parse(JSON.stringify(article));
+			console.log('原始文章数据:', original);
+			
 			// 为所有文章添加默认封面或使用文章中的图片
 			// 先检查是否有封面图片字段
 			if (!article.coverImage) {
 				// 如果没有coverImage，尝试从images数组中获取第一张
 				if (article.images && article.images.length > 0) {
 					article.coverImage = article.images[0];
-				} else {
-					// 没有任何图片，使用默认封面的相对路径
-					article.coverImage = '/static/images/default-cover.png';
-				}
+					console.log(`使用第一张图片作为封面:`, article.coverImage);
+				} 
 			}
 			
-			// 如果coverImage字段存在但是不包含完整URL且不是默认图片路径，补全路径
-			if (article.coverImage && !article.coverImage.startsWith('http') && !article.coverImage.startsWith('/static')) {
-				if (article.coverImage.startsWith('/')) {
-					article.coverImage = getBaseUrl() + article.coverImage;
-				} else {
-					article.coverImage = getBaseUrl() + '/' + article.coverImage;
+			// 调试信息 - 记录原始封面URL
+			console.log(`处理文章封面[${article.id}][${article.title}], 原始封面URL:`, article.coverImage);
+			
+			// 处理封面URL格式
+			if (article.coverImage) {
+				// 移除URL中可能存在的多余空格
+				article.coverImage = article.coverImage.trim();
+				
+				// 如果不是完整URL或静态资源路径，补全前缀
+				if (!article.coverImage.startsWith('http') && !article.coverImage.startsWith('/static')) {
+					let oldUrl = article.coverImage;
+					if (article.coverImage.startsWith('/')) {
+						article.coverImage = getBaseUrl() + article.coverImage;
+					} else {
+						article.coverImage = getBaseUrl() + '/' + article.coverImage;
+					}
+					console.log(`封面URL更新[${article.id}]: ${oldUrl} -> ${article.coverImage}`);
+				}
+				
+				// 尝试修复常见URL问题
+				if (article.coverImage.includes('undefined') || article.coverImage.includes('null')) {
+					console.error(`检测到无效的URL部分[${article.id}]:`, article.coverImage);
+					// 不尝试修复，记录错误便于后台排查
+				}
+				
+				// 检查常见的双斜杠问题
+				if (article.coverImage.includes('//uploads')) {
+					article.coverImage = article.coverImage.replace('//uploads', '/uploads');
+					console.log(`修复双斜杠问题:`, article.coverImage);
 				}
 			}
 			
@@ -457,11 +482,18 @@
 				}
 			}
 			
-			// 调试输出，方便查看coverImage
-			console.log(`文章ID: ${article.id}, 标题: ${article.title}, 封面图片: ${article.coverImage}`);
+			// 最终封面URL
+			console.log(`最终封面URL[${article.id}]:`, article.coverImage);
 			
 			return article;
 		});
+	};
+	
+	// 添加图片加载错误处理函数
+	const handleImageError = (index) => {
+		const article = articleList.value[index];
+		console.error(`封面图片加载失败[${article.id}][${article.title}]:`, article.coverImage);
+		// 记录错误但不替换URL，保留原始错误方便调试
 	};
 	
 	// 网络请求封装
@@ -498,7 +530,11 @@
 				// 请求头
 				const headers = {
 					'Authorization': token ? `Bearer ${token}` : '',
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					// 添加CORS相关请求头
+					'Access-Control-Allow-Origin': '*',
+					'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+					'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 				};
 				
 				// 如果是强制刷新，添加防缓存头
@@ -868,107 +904,11 @@
 	const handleEdit = async (index) => {
 		const article = articleList.value[index];
 		const articleId = article.id;
-		const baseUrl = getBaseUrl();
-		const token = uni.getStorageSync('token');
 		
-		// 确认是否为当前用户的文章
-		if (!isCurrentUser(article.author?.id)) {
-			uni.showToast({
-				title: '只能编辑自己的文章',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		if (!token) {
-			uni.showToast({
-				title: '请先登录',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		try {
-			// 显示加载中
-			uni.showLoading({
-				title: '加载文章内容...'
-			});
-			
-			// 获取完整的文章内容，准备编辑
-			const url = `${baseUrl}/api/article/${articleId}`;
-			
-			// 发起请求
-			uni.request({
-				url,
-				method: 'GET',
-				header: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				success: (res) => {
-					uni.hideLoading();
-					
-					if (res.statusCode === 200 && res.data.code === 200 && res.data.data) {
-						// 准备文章数据
-						const articleData = {
-							id: article.id,
-							title: article.title,
-							content: res.data.data.content || article.content,
-							htmlContent: res.data.data.htmlContent || article.content,
-							tags: article.tags || [],
-							// 优先使用API响应中的coverImage
-							coverImage: res.data.data.coverImage || article.coverImage
-						};
-						
-						// 处理封面图片URL如果需要
-						if (articleData.coverImage && !articleData.coverImage.startsWith('http')) {
-							if (articleData.coverImage.startsWith('/')) {
-								articleData.coverImage = getBaseUrl() + articleData.coverImage;
-							} else {
-								articleData.coverImage = getBaseUrl() + '/' + articleData.coverImage;
-							}
-						}
-						
-						console.log('编辑文章数据:', articleData);
-						
-						// 触发事件
-						emit('edit', articleData);
-					} else {
-						// 使用简略数据
-						console.warn('无法获取完整文章内容，使用简略数据');
-						emit('edit', article);
-						
-						uni.showToast({
-							title: '获取完整内容失败',
-							icon: 'none'
-						});
-					}
-				},
-				fail: (err) => {
-					uni.hideLoading();
-					console.error('获取文章详情失败:', err);
-					
-					// 使用简略数据作为回退方案
-					emit('edit', article);
-					
-					uni.showToast({
-						title: '网络异常，使用简略内容',
-						icon: 'none'
-					});
-				}
-			});
-		} catch (error) {
-			uni.hideLoading();
-			console.error('编辑操作异常:', error);
-			
-			// 使用简略数据作为回退方案
-			emit('edit', article);
-			
-			uni.showToast({
-				title: '操作异常，使用简略内容',
-				icon: 'none'
-			});
-		}
+		// 触发父组件的edit事件，实际的文章详情获取逻辑将在父组件中处理
+		// 这样可以避免在两个地方重复请求文章详情
+		console.log('触发编辑事件:', article.id);
+		emit('edit', article);
 	};
 	
 	// 处理删除文章
@@ -1175,11 +1115,12 @@
 					margin-top: 20rpx;
 					margin-bottom: 20rpx;
 					box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+					background-color: #f0f0f0; // 图片加载前显示的背景色
 
 					.single-image {
 						width: 100%;
 						height: 100%;
-						background-color: #eee;
+						object-fit: cover;
 					}
 				}
 
