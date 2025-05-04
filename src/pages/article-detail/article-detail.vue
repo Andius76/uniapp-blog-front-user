@@ -1,17 +1,7 @@
 <template>
-  <view class="container">
-    <scroll-view scroll-y class="article-detail"
-      refresher-enabled
-      :refresher-triggered="data.refreshing"
-      @refresherrefresh="onRefresh"
-      @refresherrestore="onRestore"
-      :refresher-background="'#f2f2f2'"
-      refresher-default-style="black"
-      @scrolltolower="loadMoreComments"
-      @scroll="handleScroll"
-      :id="'article-scroll-view'"
-      @touchstart="handleTouchStart"
-      @touchend="handleTouchEnd">
+  <view class="container" :style="{ overflow: 'hidden' }">
+    <!-- 移除scroll-view，使用普通view来盛放内容，让页面自然滚动 -->
+    <view class="article-detail" id="article-detail">
       <!-- 返回按钮 - 在非H5环境下显示 -->
       <!-- #ifndef H5 -->
       <view class="back-button" @click="goBack">
@@ -180,7 +170,7 @@
         <text>{{ data.error }}</text>
         <button class="retry-btn" @click="fetchArticleDetail">重新加载</button>
       </view>
-    </scroll-view>
+    </view>
     
     <!-- 评论输入框 -->
     <view class="comment-input-container" :style="{ bottom: inputBottom + 'px' }">
@@ -208,7 +198,7 @@
 
 <script setup>
 import { reactive, onMounted, onUnmounted } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad, onPageScroll, onReachBottom } from '@dcloudio/uni-app';
 import { getArticleDetail, likeArticle, collectArticle, getArticleComments, commentArticle, likeComment } from '@/api/article';
 
 const data = reactive({
@@ -985,10 +975,10 @@ const formatHtmlContent = (htmlContent) => {
   return content;
 };
 
-// 处理滚动事件
-const handleScroll = (e) => {
+// 处理页面滚动事件（改用onPageScroll生命周期）
+onPageScroll(e => {
   // 获取当前滚动位置
-  const scrollTop = e.detail.scrollTop;
+  const scrollTop = e.scrollTop;
   
   // 根据滚动位置决定是否显示回到顶部按钮
   data.showScrollTopBtn = scrollTop > 300;
@@ -1009,81 +999,58 @@ const handleScroll = (e) => {
     // 滚动停止后，隐藏下拉提示
     data.isScrollingDown = false;
   }, 200);
-};
+});
+
+// 滚动到底部时加载更多评论
+onReachBottom(() => {
+  loadMoreComments();
+});
 
 // 滚动到顶部
 const scrollToTop = () => {
-  // 使用选择器查询获取滚动视图元素
-  const query = uni.createSelectorQuery();
-  query.select('.article-detail').boundingClientRect();
-  query.selectViewport().scrollOffset();
-  query.exec(res => {
-    if (res && res[0]) {
-      // 使用uni-app的API滚动到顶部
-      uni.pageScrollTo({
-        scrollTop: 0,
-        duration: 300
-      });
-      
-      // H5环境下使用DOM API完成流畅滚动
-      // #ifdef H5
-      const scrollView = document.querySelector('.article-detail');
-      if (scrollView) {
-        scrollView.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
-      }
-      // #endif
-    }
+  // 使用uni-app API，去掉动画效果
+  uni.pageScrollTo({
+    scrollTop: 0,
+    duration: 0  // 设置为0，取消动画
   });
+  
+  // #ifdef H5
+  // H5环境下使用立即滚动模式
+  window.scrollTo({
+    top: 0,
+    behavior: 'auto'  // 使用auto而非smooth，立即滚动无动画
+  });
+  
+  // 立即执行的兜底方案
+  document.body.scrollTop = 0; // For Safari
+  document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+  // #endif
 };
 
-// 添加触摸滑动支持
+// 用于处理下拉刷新的触摸事件
 let touchStartY = 0;
 let touchEndY = 0;
 
 // 触摸开始事件
 const handleTouchStart = (event) => {
-  // #ifdef H5
-  // 在H5环境中处理原生事件对象
-  if (event.touches) {
-    touchStartY = event.touches[0].pageY;
-  } else if (event.changedTouches) {
-    // 处理uni-app事件对象
-    touchStartY = event.changedTouches[0].pageY;
-  } else if (event.detail && event.detail.touches) {
-    // 处理scroll-view传递的事件对象
-    touchStartY = event.detail.touches[0].pageY;
+  // 处理touch事件，获取起始Y坐标
+  if (event.touches && event.touches.length > 0) {
+    touchStartY = event.touches[0].clientY;
+  } else if (event.changedTouches && event.changedTouches.length > 0) {
+    touchStartY = event.changedTouches[0].clientY;
   }
-  // #endif
-  
-  // #ifndef H5
-  // 非H5环境直接使用uni-app事件对象
-  touchStartY = event.touches[0].pageY;
-  // #endif
 };
 
 // 触摸结束事件
 const handleTouchEnd = (event) => {
-  // #ifdef H5
-  // 在H5环境中处理原生事件对象
-  if (event.changedTouches) {
-    touchEndY = event.changedTouches[0].pageY;
-  } else if (event.detail && event.detail.changedTouches) {
-    // 处理scroll-view传递的事件对象
-    touchEndY = event.detail.changedTouches[0].pageY;
+  // 处理touch事件，获取结束Y坐标
+  if (event.changedTouches && event.changedTouches.length > 0) {
+    touchEndY = event.changedTouches[0].clientY;
   }
-  // #endif
-  
-  // #ifndef H5
-  // 非H5环境直接使用uni-app事件对象
-  touchEndY = event.changedTouches[0].pageY;
-  // #endif
   
   const diff = touchEndY - touchStartY;
   
-  // 下拉幅度大于100px且当前在顶部区域，触发刷新
+  // 在页面顶部下拉超过100px时触发刷新
   if (diff > 100 && data.lastScrollTop < 50) {
     onRefresh();
   }
@@ -1118,38 +1085,46 @@ onMounted(() => {
 }
 
 .article-detail {
-  height: calc(100vh - 120rpx); // 调整高度以适应评论输入框
-  padding-bottom: 100rpx;
+  // 修改为使用整个页面的滚动，而非内部scroll-view
+  padding-bottom: 120rpx; // 为评论输入框留出空间
   
   // #ifdef H5
   // H5环境增加阅读舒适度
-  padding: 0 40px;
+  padding: 0 40px 120rpx;
   box-sizing: border-box;
   
-  // 优化H5滚动条样式
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-    transition: all 0.3s ease;
-  }
-  
-  &::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-  }
-  
-  // 添加平滑滚动
-  scroll-behavior: smooth;
+  // 优化H5滚动条样式，应用于整个body
   // #endif
 }
+
+// 全局滚动条样式 (H5环境)
+// #ifdef H5
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+// 添加平滑滚动到整个页面
+html, body {
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain; // 防止滚动穿透
+  -webkit-overflow-scrolling: touch; // 添加滑动阻尼效果
+}
+// #endif
 
 .back-button {
   position: fixed;
@@ -1831,7 +1806,7 @@ onMounted(() => {
   .refresh-indicator {
     transition: all 0.3s ease;
     opacity: 0;
-    position: absolute;
+    position: fixed;
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
@@ -1862,12 +1837,14 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 99;
+  z-index: 999; // 提高z-index确保按钮在最上层
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease; // 减少过渡时间提高响应速度
   opacity: 0;
   pointer-events: none;
   transform: translateY(20px);
+  will-change: opacity, transform;
+  animation-fill-mode: both;
   
   &.visible {
     opacity: 1;
@@ -1877,6 +1854,17 @@ onMounted(() => {
   
   &:active {
     transform: scale(0.95);
+    background-color: rgba(55, 80, 200, 0.9); // 点击时颜色变化提供反馈
+  }
+  
+  // 增加触摸区域
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
   }
 }
 
