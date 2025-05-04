@@ -1,5 +1,91 @@
 <template>
 	<view class="article-list-container">
+		<!-- H5模式下显示网格布局 -->
+		<!-- #ifdef H5 -->
+		<scroll-view scroll-y class="article-scroll" @scrolltolower="handleLoadMore" :refresher-enabled="true"
+			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
+			refresher-background="#f5f5f5">
+			<!-- 网格布局文章列表 -->
+			<view class="article-grid">
+				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
+					<!-- 文章内容 -->
+					<view class="article-content" @click="handleArticleClick(article.id)">
+						<!-- 作者信息（第一行） -->
+						<view class="user-info">
+							<image class="avatar" :src="article.author?.avatar || '/static/images/avatar.png'" mode="aspectFill"
+								@click.stop="handleAuthorClick(article.author?.id)"></image>
+							<text class="nickname"
+								@click.stop="handleAuthorClick(article.author?.id)">{{article.author?.nickname}}</text>
+						</view>
+						
+						<!-- 文章标题（第二行） -->
+						<view class="article-info">
+							<text class="article-title">{{article.title}}</text>
+							
+							<!-- 文章简介（第三行） -->
+							<text class="article-summary">{{stripHtmlTags(article.summary, 60)}}{{article.summary ? '...' : ''}}</text>
+						</view>
+						
+						<!-- 封面图片（第四行） -->
+						<view class="article-image">
+							<image :src="article.coverImage" mode="aspectFill" class="grid-image"
+								@error="handleImageError(index)"></image>
+						</view>
+					</view>
+
+					<!-- 文章操作按钮（第五行） -->
+					<view class="article-actions">
+						<!-- 分享按钮 -->
+						<view class="action-item" @click.stop="handleShare(index)">
+							<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
+						</view>
+
+						<!-- 评论按钮 -->
+						<view class="action-item" @click.stop="handleComment(index)">
+							<uni-icons type="chat" size="20" color="#000"></uni-icons>
+							<text>{{article.commentCount || 0}}</text>
+						</view>
+
+						<!-- 点赞按钮 -->
+						<view class="action-item" @click.stop="handleLike(index)">
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
+								:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
+							<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
+						</view>
+
+						<!-- 编辑按钮（根据权限条件显示） -->
+						<view class="action-item manage-btn"
+							v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
+							@click.stop="handleEdit(index)">
+							<uni-icons type="compose" size="20" color="#000"></uni-icons>
+						</view>
+
+						<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
+						<view class="action-item manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+							@click.stop="handleDelete(index)">
+							<uni-icons type="trash" size="20" color="#000"></uni-icons>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<!-- 加载状态 -->
+			<view class="loading-state">
+				<text v-if="isLoading && !isRefreshing">加载中...</text>
+				<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
+				<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
+
+				<!-- 无内容提示 -->
+				<view v-if="articleList.length === 0 && !isLoading" class="no-content">
+					<uni-icons type="info" size="50" color="#ddd"></uni-icons>
+					<text>{{ emptyText }}</text>
+				</view>
+			</view>
+		</scroll-view>
+		<!-- #endif -->
+		
+		<!-- 非H5模式下保持原有垂直列表布局 -->
+		<!-- #ifndef H5 -->
 		<scroll-view scroll-y class="article-scroll" @scrolltolower="handleLoadMore" :refresher-enabled="true"
 			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
 			refresher-background="#f5f5f5">
@@ -94,6 +180,7 @@
 				</view>
 			</view>
 		</scroll-view>
+		<!-- #endif -->
 	</view>
 </template>
 
@@ -1140,7 +1227,203 @@
 			height: v-bind(height);
 		}
 
-		// 文章卡片
+		// 网格布局样式 (H5模式)
+		.article-grid {
+			width: 100%;
+			display: flex;
+			flex-wrap: wrap;
+			padding: 10rpx;
+			
+			.article-grid-item {
+				width: 25%; // 默认一行4个
+				box-sizing: border-box;
+				padding: 10rpx;
+				margin-bottom: 20rpx;
+				height: 460rpx; // 设置固定总高度
+				
+				// 文章内容
+				.article-content {
+					background-color: #fff;
+					border-radius: 12rpx 12rpx 0 0; // 顶部圆角
+					overflow: hidden;
+					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.1);
+					transition: transform 0.3s, box-shadow 0.3s;
+					height: 400rpx; // 固定内容区高度
+					display: flex;
+					flex-direction: column;
+					
+					&:hover {
+						transform: translateY(-5rpx);
+						box-shadow: 0 10rpx 25rpx rgba(0, 0, 0, 0.15);
+					}
+					
+					// 用户信息 - 第一行
+					.user-info {
+						display: flex;
+						align-items: center;
+						padding: 15rpx;
+						border-bottom: 1px solid #f5f5f5;
+						height: 80rpx; // 固定高度
+						box-sizing: border-box;
+						
+						.avatar {
+							width: 50rpx;
+							height: 50rpx;
+							border-radius: 50%;
+							margin-right: 10rpx;
+							border: 1px solid #f0f0f0;
+						}
+						
+						.nickname {
+							font-size: 24rpx;
+							color: #666;
+							overflow: hidden;
+							text-overflow: ellipsis;
+							white-space: nowrap;
+							flex: 1;
+						}
+					}
+					
+					// 文章信息 - 第二、三行
+					.article-info {
+						padding: 12rpx 15rpx;
+						height: 120rpx; // 固定高度
+						box-sizing: border-box;
+						display: flex;
+						flex-direction: column;
+						
+						.article-title {
+							font-size: 28rpx;
+							font-weight: bold;
+							color: #333;
+							display: block;
+							overflow: hidden;
+							text-overflow: ellipsis;
+							white-space: nowrap;
+							margin-bottom: 8rpx;
+							line-height: 1.3;
+							height: 40rpx; // 固定高度
+						}
+						
+						// 文章摘要 - 第三行
+						.article-summary {
+							font-size: 24rpx;
+							color: #999;
+							display: block;
+							overflow: hidden;
+							text-overflow: ellipsis;
+							display: -webkit-box;
+							-webkit-line-clamp: 2; // 显示2行
+							-webkit-box-orient: vertical;
+							line-height: 1.4;
+							height: 70rpx; // 固定高度，两行
+							margin: 0;
+						}
+					}
+					
+					// 封面图片 - 第四行
+					.article-image {
+						width: 100%;
+						height: 200rpx; // 固定高度
+						overflow: hidden;
+						position: relative;
+						flex: 1; // 填充剩余空间
+						
+						&::after {
+							content: '';
+							position: absolute;
+							bottom: 0;
+							left: 0;
+							right: 0;
+							height: 40rpx;
+							background: linear-gradient(to top, rgba(0,0,0,0.2), transparent);
+							z-index: 1;
+						}
+						
+						.grid-image {
+							width: 100%;
+							height: 100%;
+							object-fit: cover;
+							transition: transform 0.3s;
+							
+							&:hover {
+								transform: scale(1.05);
+							}
+						}
+					}
+				}
+				
+				// 文章操作按钮 - 第五行
+				.article-actions {
+					display: flex;
+					justify-content: space-between;
+					padding: 10rpx 15rpx;
+					background-color: #fff;
+					border-radius: 0 0 12rpx 12rpx;
+					box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+					border-top: 1px solid #f5f5f5;
+					height: 60rpx; // 固定高度
+					box-sizing: border-box;
+					
+					.action-item {
+						display: flex;
+						align-items: center;
+						
+						.uni-icons {
+							margin-right: 5rpx;
+						}
+						
+						text {
+							font-size: 22rpx;
+							color: #666;
+							
+							&.liked {
+								color: #ff6b6b;
+							}
+						}
+					}
+					
+					.manage-btn {
+						width: 40rpx;
+						height: 40rpx;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						
+						.uni-icons {
+							margin-right: 0;
+						}
+					}
+				}
+				
+				// 媒体查询 - 根据屏幕宽度调整每行显示数量
+				// 小屏幕设备 (手机竖屏)
+				@media screen and (max-width: 767px) {
+					width: 50%; // 小屏幕一行显示2个
+					height: 460rpx; // 保持高度一致
+				}
+				
+				// 中等屏幕设备 (平板竖屏或手机横屏)
+				@media screen and (min-width: 768px) and (max-width: 1023px) {
+					width: 33.33%; // 中等屏幕一行显示3个
+					height: 460rpx; // 保持高度一致
+				}
+				
+				// 大屏幕设备 (平板横屏或桌面)
+				@media screen and (min-width: 1024px) {
+					width: 25%; // 大屏幕一行显示4个
+					height: 460rpx; // 保持高度一致
+				}
+				
+				// 超大屏幕设备
+				@media screen and (min-width: 1440px) {
+					width: 20%; // 超大屏幕一行显示5个
+					height: 460rpx; // 保持高度一致
+				}
+			}
+		}
+
+		// 文章卡片 - 用于非H5模式
 		.article-card {
 			background-color: #fff;
 			border-radius: 20rpx;
