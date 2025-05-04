@@ -213,6 +213,199 @@
   - 验证码有效期为10分钟
   - **✅ 当前状态：已实现**
 
+## 图片处理与路径优化
+
+### 1. 图片URL处理策略
+
+**说明：** 前端对各类图片URL的处理逻辑，确保在不同情况下都能正确显示图片。
+
+- **处理策略：**
+
+  | URL类型 | 示例 | 处理方式 |
+  |---------|------|----------|
+  | 完整URL | http://example.com/image.jpg | 直接使用，同时修复可能存在的双斜杠问题 |
+  | 静态资源 | /static/images/default.png | 直接使用，无需处理 |
+  | 相对路径(带/) | /uploads/avatars/user.jpg | 添加基础URL前缀 |
+  | 相对路径(不带/) | uploads/image.jpg | 添加基础URL前缀，并添加/ |
+  | 空值或无效值 | null, undefined, "null", "undefined" | 返回空字符串或使用默认图片 |
+
+- **处理函数：**
+
+  ```js
+  const formatImageUrl = (url) => {
+    if (!url) return '';
+    
+    // 移除URL中可能存在的多余空格
+    url = url.trim();
+    
+    // 确保不是null或undefined
+    if (url === 'null' || url === 'undefined') {
+      return '';
+    }
+    
+    // 完整URL处理：如果已经是完整URL（包含http）则不处理
+    if (url.startsWith('http')) {
+      // 检查并修复双斜杠问题
+      if (url.includes('//uploads')) {
+        url = url.replace('//uploads', '/uploads');
+      }
+      return url;
+    }
+    // 静态资源处理：如果是静态资源路径则不处理
+    else if (url.startsWith('/static')) {
+      return url;
+    }
+    // 其他情况：添加基础URL前缀
+    else {
+      if (url.startsWith('/')) {
+        return getBaseUrl() + url;
+      } else {
+        return getBaseUrl() + '/' + url;
+      }
+    }
+  };
+  ```
+
+- **应用场景：**
+  - 文章封面图片
+  - 文章内容图片
+  - 用户头像
+  - 评论图片
+  - 标签图标等
+
+### 2. 图片错误处理机制
+
+**说明：** 针对图片加载失败情况的处理策略，确保UI不会因图片加载失败而出现空白区域。
+
+- **错误处理优先级：**
+  1. URL修复（如修复localhost域名问题）
+  2. 替代图片（如使用文章中的其他图片）
+  3. 默认图片（兜底方案）
+
+- **实现方式：**
+  ```js
+  // 图片元素添加错误处理事件
+  <image :src="formattedImageUrl" @error="handleImageError" />
+  
+  // 处理函数示例（文章封面图片）
+  const handleCoverImageError = () => {
+    console.error(`封面图片加载失败:`, data.article.coverImage);
+    
+    // 记录原始URL用于调试
+    const originalUrl = data.article.coverImage;
+    
+    // 尝试修复URL问题（如localhost域名）
+    if (data.article.coverImage && data.article.coverImage.includes('http://localhost:8080')) {
+      const fixedUrl = data.article.coverImage.replace('http://localhost:8080', getBaseUrl());
+      console.log(`尝试修复localhost URL: ${data.article.coverImage} -> ${fixedUrl}`);
+      data.article.coverImage = fixedUrl;
+      return; // 给修复的URL一次机会
+    }
+    
+    // 尝试使用文章中的其他图片
+    if (data.article.images && data.article.images.length > 0) {
+      console.log(`尝试使用文章的第一张图片作为封面替代:`, data.article.images[0]);
+      data.article.coverImage = formatImageUrl(data.article.images[0]);
+    } else {
+      // 使用默认图片
+      console.log(`使用默认图片作为封面(原URL:${originalUrl})`);
+      data.article.coverImage = '/static/images/img1.png';
+    }
+  };
+  ```
+
+- **适用组件：**
+  - 文章列表组件（ArticleList）
+  - 文章详情页（article-detail）
+  - 个人资料页（user-profile）
+
+### 3. 图片显示优化
+
+**说明：** 图片显示相关的视觉优化和加载体验改进。
+
+- **加载体验优化：**
+  - 图片加载前显示背景色（#f5f5f5），避免白色闪烁
+  - 添加合适的阴影效果，提升层次感
+  - 使用object-fit: cover确保图片比例一致
+  - 图片容器使用固定宽高比，防止加载时的布局跳动
+
+- **交互优化：**
+  - H5环境下添加鼠标悬停效果和点击提示
+  - 支持图片预览（点击放大）功能
+  - 图片加载失败时有明确的降级显示
+
+- **样式示例：**
+  ```css
+  .cover-image {
+    width: 100%;
+    height: 400rpx;
+    border-radius: 8rpx;
+    object-fit: cover;
+    position: relative;
+    box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.15); // 增强阴影效果
+    background-color: #f5f5f5; // 图片加载前显示的背景色
+    
+    // H5环境下的增强效果
+    // #ifdef H5
+    height: 400px;
+    border-radius: 8px;
+    cursor: pointer; // 鼠标变为手指形状，提示可点击
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: scale(1.01);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      
+      &::after {
+        content: '点击查看大图';
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+    }
+    // #endif
+  }
+  ```
+
+### 4. 图片相关API调用说明
+
+- **获取文章详情时的图片处理：**
+  - API返回的文章详情中包含`coverImage`字段
+  - 前端负责处理该字段，确保URL格式正确
+  - 处理逻辑：`const formattedCoverUrl = formatImageUrl(article.coverImage);`
+
+- **图片URL与服务器环境适配：**
+  ```js
+  /**
+   * 获取基础URL
+   */
+  const getBaseUrl = () => {
+    // #ifdef APP-PLUS
+    return 'http://10.9.99.181:8080'; // 安卓模拟器访问本机服务器的地址
+    // #endif
+
+    // #ifdef H5
+    return 'http://localhost:8080';
+    // #endif
+
+    // #ifdef MP-WEIXIN
+    return 'http://localhost:8080';
+    // #endif
+  };
+  ```
+
+- **最佳实践建议：**
+  - 服务端返回完整URL是最佳选择，可减少前端处理逻辑
+  - 前端应统一图片URL处理函数，确保处理一致性
+  - 图片容器应设置默认宽高和背景色，优化加载体验
+  - 建议使用CDN加速图片加载，提升国际化访问体验
+  - 应使用WebP等现代图片格式优化加载性能
+
 ## 用户资料管理相关接口
 
 ### 1. 获取用户个人信息

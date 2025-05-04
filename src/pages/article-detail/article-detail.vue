@@ -42,6 +42,7 @@
             mode="aspectFill"
             class="cover-image"
             @click="previewCoverImage"
+            @error="handleCoverImageError"
           />
         </view>
         
@@ -49,7 +50,7 @@
         <view class="content-section">
           <!-- 简单文本渲染 -->
           <view v-if="!data.article.htmlContent">
-            <text class="article-content selectable">{{ data.article.content }}</text>
+            <text class="article-content selectable" @longpress="copyText(data.article.content)">{{ data.article.content }}</text>
           </view>
           
           <!-- 富文本渲染预留 -->
@@ -340,6 +341,43 @@ const formatImageUrl = (url) => {
     } else {
       return getBaseUrl() + '/' + url;
     }
+  }
+};
+
+// 处理封面图片加载失败
+const handleCoverImageError = () => {
+  console.error(`封面图片加载失败:`, data.article.coverImage);
+  
+  // 记录原始URL用于调试
+  const originalUrl = data.article.coverImage;
+  
+  // 如果加载失败，尝试修复一些常见问题
+  if (data.article.coverImage && data.article.coverImage.includes('http://localhost:8080')) {
+    // 替换localhost可能不可访问的问题
+    const fixedUrl = data.article.coverImage.replace('http://localhost:8080', getBaseUrl());
+    console.log(`尝试修复localhost URL: ${data.article.coverImage} -> ${fixedUrl}`);
+    data.article.coverImage = fixedUrl;
+    return; // 给修复的URL一次机会
+  }
+  
+  // 如果文章有其他图片，尝试使用文章中的图片作为封面
+  if (data.article.images && data.article.images.length > 0) {
+    console.log(`尝试使用文章的第一张图片作为封面替代:`, data.article.images[0]);
+    const imageUrl = data.article.images[0];
+    // 如果图片URL不是http开头，添加基础URL
+    if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/static')) {
+      if (imageUrl.startsWith('/')) {
+        data.article.coverImage = getBaseUrl() + imageUrl;
+      } else {
+        data.article.coverImage = getBaseUrl() + '/' + imageUrl;
+      }
+    } else {
+      data.article.coverImage = imageUrl;
+    }
+  } else {
+    // 如果没有其他图片，使用默认封面
+    console.log(`使用默认图片作为封面(原URL:${originalUrl})`);
+    data.article.coverImage = '/static/images/img1.png';
   }
 };
 
@@ -1593,6 +1631,8 @@ html, body {
     border-radius: 8rpx;
     object-fit: cover;
     position: relative;
+    box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.15); // 增强阴影效果
+    background-color: #f5f5f5; // 图片加载前显示的背景色
     
     // #ifdef H5
     height: 400px;
