@@ -2,12 +2,7 @@
   <view class="container" :style="{ overflow: 'hidden' }">
     <!-- 移除scroll-view，使用普通view来盛放内容，让页面自然滚动 -->
     <view class="article-detail" id="article-detail">
-      <!-- 返回按钮 - 在非H5环境下显示 -->
-      <!-- #ifndef H5 -->
-      <view class="back-button" @click="goBack">
-        <uni-icons type="back" size="24" color="#333"></uni-icons>
-      </view>
-      <!-- #endif -->
+      <!-- 移除返回按钮，App和小程序有自带返回功能 -->
       
       <!-- 刷新成功提示 -->
       <view class="refresh-success" v-if="data.showRefreshSuccess">
