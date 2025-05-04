@@ -43,7 +43,7 @@
         <view class="cover-section" v-if="data.article.coverImage">
           <text class="cover-label">封面</text>
           <image 
-            :src="data.article.coverImage"
+            :src="formatImageUrl(data.article.coverImage)"
             mode="aspectFill"
             class="cover-image"
             @click="previewCoverImage"
@@ -297,6 +297,57 @@ const formatDate = (dateStr) => {
   return `${year}年${month}月${day}日 ${hour}:${minute}`;
 };
 
+/**
+ * 获取基础URL
+ */
+const getBaseUrl = () => {
+  // #ifdef APP-PLUS
+  return 'http://10.9.99.181:8080'; // 安卓模拟器访问本机服务器的地址
+  // #endif
+
+  // #ifdef H5
+  return 'http://localhost:8080';
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  return 'http://localhost:8080';
+  // #endif
+};
+
+// 处理图片URL的函数，确保使用完整URL
+const formatImageUrl = (url) => {
+  if (!url) return '';
+  
+  // 移除URL中可能存在的多余空格
+  url = url.trim();
+  
+  // 确保不是null或undefined
+  if (url === 'null' || url === 'undefined') {
+    return '';
+  }
+  
+  // 完整URL处理：如果已经是完整URL（包含http）则不处理
+  if (url.startsWith('http')) {
+    // 检查并修复双斜杠问题
+    if (url.includes('//uploads')) {
+      url = url.replace('//uploads', '/uploads');
+    }
+    return url;
+  }
+  // 静态资源处理：如果是静态资源路径则不处理
+  else if (url.startsWith('/static')) {
+    return url;
+  }
+  // 其他情况：添加基础URL前缀
+  else {
+    if (url.startsWith('/')) {
+      return getBaseUrl() + url;
+    } else {
+      return getBaseUrl() + '/' + url;
+    }
+  }
+};
+
 // 加载文章详情
 const fetchArticleDetail = async () => {
   data.loading = true;
@@ -309,6 +360,16 @@ const fetchArticleDetail = async () => {
     if (response.code === 200 && response.data) {
       // 更新文章信息
       data.article = response.data;
+      
+      // 处理封面图片URL
+      if (data.article.coverImage) {
+        data.article.coverImage = formatImageUrl(data.article.coverImage);
+      }
+      
+      // 确保作者头像URL正确
+      if (data.article.author && data.article.author.avatar) {
+        data.article.author.avatar = formatImageUrl(data.article.author.avatar);
+      }
       
       // 确保所有计数字段为有效数值
       // 收藏数处理
@@ -408,11 +469,14 @@ const fetchComments = async () => {
           avatar = "/static/images/avatar.png";
         }
         
+        // 确保头像URL正确
+        avatar = formatImageUrl(avatar || '/static/images/avatar.png');
+        
         // 主评论
         const formattedComment = {
           id: commentId,
           author: nickname,
-          avatar: avatar || '/static/images/avatar.png',
+          avatar: avatar,
           content: comment.content,
           createTime: comment.createTime,
           likeCount: comment.likeCount || 0,
@@ -1258,9 +1322,11 @@ onMounted(() => {
 // 封面图片预览
 const previewCoverImage = () => {
   if (data.article.coverImage) {
+    // 确保预览时使用完整URL
+    const imageUrl = formatImageUrl(data.article.coverImage);
     uni.previewImage({
-      urls: [data.article.coverImage],
-      current: data.article.coverImage,
+      urls: [imageUrl],
+      current: imageUrl,
       indicator: 'number',
       loop: false
     });

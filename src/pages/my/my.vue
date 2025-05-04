@@ -7,9 +7,12 @@
 				<!-- 原有用户信息区域内容 -->
 				<view class="user-header">
 					<view class="user-info">
-						<image class="avatar" :src="data.userInfo.avatar || '/static/images/avatar.png'"
-							mode="aspectFill"></image>
-						<text class="nickname">{{ data.userInfo.nickname }}</text>
+						<image class="avatar" :src="formatAvatarUrl(data.userInfo.avatar)"
+							mode="aspectFill" @click="uploadAvatar"></image>
+						<view class="user-detail">
+							<text class="nickname">{{ data.userInfo.nickname }}</text>
+							<text class="email">{{ data.userInfo.email }}</text>
+						</view>
 					</view>
 					<view class="user-actions">
 						<view class="action-btn" @click="navigateTo('/pages/creation-center/creation-center')">
@@ -240,6 +243,57 @@
 
 	// 添加articleListRef引用
 	const articleListRef = ref(null);
+
+	/**
+	 * 获取基础URL
+	 */
+	const getBaseUrl = () => {
+		// #ifdef APP-PLUS
+		return 'http://10.9.99.181:8080'; // 安卓模拟器访问本机服务器的地址
+		// #endif
+
+		// #ifdef H5
+		return 'http://localhost:8080';
+		// #endif
+
+		// #ifdef MP-WEIXIN
+		return 'http://localhost:8080';
+		// #endif
+	};
+
+	// 处理图片URL格式
+	const formatAvatarUrl = (url) => {
+		if (!url) return '/static/images/avatar.png';
+		
+		// 移除URL中可能存在的多余空格
+		url = url.trim();
+		
+		// 确保不是null或undefined
+		if (url === 'null' || url === 'undefined') {
+			return '/static/images/avatar.png';
+		}
+		
+		// 完整URL处理：如果已经是完整URL（包含http）则不处理
+		if (url.startsWith('http')) {
+			// 检查并修复双斜杠问题
+			if (url.includes('//uploads')) {
+				url = url.replace('//uploads', '/uploads');
+			}
+			return url;
+		}
+		// 静态资源处理：如果是静态资源路径则不处理
+		else if (url.startsWith('/static')) {
+			return url;
+		}
+		// 其他情况：添加基础URL前缀
+		else {
+			if (url.startsWith('/')) {
+				return getBaseUrl() + url;
+			} else {
+				return getBaseUrl() + '/' + url;
+			}
+		}
+	};
 
 	/**
 	 * 加载用户数据和文章列表
@@ -534,10 +588,10 @@
 			
 			// 如果是相对路径，需要拼接基础URL
 			if (processedInfo.avatar.startsWith('/')) {
-				processedInfo.avatar = getBaseUrl() + processedInfo.avatar;
+				processedInfo.avatar = formatAvatarUrl(processedInfo.avatar);
 			} else {
 				// 如果既不是http开头也不是/开头，添加/
-				processedInfo.avatar = getBaseUrl() + '/' + processedInfo.avatar;
+				processedInfo.avatar = formatAvatarUrl(processedInfo.avatar);
 			}
 		} else {
 			// 使用默认头像
@@ -667,23 +721,6 @@
 		uni.reLaunch({
 			url: '/pages/login/login'
 		});
-	};
-
-	/**
-	 * 获取基础URL
-	 */
-	const getBaseUrl = () => {
-		// #ifdef APP-PLUS
-		return 'http://10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
-		// #endif
-		
-		// #ifdef H5
-		return 'http://localhost:8080';
-		// #endif
-		
-		// #ifdef MP-WEIXIN
-		return 'http://localhost:8080';
-		// #endif
 	};
 
 	// 页面导航
