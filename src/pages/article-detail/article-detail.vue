@@ -8,8 +8,8 @@
       :refresher-background="'#f2f2f2'"
       refresher-default-style="black"
       @scrolltolower="loadMoreComments">
-      <!-- 返回按钮 -->
-      <!-- #ifdef H5 -->
+      <!-- 返回按钮 - 在非H5环境下显示 -->
+      <!-- #ifndef H5 -->
       <view class="back-button" @click="goBack">
         <uni-icons type="back" size="24" color="#333"></uni-icons>
       </view>
@@ -948,11 +948,25 @@ const formatHtmlContent = (htmlContent) => {
   background-color: #fff;
   position: relative;
   min-height: 100vh;
+  
+  // #ifdef H5
+  // H5环境下特定样式：居中、最大宽度限制
+  max-width: 800px;
+  margin: 0 auto;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
+  padding: 0;
+  // #endif
 }
 
 .article-detail {
   height: calc(100vh - 120rpx); // 调整高度以适应评论输入框
   padding-bottom: 100rpx;
+  
+  // #ifdef H5
+  // H5环境增加阅读舒适度
+  padding: 0 40px;
+  box-sizing: border-box;
+  // #endif
 }
 
 .back-button {
@@ -968,12 +982,28 @@ const formatHtmlContent = (htmlContent) => {
   justify-content: center;
   align-items: center;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+  
+  // #ifdef H5
+  // 浏览器版本改进返回按钮样式
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  top: 20px;
+  left: 20px;
+  background-color: #f8f8f8;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: #eaeaea;
+    transform: scale(1.05);
+  }
+  // #endif
 }
 
 .article-header {
   padding: 30rpx;
   // #ifdef H5
-  padding-top: 100rpx;
+  padding: 60px 0 30px;
   // #endif
   // #ifndef H5
   padding-top: 30rpx;
@@ -987,6 +1017,11 @@ const formatHtmlContent = (htmlContent) => {
     line-height: 1.4;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    
+    // #ifdef H5
+    font-size: 36px;
+    margin-bottom: 15px;
+    // #endif
   }
 
   .meta-info {
@@ -998,11 +1033,19 @@ const formatHtmlContent = (htmlContent) => {
       font-size: 28rpx;
       color: #666;
       margin-right: 30rpx;
+      
+      // #ifdef H5
+      font-size: 16px;
+      // #endif
     }
     
     .publish-time {
       font-size: 24rpx;
       color: #999;
+      
+      // #ifdef H5
+      font-size: 14px;
+      // #endif
     }
   }
 }
@@ -1018,11 +1061,23 @@ const formatHtmlContent = (htmlContent) => {
   padding: 20rpx;
   box-sizing: border-box;
   
+  // #ifdef H5
+  margin: 30px 0;
+  width: 100%;
+  border: none;
+  padding: 0;
+  // #endif
+  
   .cover-image {
     width: 100%;
     height: 400rpx;
     border-radius: 8rpx;
     object-fit: cover;
+    
+    // #ifdef H5
+    height: 400px;
+    border-radius: 8px;
+    // #endif
   }
   
   .cover-label {
@@ -1035,11 +1090,21 @@ const formatHtmlContent = (htmlContent) => {
     padding: 6rpx 16rpx;
     border-radius: 6rpx;
     z-index: 1;
+    
+    // #ifdef H5
+    font-size: 14px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    // #endif
   }
 }
 
 .content-section {
   padding: 30rpx;
+  
+  // #ifdef H5
+  padding: 20px 0;
+  // #endif
   
   .article-content {
     font-size: 32rpx;
@@ -1047,12 +1112,11 @@ const formatHtmlContent = (htmlContent) => {
     line-height: 1.8;
     // 添加文本换行属性，解决溢出问题
     white-space: normal;
-    word-wrap: break-word;
-    word-break: break-word;
-    overflow-wrap: break-word;
-    text-align: justify;
-    width: 100%;
-    box-sizing: border-box;
+    
+    // #ifdef H5
+    font-size: 18px;
+    line-height: 1.8;
+    // #endif
   }
 }
 
@@ -1309,6 +1373,14 @@ const formatHtmlContent = (htmlContent) => {
   box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05);
   z-index: 100;
   
+  // #ifdef H5
+  max-width: 800px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 12px 12px 0 0;
+  padding: 15px 25px;
+  // #endif
+  
   .comment-input {
     flex: 1;
     height: 70rpx;
@@ -1316,6 +1388,12 @@ const formatHtmlContent = (htmlContent) => {
     border-radius: 35rpx;
     padding: 0 30rpx;
     font-size: 28rpx;
+    
+    // #ifdef H5
+    height: 40px;
+    font-size: 16px;
+    border-radius: 20px;
+    // #endif
   }
   
   .send-btn {
@@ -1329,6 +1407,18 @@ const formatHtmlContent = (htmlContent) => {
     display: flex;
     align-items: center;
     justify-content: center;
+    
+    // #ifdef H5
+    height: 40px;
+    font-size: 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    
+    &:hover:not([disabled]) {
+      background-color: #3651d3;
+    }
+    // #endif
     
     &[disabled] {
       background-color: #cccccc;
@@ -1434,4 +1524,119 @@ const formatHtmlContent = (htmlContent) => {
     margin-bottom: 24rpx;
   }
 }
+
+// #ifdef H5
+// 优化富文本内容样式
+.article-rich-content {
+  font-size: 18px !important;
+  line-height: 1.8 !important;
+  
+  :deep(p) {
+    margin-bottom: 16px;
+  }
+  
+  :deep(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 16px 0;
+  }
+  
+  :deep(h1), :deep(h2), :deep(h3), :deep(h4), :deep(h5), :deep(h6) {
+    margin-top: 32px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  
+  :deep(h1) { font-size: 32px; }
+  :deep(h2) { font-size: 28px; }
+  :deep(h3) { font-size: 24px; }
+  :deep(h4) { font-size: 20px; }
+  
+  :deep(a) {
+    color: #4361ee;
+    text-decoration: none;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+  
+  :deep(pre) {
+    background-color: #f8f8f8;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 20px 0;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  
+  :deep(code) {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 16px;
+  }
+  
+  :deep(ul), :deep(ol) {
+    padding-left: 24px;
+    margin: 16px 0;
+  }
+  
+  :deep(li) {
+    margin-bottom: 8px;
+  }
+  
+  :deep(blockquote) {
+    border-left: 4px solid #e0e0e0;
+    padding-left: 16px;
+    margin: 16px 0;
+    color: #666;
+    font-style: italic;
+  }
+}
+
+// 评论区样式优化
+.comment-section {
+  // #ifdef H5
+  margin-top: 40px;
+  border-top: 1px solid #eee;
+  padding-top: 40px;
+  // #endif
+}
+
+.section-title {
+  // #ifdef H5
+  font-size: 24px;
+  margin-bottom: 24px;
+  // #endif
+}
+
+.comment-card {
+  // #ifdef H5
+  border-radius: 12px;
+  margin-bottom: 24px;
+  // #endif
+}
+
+// 响应式适配，针对较大屏幕
+@media screen and (min-width: 1200px) {
+  .container {
+    margin-top: 30px;
+    margin-bottom: 30px;
+    min-height: calc(100vh - 60px);
+    border-radius: 12px;
+  }
+  
+  .article-detail {
+    border-radius: 12px;
+  }
+  
+  .comment-input-container {
+    bottom: 30px;
+  }
+}
+// #endif
 </style>
