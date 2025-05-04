@@ -308,14 +308,20 @@ const fetchComments = async () => {
       pageSize: data.pageSize
     });
     
+    console.log('获取评论响应数据:', JSON.stringify(response));
+    
     if (response.code === 200 && response.data) {
-      console.log('获取到的评论数据:', response.data);
+      console.log('获取到的评论数据结构:', JSON.stringify(response.data));
       
       // 提取评论数据，适配后端返回结构
       const { records, total, current, size } = response.data;
       
+      console.log('评论记录详情:', JSON.stringify(records));
+      
       // 将数据转换为组件需要的格式
       const formattedComments = records.map(comment => {
+        console.log('处理评论:', JSON.stringify(comment));
+        
         // 确保所有ID为字符串类型
         const commentId = String(comment.id);
         
@@ -354,7 +360,11 @@ const fetchComments = async () => {
         
         // 处理回复
         if (comment.replies && comment.replies.length > 0) {
+          console.log('评论回复:', JSON.stringify(comment.replies));
+          
           formattedComment.replies = comment.replies.map(reply => {
+            console.log('处理回复:', JSON.stringify(reply));
+            
             // 确保回复中的ID也是字符串类型
             const replyId = String(reply.id);
             
@@ -368,7 +378,9 @@ const fetchComments = async () => {
               replyUserId = "0";
             }
             
-            if (reply.author) {
+            if (reply.author && typeof reply.author === 'object') {
+              replyAuthor = reply.author.nickname || "未知用户";
+            } else if (reply.author) {
               replyAuthor = reply.author;
             } else {
               replyAuthor = reply.nickname || "未知用户";
@@ -408,6 +420,8 @@ const fetchComments = async () => {
       // 判断是否还有更多评论
       const totalPages = Math.ceil(total / size);
       data.hasMoreComments = current < totalPages;
+      
+      console.log('处理后的评论数据:', JSON.stringify(data.comments));
     } else {
       uni.showToast({
         title: response.message || '获取评论失败',
@@ -661,8 +675,16 @@ const replyToComment = (index) => {
   data.replyTarget = comment.author;
   data.replyToCommentIndex = index;
   data.replyToReplyIndex = -1;
-  data.parentId = comment.id; // 这里保存数字ID，在提交时转换为字符串
-  data.replyUserId = comment.userId; // 这里保存数字ID，在提交时转换为字符串
+  
+  // 确保设置为字符串类型，不在提交时再转换
+  data.parentId = String(comment.id); 
+  data.replyUserId = String(comment.userId);
+  
+  console.log('设置回复评论:', {
+    parentId: data.parentId,
+    replyUserId: data.replyUserId,
+    replyTarget: data.replyTarget
+  });
   
   // 聚焦到输入框
   const inputEl = document.querySelector('.comment-input');
@@ -695,8 +717,16 @@ const replyToReply = (commentIndex, replyIndex) => {
   data.replyTarget = reply.author;
   data.replyToCommentIndex = commentIndex;
   data.replyToReplyIndex = replyIndex;
-  data.parentId = comment.id; // 这里保存数字ID，在提交时转换为字符串
-  data.replyUserId = reply.userId; // 这里保存数字ID，在提交时转换为字符串
+  
+  // 确保设置为字符串类型，不在提交时再转换
+  data.parentId = String(comment.id);
+  data.replyUserId = String(reply.userId);
+  
+  console.log('设置回复回复:', {
+    parentId: data.parentId,
+    replyUserId: data.replyUserId,
+    replyTarget: data.replyTarget
+  });
   
   // 聚焦到输入框
   const inputEl = document.querySelector('.comment-input');
@@ -731,11 +761,11 @@ const submitComment = async () => {
       mask: true
     });
     
-    // 确保所有ID参数使用字符串格式，避免 BigInteger 转换问题
+    // 使用已经是字符串类型的ID，无需再次转换
     const commentData = {
       content: data.commentContent,
-      parentId: data.parentId ? String(data.parentId) : null,
-      replyUserId: data.replyUserId ? String(data.replyUserId) : null,
+      parentId: data.parentId || null,
+      replyUserId: data.replyUserId || null,
       articleId: String(data.articleId)
     };
     
