@@ -1821,7 +1821,7 @@ html, body {
 .article-header {
   padding: 30rpx;
   // #ifdef H5
-  padding: 60px 0 30px;
+  padding: 60px 0 10px;
   // #endif
   // #ifndef H5
   padding-top: 30rpx;
@@ -2424,7 +2424,7 @@ html, body {
 .load-more {
   text-align: center;
   padding: 30rpx 0;
-  margin-bottom: 100rpx;
+  margin-bottom: 30rpx;
 }
 
 .loading {
