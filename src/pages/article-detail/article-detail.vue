@@ -1849,28 +1849,29 @@ html, body {
     align-items: center;
     
     .author-avatar {
-      width: 60rpx;
-      height: 60rpx;
+      width: 80rpx;
+      height: 80rpx;
       border-radius: 50%;
-      margin-right: 10rpx;
+      margin-right: 16rpx;
       flex-shrink: 0;
       background-color: #f0f0f0; /* 添加背景色防止头像加载时的空白 */
       object-fit: cover; /* 确保头像适当裁剪填充 */
       border: 1rpx solid #eee; /* 添加边框使头像更清晰 */
       
       // #ifdef H5
-      width: 32px;
-      height: 32px;
+      width: 48px;
+      height: 48px;
       // #endif
     }
     
     .author {
-      font-size: 28rpx;
+      font-size: 32rpx;
       color: #666;
       margin-right: 30rpx;
+      font-weight: 500;
       
       // #ifdef H5
-      font-size: 16px;
+      font-size: 20px;
       // #endif
     }
     
