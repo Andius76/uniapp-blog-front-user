@@ -38,6 +38,16 @@
           </view>
         </view>
 
+        <!-- 封面图片区域 - 移到正文内容之前 -->
+        <view class="cover-section" v-if="data.article.coverImage">
+          <text class="cover-label">封面</text>
+          <image 
+            :src="data.article.coverImage"
+            mode="aspectFill"
+            class="cover-image"
+          />
+        </view>
+        
         <!-- 正文内容区域 -->
         <view class="content-section">
           <!-- 简单文本渲染 -->
@@ -47,14 +57,6 @@
           
           <!-- 富文本渲染预留 -->
           <rich-text v-else class="article-rich-content" :nodes="formatHtmlContent(data.article.htmlContent)"></rich-text>
-          
-          <view class="image-container" v-if="data.article.coverImage">
-            <image 
-              :src="data.article.coverImage"
-              mode="aspectFill"
-              class="content-image"
-            />
-          </view>
         </view>
 
         <!-- 标签区域 -->
@@ -1005,6 +1007,37 @@ const formatHtmlContent = (htmlContent) => {
   }
 }
 
+/* 封面图片区域样式 */
+.cover-section {
+  margin: 20rpx 30rpx 30rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  width: calc(100% - 60rpx);
+  position: relative;
+  border: 2rpx dashed #eee;
+  padding: 20rpx;
+  box-sizing: border-box;
+  
+  .cover-image {
+    width: 100%;
+    height: 400rpx;
+    border-radius: 8rpx;
+    object-fit: cover;
+  }
+  
+  .cover-label {
+    position: absolute;
+    top: 20rpx;
+    left: 20rpx;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font-size: 24rpx;
+    padding: 6rpx 16rpx;
+    border-radius: 6rpx;
+    z-index: 1;
+  }
+}
+
 .content-section {
   padding: 30rpx;
   
@@ -1020,19 +1053,6 @@ const formatHtmlContent = (htmlContent) => {
     text-align: justify;
     width: 100%;
     box-sizing: border-box;
-  }
-  
-  .image-container {
-    margin-top: 40rpx;
-    width: 100%;
-    
-    .content-image {
-      width: 100%;
-      height: 400rpx;
-      border-radius: 16rpx;
-      margin-bottom: 20rpx;
-      object-fit: cover; // 确保图片比例适当
-    }
   }
 }
 
