@@ -309,35 +309,90 @@ const fetchComments = async () => {
     });
     
     if (response.code === 200 && response.data) {
+      console.log('获取到的评论数据:', response.data);
+      
+      // 提取评论数据，适配后端返回结构
       const { records, total, current, size } = response.data;
       
       // 将数据转换为组件需要的格式
       const formattedComments = records.map(comment => {
+        // 确保所有ID为字符串类型
+        const commentId = String(comment.id);
+        
+        // 处理用户信息（适配后端返回结构）
+        let userId, nickname, avatar;
+        if (comment.author) {
+          // 新版后端返回格式
+          userId = String(comment.author.id);
+          nickname = comment.author.nickname;
+          avatar = comment.author.avatar;
+        } else if (comment.userId) {
+          // 旧版后端返回格式
+          userId = String(comment.userId);
+          nickname = comment.nickname;
+          avatar = comment.avatar;
+        } else {
+          // 默认值
+          userId = "0";
+          nickname = "未知用户";
+          avatar = "/static/images/avatar.png";
+        }
+        
         // 主评论
         const formattedComment = {
-          id: comment.id,
-          author: comment.user.nickname,
-          avatar: comment.user.avatar || '/static/images/avatar.png',
+          id: commentId,
+          author: nickname,
+          avatar: avatar || '/static/images/avatar.png',
           content: comment.content,
           createTime: comment.createTime,
           likeCount: comment.likeCount || 0,
           isLiked: comment.isLiked || false,
-          userId: comment.userId,
+          userId: userId,
           showAllReplies: false,
           replies: []
         };
         
-        // 回复
+        // 处理回复
         if (comment.replies && comment.replies.length > 0) {
-          formattedComment.replies = comment.replies.map(reply => ({
-            id: reply.id,
-            author: reply.user.nickname,
-            content: reply.content,
-            createTime: reply.createTime,
-            userId: reply.userId,
-            replyUser: reply.replyUser ? reply.replyUser.nickname : null,
-            replyUserId: reply.replyUserId
-          }));
+          formattedComment.replies = comment.replies.map(reply => {
+            // 确保回复中的ID也是字符串类型
+            const replyId = String(reply.id);
+            
+            // 处理回复中的用户信息
+            let replyUserId, replyAuthor;
+            if (reply.userId) {
+              replyUserId = String(reply.userId);
+            } else if (reply.author && reply.author.id) {
+              replyUserId = String(reply.author.id);
+            } else {
+              replyUserId = "0";
+            }
+            
+            if (reply.author) {
+              replyAuthor = reply.author;
+            } else {
+              replyAuthor = reply.nickname || "未知用户";
+            }
+            
+            // 处理回复目标用户
+            let replyToUserId = null;
+            let replyToUser = null;
+            
+            if (reply.replyUserId) {
+              replyToUserId = String(reply.replyUserId);
+              replyToUser = reply.replyUser || reply.replyNickname || "未知用户";
+            }
+            
+            return {
+              id: replyId,
+              author: replyAuthor,
+              content: reply.content,
+              createTime: reply.createTime,
+              userId: replyUserId,
+              replyUser: replyToUser,
+              replyUserId: replyToUserId
+            };
+          });
         }
         
         return formattedComment;
@@ -555,8 +610,9 @@ const handleCommentLike = async (index) => {
     comment.isLiked = newIsLiked;
     comment.likeCount += newIsLiked ? 1 : -1;
     
-    // 发送请求
-    const response = await likeComment(comment.id, newIsLiked);
+    // 发送请求 - 确保commentId参数使用字符串类型
+    const commentId = String(comment.id);
+    const response = await likeComment(commentId, newIsLiked);
     
     if (response.code !== 200) {
       // 请求失败，恢复状态
@@ -605,8 +661,8 @@ const replyToComment = (index) => {
   data.replyTarget = comment.author;
   data.replyToCommentIndex = index;
   data.replyToReplyIndex = -1;
-  data.parentId = comment.id;
-  data.replyUserId = comment.userId;
+  data.parentId = comment.id; // 这里保存数字ID，在提交时转换为字符串
+  data.replyUserId = comment.userId; // 这里保存数字ID，在提交时转换为字符串
   
   // 聚焦到输入框
   const inputEl = document.querySelector('.comment-input');
@@ -639,8 +695,8 @@ const replyToReply = (commentIndex, replyIndex) => {
   data.replyTarget = reply.author;
   data.replyToCommentIndex = commentIndex;
   data.replyToReplyIndex = replyIndex;
-  data.parentId = comment.id;
-  data.replyUserId = reply.userId;
+  data.parentId = comment.id; // 这里保存数字ID，在提交时转换为字符串
+  data.replyUserId = reply.userId; // 这里保存数字ID，在提交时转换为字符串
   
   // 聚焦到输入框
   const inputEl = document.querySelector('.comment-input');
@@ -669,18 +725,37 @@ const submitComment = async () => {
   if (!data.commentContent.trim()) return;
   
   try {
+    // 显示提交中加载框
+    uni.showLoading({
+      title: '发送中...',
+      mask: true
+    });
+    
+    // 确保所有ID参数使用字符串格式，避免 BigInteger 转换问题
     const commentData = {
       content: data.commentContent,
-      parentId: data.parentId,
-      replyUserId: data.replyUserId
+      parentId: data.parentId ? String(data.parentId) : null,
+      replyUserId: data.replyUserId ? String(data.replyUserId) : null,
+      articleId: String(data.articleId)
     };
     
-    const response = await commentArticle(data.articleId, commentData);
+    console.log('发送评论数据:', commentData);
+    
+    // 确保 articleId 也作为字符串传递
+    const articleIdStr = String(data.articleId);
+    const response = await commentArticle(articleIdStr, commentData);
+    
+    // 隐藏加载框
+    uni.hideLoading();
+    
+    console.log('评论提交结果:', response);
     
     if (response.code === 200) {
+      // 显示成功提示
       uni.showToast({
         title: '评论成功',
-        icon: 'success'
+        icon: 'success',
+        duration: 2000
       });
       
       // 清空输入框和状态
@@ -691,23 +766,73 @@ const submitComment = async () => {
       data.parentId = null;
       data.replyUserId = null;
       
-      // 刷新评论列表
-      data.currentPage = 1;
-      fetchComments();
-      
       // 更新文章评论计数
       data.article.commentCount++;
+      
+      // 如果返回了评论数据，直接添加到评论列表（优化体验，避免重新请求）
+      if (response.data && response.data.id) {
+        try {
+          // 构造新评论对象
+          const newComment = {
+            id: String(response.data.id),
+            author: response.data.author,
+            avatar: response.data.avatar || '/static/images/avatar.png',
+            content: response.data.content,
+            createTime: response.data.createTime,
+            likeCount: 0,
+            isLiked: false,
+            userId: String(response.data.userId),
+            replies: []
+          };
+          
+          // 判断是新评论还是回复
+          if (commentData.parentId) {
+            // 这是一条回复，添加到对应的主评论的回复列表中
+            const parentIndex = data.comments.findIndex(c => String(c.id) === commentData.parentId);
+            if (parentIndex !== -1) {
+              // 构造回复对象
+              const newReply = {
+                id: String(response.data.id),
+                author: response.data.author,
+                content: response.data.content,
+                createTime: response.data.createTime,
+                userId: String(response.data.userId),
+                replyUser: data.replyTarget,
+                replyUserId: commentData.replyUserId
+              };
+              
+              // 将回复添加到主评论的回复列表开头
+              data.comments[parentIndex].replies.unshift(newReply);
+            }
+          } else {
+            // 这是一条新评论，添加到评论列表开头
+            data.comments.unshift(newComment);
+          }
+        } catch (e) {
+          console.error('处理新评论数据出错:', e);
+          // 出错时，回退到重新请求评论列表
+          data.currentPage = 1;
+          fetchComments();
+        }
+      } else {
+        // 如果没有返回评论数据，则刷新评论列表
+        data.currentPage = 1;
+        fetchComments();
+      }
     } else {
       uni.showToast({
         title: response.message || '评论失败',
-        icon: 'none'
+        icon: 'none',
+        duration: 2000
       });
     }
   } catch (error) {
     console.error('提交评论出错:', error);
+    uni.hideLoading();
     uni.showToast({
       title: '网络错误，请稍后重试',
-      icon: 'none'
+      icon: 'none',
+      duration: 2000
     });
   }
 };

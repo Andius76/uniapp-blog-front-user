@@ -379,12 +379,9 @@ export function deleteArticle(articleId) {
  * @return {Promise} - 返回包含评论列表的Promise
  */
 export function getArticleComments(articleId, params = {}) {
-  return http.get(`/api/article/comments/${articleId}`, {
-    params: { 
-      page: params.page || 1,
-      pageSize: params.pageSize || 10
-    }
-  });
+  // 确保articleId是字符串类型
+  const articleIdStr = String(articleId);
+  return http.get(`/api/article/${articleIdStr}/comments`, params);
 }
 
 /**
@@ -392,12 +389,26 @@ export function getArticleComments(articleId, params = {}) {
  * @param {number|string} articleId - 文章ID
  * @param {Object} commentData - 评论数据
  * @param {string} commentData.content - 评论内容
- * @param {number|null} commentData.parentId - 父评论ID，回复评论时使用
- * @param {number|null} commentData.replyUserId - 回复的用户ID
+ * @param {string|null} commentData.parentId - 父评论ID，回复评论时使用
+ * @param {string|null} commentData.replyUserId - 回复的用户ID
  * @return {Promise} - 返回评论结果的Promise
  */
 export function commentArticle(articleId, commentData) {
-  return http.post(`/api/article/comment/${articleId}`, commentData);
+  // 确保articleId是字符串类型
+  const articleIdStr = String(articleId);
+  
+  // 创建新的数据对象，确保所有ID都是字符串类型
+  const processedData = {
+    content: commentData.content,
+    articleId: commentData.articleId || articleIdStr, // 确保有articleId字段
+    parentId: commentData.parentId ? String(commentData.parentId) : null,
+    replyUserId: commentData.replyUserId ? String(commentData.replyUserId) : null
+  };
+  
+  console.log('处理后的评论数据:', processedData);
+  
+  // 发送POST请求
+  return http.post(`/api/article/${articleIdStr}/comment`, processedData);
 }
 
 /**
@@ -407,10 +418,13 @@ export function commentArticle(articleId, commentData) {
  * @return {Promise} - 返回操作结果的Promise
  */
 export function likeComment(commentId, isLike) {
+  // 确保commentId是字符串类型
+  const commentIdStr = String(commentId);
+  
   if (isLike) {
-    return http.post(`/api/comment/like/${commentId}`);
+    return http.post(`/api/article/comment/${commentIdStr}/like`);
   } else {
-    return http.delete(`/api/comment/like/${commentId}`);
+    return http.delete(`/api/article/comment/${commentIdStr}/like`);
   }
 }
 
@@ -465,4 +479,4 @@ export function getUserLikedArticles(userId, params) {
 
 /**
  * 获取文章收藏列表
- */ 
+ */
