@@ -95,7 +95,7 @@
           <view class="comment-list">
             <view v-for="(comment, index) in data.comments" :key="comment.id" class="comment-card">
               <view class="comment-item">
-                <image :src="comment.avatar" class="comment-avatar"/>
+                <image :src="formatImageUrl(comment.avatar)" class="comment-avatar"/>
                 <view class="comment-content">
                   <view class="comment-header">
                     <text class="comment-author">{{ comment.author }}</text>
@@ -118,21 +118,24 @@
               <!-- 评论回复区域 -->
               <view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
                 <view v-for="(reply, replyIndex) in comment.replies" :key="reply.id" class="reply-item">
-                  <view class="reply-content">
-                    <text class="reply-author">{{ reply.author }}</text>
-                    <text v-if="reply.replyUser" class="reply-to">回复</text>
-                    <text v-if="reply.replyUser" class="reply-to-author">@{{ reply.replyUser }}</text>
-                    <text class="reply-text selectable" @longpress="copyText(reply.content)">：{{ reply.content }}</text>
-                  </view>
-                  <view class="reply-footer">
-                    <text class="reply-time">{{ formatDate(reply.createTime) }}</text>
-                    <view class="reply-actions">
-                      <view class="like-action" @click="handleReplyLike(index, replyIndex)">
-                        <uni-icons :type="reply.isLiked ? 'heart-filled' : 'heart'" size="14" 
-                          :color="reply.isLiked ? '#ff6b6b' : '#999'"/>
-                        <text :class="{'liked': reply.isLiked}">{{ reply.likeCount || 0 }}</text>
+                  <image :src="formatImageUrl(reply.avatar)" class="reply-avatar"/>
+                  <view class="reply-content-wrapper">
+                    <view class="reply-content">
+                      <text class="reply-author">{{ reply.author }}</text>
+                      <text v-if="reply.replyUser" class="reply-to">回复</text>
+                      <text v-if="reply.replyUser" class="reply-to-author">@{{ reply.replyUser }}</text>
+                      <text class="reply-text selectable" @longpress="copyText(reply.content)">：{{ reply.content }}</text>
+                    </view>
+                    <view class="reply-footer">
+                      <text class="reply-time">{{ formatDate(reply.createTime) }}</text>
+                      <view class="reply-actions">
+                        <view class="like-action" @click="handleReplyLike(index, replyIndex)">
+                          <uni-icons :type="reply.isLiked ? 'heart-filled' : 'heart'" size="14" 
+                            :color="reply.isLiked ? '#ff6b6b' : '#999'"/>
+                          <text :class="{'liked': reply.isLiked}">{{ reply.likeCount || 0 }}</text>
+                        </view>
+                        <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
                       </view>
-                      <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
                     </view>
                   </view>
                 </view>
@@ -503,7 +506,7 @@ const fetchComments = async () => {
         }
         
         // 确保头像URL正确
-        avatar = formatImageUrl(avatar || '/static/images/avatar.png');
+        avatar = avatar || '/static/images/avatar.png';
         
         // 主评论
         const formattedComment = {
@@ -530,7 +533,7 @@ const fetchComments = async () => {
             const replyId = String(reply.id);
             
             // 处理回复中的用户信息
-            let replyUserId, replyAuthor;
+            let replyUserId, replyAuthor, replyAvatar;
             if (reply.userId) {
               replyUserId = String(reply.userId);
             } else if (reply.author && reply.author.id) {
@@ -541,10 +544,13 @@ const fetchComments = async () => {
             
             if (reply.author && typeof reply.author === 'object') {
               replyAuthor = reply.author.nickname || "未知用户";
+              replyAvatar = reply.author.avatar || "/static/images/avatar.png";
             } else if (reply.author) {
               replyAuthor = reply.author;
+              replyAvatar = reply.avatar || "/static/images/avatar.png";
             } else {
               replyAuthor = reply.nickname || "未知用户";
+              replyAvatar = reply.avatar || "/static/images/avatar.png";
             }
             
             // 处理回复目标用户
@@ -559,6 +565,7 @@ const fetchComments = async () => {
             return {
               id: replyId,
               author: replyAuthor,
+              avatar: replyAvatar,
               content: reply.content,
               createTime: reply.createTime,
               userId: replyUserId,
@@ -1809,6 +1816,8 @@ html, body {
       height: 80rpx;
       border-radius: 50%;
       margin-right: 20rpx;
+      flex-shrink: 0;
+      background-color: #f0f0f0; // 添加背景色防止头像加载时的空白
     }
     
     .comment-content {
@@ -1927,6 +1936,23 @@ html, body {
   margin-bottom: 16rpx;
   padding-bottom: 16rpx;
   border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: flex-start;
+}
+
+.reply-avatar {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+  background-color: #f0f0f0; // 添加背景色防止头像加载时的空白
+}
+
+.reply-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .reply-item:last-child {
