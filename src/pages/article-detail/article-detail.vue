@@ -130,7 +130,14 @@
                   </view>
                   <view class="reply-footer">
                     <text class="reply-time">{{ formatDate(reply.createTime) }}</text>
-                    <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
+                    <view class="reply-actions">
+                      <view class="like-action" @click="handleReplyLike(index, replyIndex)">
+                        <uni-icons :type="reply.isLiked ? 'heart-filled' : 'heart'" size="14" 
+                          :color="reply.isLiked ? '#ff6b6b' : '#999'"/>
+                        <text :class="{'liked': reply.isLiked}">{{ reply.likeCount || 0 }}</text>
+                      </view>
+                      <text class="reply-btn" @click="replyToReply(index, replyIndex)">回复</text>
+                    </view>
                   </view>
                 </view>
                 
@@ -459,7 +466,9 @@ const fetchComments = async () => {
               createTime: reply.createTime,
               userId: replyUserId,
               replyUser: replyToUser,
-              replyUserId: replyToUserId
+              replyUserId: replyToUserId,
+              likeCount: reply.likeCount !== undefined ? parseInt(reply.likeCount) || 0 : 0,
+              isLiked: reply.isLiked || false
             };
           });
         }
@@ -1271,6 +1280,95 @@ const copyText = (text) => {
     }
   });
 };
+
+// 处理回复点赞
+const handleReplyLike = async (commentIndex, replyIndex) => {
+  // 检查用户是否登录
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    uni.showToast({
+      title: '请先登录',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateTo({
+        url: '/pages/login/login'
+      });
+    }, 1500);
+    return;
+  }
+  
+  const comment = data.comments[commentIndex];
+  if (!comment || !comment.replies || !comment.replies[replyIndex]) return;
+  
+  const reply = comment.replies[replyIndex];
+  
+  try {
+    // 确保点赞数是有效数字
+    if (isNaN(reply.likeCount)) {
+      reply.likeCount = 0;
+    }
+    
+    // 更新界面
+    const newIsLiked = !reply.isLiked;
+    reply.isLiked = newIsLiked;
+    reply.likeCount = parseInt(reply.likeCount) || 0; // 确保是数字
+    reply.likeCount += newIsLiked ? 1 : -1;
+    
+    // 确保点赞数不小于0
+    if (reply.likeCount < 0) {
+      reply.likeCount = 0;
+    }
+    
+    // 发送请求 - 确保replyId参数使用字符串类型
+    const replyId = String(reply.id);
+    const response = await likeComment(replyId, newIsLiked);
+    
+    if (response.code !== 200) {
+      // 请求失败，恢复状态
+      reply.isLiked = !newIsLiked;
+      reply.likeCount += newIsLiked ? -1 : 1;
+      
+      // 确保点赞数不小于0
+      if (reply.likeCount < 0) {
+        reply.likeCount = 0;
+      }
+      
+      uni.showToast({
+        title: response.message || (newIsLiked ? '点赞失败' : '取消点赞失败'),
+        icon: 'none'
+      });
+    } else {
+      // 请求成功，更新点赞数（使用后端返回的数据）
+      if (response.data && response.data.likeCount !== undefined) {
+        reply.likeCount = parseInt(response.data.likeCount) || 0;
+      }
+      
+      // 显示点赞成功提示
+      uni.showToast({
+        title: newIsLiked ? '点赞成功' : '已取消点赞',
+        icon: 'success',
+        duration: 1500
+      });
+    }
+  } catch (error) {
+    console.error('回复点赞操作出错:', error);
+    // 发生错误，恢复状态
+    const newIsLiked = !reply.isLiked;
+    reply.isLiked = newIsLiked;
+    reply.likeCount += newIsLiked ? 1 : -1;
+    
+    // 确保点赞数不小于0
+    if (reply.likeCount < 0) {
+      reply.likeCount = 0;
+    }
+    
+    uni.showToast({
+      title: '网络错误，请稍后重试',
+      icon: 'none'
+    });
+  }
+};
 </script>
 
 <style lang="scss">
@@ -1765,12 +1863,38 @@ html, body {
 .reply-footer {
   display: flex;
   justify-content: space-between;
-  margin-top: 8rpx;
-}
+  align-items: center;
+  font-size: 24rpx;
+  
+  .reply-time {
+    color: #999;
+  }
 
-.reply-time {
-  font-size: 22rpx;
-  color: #999;
+  .reply-btn {
+    color: #666;
+    padding: 8rpx 0;
+  }
+  
+  .reply-actions {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+    
+    .like-action {
+      display: flex;
+      align-items: center;
+      gap: 4rpx;
+      
+      text {
+        font-size: 24rpx;
+        color: #999;
+        
+        &.liked {
+          color: #ff6b6b;
+        }
+      }
+    }
+  }
 }
 
 .more-replies {
