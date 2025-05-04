@@ -325,10 +325,13 @@ export function likeArticle(articleId, isLike) {
  * @return {Promise} - 返回操作结果的Promise
  */
 export function collectArticle(articleId, isCollect) {
+  // 确保articleId是字符串类型
+  const articleIdStr = String(articleId);
+  
   if (isCollect) {
-    return http.post(`/api/article/collect/${articleId}`);
+    return http.post(`/api/article/collect/${articleIdStr}`);
   } else {
-    return http.delete(`/api/article/collect/${articleId}`);
+    return http.delete(`/api/article/collect/${articleIdStr}`);
   }
 }
 

@@ -74,21 +74,21 @@
           </view>
         </view>
 
-        <!-- 互动操作栏 -->
+        <!-- 互动操作栏 - 放在标签区域下方 -->
         <view class="action-bar">
           <view class="action-item" @click="handleLike">
             <uni-icons :type="data.article.isLiked ? 'heart-filled' : 'heart'" size="24" 
               :color="data.article.isLiked ? '#ff6b6b' : '#666'"/>
-            <text>{{ data.article.likeCount }}</text>
+            <text>{{ data.article.likeCount || 0 }}</text>
           </view>
           <view class="action-item" @click="handleCollect">
             <uni-icons :type="data.article.isCollected ? 'star-filled' : 'star'" size="24"
               :color="data.article.isCollected ? '#ffc107' : '#666'"/>
-            <text>{{ data.article.collectCount }}</text>
+            <text>{{ data.article.collectCount || 0 }}</text>
           </view>
           <view class="action-item" @click="handleComment">
             <uni-icons type="chatbubble" size="24" color="#666"/>
-            <text>{{ data.article.commentCount }}</text>
+            <text>{{ data.article.commentCount || 0 }}</text>
           </view>
         </view>
 
@@ -296,10 +296,50 @@ const fetchArticleDetail = async () => {
   
   try {
     const response = await getArticleDetail(data.articleId);
+    console.log('文章详情响应:', JSON.stringify(response));
     
     if (response.code === 200 && response.data) {
       // 更新文章信息
       data.article = response.data;
+      
+      // 确保所有计数字段为有效数值
+      // 收藏数处理
+      if (data.article.collectCount === undefined || data.article.collectCount === null) {
+        data.article.collectCount = 0;
+      } else {
+        // 转换为数字类型
+        data.article.collectCount = parseInt(data.article.collectCount) || 0;
+      }
+      
+      // 点赞数处理
+      if (data.article.likeCount === undefined || data.article.likeCount === null) {
+        data.article.likeCount = 0;
+      } else {
+        // 转换为数字类型
+        data.article.likeCount = parseInt(data.article.likeCount) || 0;
+      }
+      
+      // 评论数处理
+      if (data.article.commentCount === undefined || data.article.commentCount === null) {
+        data.article.commentCount = 0;
+      } else {
+        // 转换为数字类型
+        data.article.commentCount = parseInt(data.article.commentCount) || 0;
+      }
+      
+      // 明确处理收藏状态，确保布尔值类型
+      data.article.isCollected = !!data.article.isCollected;
+      
+      // 明确处理点赞状态，确保布尔值类型
+      data.article.isLiked = !!data.article.isLiked;
+      
+      console.log('处理后的文章数据:', {
+        collectCount: data.article.collectCount,
+        commentCount: data.article.commentCount,
+        likeCount: data.article.likeCount,
+        isCollected: data.article.isCollected,
+        isLiked: data.article.isLiked
+      });
       
       // 加载评论
       fetchComments();
@@ -458,6 +498,18 @@ const fetchComments = async () => {
 onLoad((options) => {
   if (options?.id) {
     data.articleId = options.id;
+    
+    // 加载页面时，检查本地存储的收藏状态
+    try {
+      let collectedArticles = uni.getStorageSync('collectedArticles') || {};
+      if (collectedArticles[data.articleId]) {
+        console.log('从本地存储恢复收藏状态:', data.articleId);
+        // 这里暂不设置，等fetchArticleDetail获取后端数据后再确认
+      }
+    } catch (e) {
+      console.error('读取收藏状态错误:', e);
+    }
+    
     fetchArticleDetail();
   } else {
     data.error = '未找到文章ID';
@@ -501,10 +553,21 @@ const handleLike = async () => {
   }
   
   try {
+    // 确保点赞数是有效数字
+    if (isNaN(data.article.likeCount)) {
+      data.article.likeCount = 0;
+    }
+    
     // 更新界面
     const newIsLiked = !data.article.isLiked;
     data.article.isLiked = newIsLiked;
+    data.article.likeCount = parseInt(data.article.likeCount) || 0; // 确保是数字
     data.article.likeCount += newIsLiked ? 1 : -1;
+    
+    // 确保点赞数不小于0
+    if (data.article.likeCount < 0) {
+      data.article.likeCount = 0;
+    }
     
     // 发送请求
     const response = await likeArticle(data.articleId, newIsLiked);
@@ -514,9 +577,26 @@ const handleLike = async () => {
       data.article.isLiked = !newIsLiked;
       data.article.likeCount += newIsLiked ? -1 : 1;
       
+      // 确保点赞数不小于0
+      if (data.article.likeCount < 0) {
+        data.article.likeCount = 0;
+      }
+      
       uni.showToast({
         title: response.message || (newIsLiked ? '点赞失败' : '取消点赞失败'),
         icon: 'none'
+      });
+    } else {
+      // 请求成功，更新点赞数（使用后端返回的数据）
+      if (response.data && response.data.likeCount !== undefined) {
+        data.article.likeCount = parseInt(response.data.likeCount) || 0;
+      }
+      
+      // 显示点赞成功提示
+      uni.showToast({
+        title: newIsLiked ? '点赞成功' : '已取消点赞',
+        icon: 'success',
+        duration: 1500
       });
     }
   } catch (error) {
@@ -525,6 +605,11 @@ const handleLike = async () => {
     const newIsLiked = !data.article.isLiked;
     data.article.isLiked = newIsLiked;
     data.article.likeCount += newIsLiked ? 1 : -1;
+    
+    // 确保点赞数不小于0
+    if (data.article.likeCount < 0) {
+      data.article.likeCount = 0;
+    }
     
     uni.showToast({
       title: '网络错误，请稍后重试',
@@ -551,30 +636,72 @@ const handleCollect = async () => {
   }
   
   try {
+    // 更新界面前确保收藏数是有效数字
+    const collectCount = parseInt(data.article.collectCount) || 0;
+    
     // 更新界面
     const newIsCollected = !data.article.isCollected;
     data.article.isCollected = newIsCollected;
-    data.article.collectCount += newIsCollected ? 1 : -1;
+    
+    // 先更新UI以提高响应速度
+    data.article.collectCount = collectCount + (newIsCollected ? 1 : -1);
+    if (data.article.collectCount < 0) data.article.collectCount = 0;
+    
+    console.log('收藏状态变更:', {
+      isCollected: data.article.isCollected,
+      collectCount: data.article.collectCount
+    });
+    
+    // 确保articleId是字符串类型
+    const articleIdStr = String(data.articleId);
     
     // 发送请求
-    const response = await collectArticle(data.articleId, newIsCollected);
+    const response = await collectArticle(articleIdStr, newIsCollected);
+    console.log('收藏响应:', JSON.stringify(response));
+    
+    // 请求有响应，无论成功失败都使用服务器返回的收藏数
+    if (response.data && response.data.collectCount !== undefined) {
+      data.article.collectCount = parseInt(response.data.collectCount) || 0;
+    }
     
     if (response.code !== 200) {
-      // 请求失败，恢复状态
+      // 请求失败，恢复收藏状态
       data.article.isCollected = !newIsCollected;
-      data.article.collectCount += newIsCollected ? -1 : 1;
       
       uni.showToast({
         title: response.message || (newIsCollected ? '收藏失败' : '取消收藏失败'),
         icon: 'none'
       });
+    } else {
+      // 在本地存储中记录文章收藏状态，用于页面刷新后恢复
+      try {
+        let collectedArticles = uni.getStorageSync('collectedArticles') || {};
+        
+        if (newIsCollected) {
+          collectedArticles[articleIdStr] = true;
+        } else {
+          delete collectedArticles[articleIdStr];
+        }
+        
+        uni.setStorageSync('collectedArticles', collectedArticles);
+      } catch (e) {
+        console.error('存储收藏状态错误:', e);
+      }
+      
+      // 显示收藏成功提示
+      uni.showToast({
+        title: newIsCollected ? '收藏成功' : '已取消收藏',
+        icon: 'success',
+        duration: 1500
+      });
     }
   } catch (error) {
     console.error('收藏操作出错:', error);
     // 发生错误，恢复状态
-    const newIsCollected = !data.article.isCollected;
-    data.article.isCollected = newIsCollected;
-    data.article.collectCount += newIsCollected ? 1 : -1;
+    const collectCount = parseInt(data.article.collectCount) || 0;
+    data.article.isCollected = !data.article.isCollected;
+    data.article.collectCount = data.article.isCollected ? collectCount + 1 : collectCount - 1;
+    if (data.article.collectCount < 0) data.article.collectCount = 0;
     
     uni.showToast({
       title: '网络错误，请稍后重试',
@@ -635,10 +762,21 @@ const handleCommentLike = async (index) => {
   if (!comment) return;
   
   try {
+    // 确保评论点赞数是有效数字
+    if (isNaN(comment.likeCount)) {
+      comment.likeCount = 0;
+    }
+    
     // 更新界面
     const newIsLiked = !comment.isLiked;
     comment.isLiked = newIsLiked;
+    comment.likeCount = parseInt(comment.likeCount) || 0; // 确保是数字
     comment.likeCount += newIsLiked ? 1 : -1;
+    
+    // 确保点赞数不小于0
+    if (comment.likeCount < 0) {
+      comment.likeCount = 0;
+    }
     
     // 发送请求 - 确保commentId参数使用字符串类型
     const commentId = String(comment.id);
@@ -649,9 +787,26 @@ const handleCommentLike = async (index) => {
       comment.isLiked = !newIsLiked;
       comment.likeCount += newIsLiked ? -1 : 1;
       
+      // 确保点赞数不小于0
+      if (comment.likeCount < 0) {
+        comment.likeCount = 0;
+      }
+      
       uni.showToast({
         title: response.message || (newIsLiked ? '点赞失败' : '取消点赞失败'),
         icon: 'none'
+      });
+    } else {
+      // 请求成功，更新点赞数（使用后端返回的数据）
+      if (response.data && response.data.likeCount !== undefined) {
+        comment.likeCount = parseInt(response.data.likeCount) || 0;
+      }
+      
+      // 显示点赞成功提示
+      uni.showToast({
+        title: newIsLiked ? '点赞成功' : '已取消点赞',
+        icon: 'success',
+        duration: 1500
       });
     }
   } catch (error) {
@@ -660,6 +815,11 @@ const handleCommentLike = async (index) => {
     const newIsLiked = !comment.isLiked;
     comment.isLiked = newIsLiked;
     comment.likeCount += newIsLiked ? 1 : -1;
+    
+    // 确保点赞数不小于0
+    if (comment.likeCount < 0) {
+      comment.likeCount = 0;
+    }
     
     uni.showToast({
       title: '网络错误，请稍后重试',
@@ -894,11 +1054,29 @@ const showAllReplies = (index) => {
 const handleInputFocus = (e) => {
   // 处理键盘弹出
   data.inputBottom = e.detail.height || 0;
+  
+  // #ifdef APP-PLUS
+  // APP环境下，额外添加一些顶部间距，避免被键盘遮挡
+  if (data.inputBottom > 0) {
+    data.inputBottom += 10; // 增加额外间距
+  }
+  
+  // 如果在APP中键盘弹出，滚动页面确保内容可见
+  setTimeout(() => {
+    const commentSection = document.querySelector('.comment-section');
+    if (commentSection) {
+      commentSection.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, 300);
+  // #endif
 };
 
 // 处理输入框失去焦点
 const handleInputBlur = () => {
-  data.inputBottom = 0;
+  // 延迟重置输入框位置，避免闪烁
+  setTimeout(() => {
+    data.inputBottom = 0;
+  }, 100);
 };
 
 // 处理下拉刷新事件
@@ -1086,14 +1264,11 @@ onMounted(() => {
 
 .article-detail {
   // 修改为使用整个页面的滚动，而非内部scroll-view
-  padding-bottom: 120rpx; // 为评论输入框留出空间
+  padding-bottom: 150rpx !important; // 增加底部填充，确保内容不被评论框遮挡
   
   // #ifdef H5
   // H5环境增加阅读舒适度
-  padding: 0 40px 120rpx;
-  box-sizing: border-box;
-  
-  // 优化H5滚动条样式，应用于整个body
+  padding: 0 40px 150rpx !important;
   // #endif
 }
 
@@ -1309,32 +1484,53 @@ html, body {
 }
 
 .action-bar {
-  position: fixed;
-  bottom: 100rpx; // 调整位置以适应评论输入框
-  left: 0;
-  right: 0;
-  background-color: #fff;
+  // 修改样式，从固定定位改为正常布局流
+  position: relative; // 从fixed改为relative
   display: flex;
   justify-content: space-around;
-  padding: 20rpx 0;
+  padding: 30rpx 0;
+  margin: 20rpx 0;
+  background-color: #fff;
   border-top: 1rpx solid #eee;
-  box-shadow: 0 -2rpx 10rpx rgba(0,0,0,0.05);
+  border-bottom: 1rpx solid #eee;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+  z-index: 10;
   
   .action-item {
     display: flex;
+    flex-direction: column;
     align-items: center;
+    padding: 10rpx 20rpx;
     
     text {
-      margin-left: 10rpx;
+      margin-top: 8rpx;
       font-size: 28rpx;
       color: #666;
     }
+    
+    // #ifdef H5
+    transition: transform 0.2s ease;
+    &:hover {
+      transform: scale(1.05);
+    }
+    // #endif
   }
+  
+  // #ifdef H5
+  // 增强H5下的视觉效果
+  padding: 20px 0;
+  border-radius: 8px;
+  margin: 20px 0;
+  // #endif
 }
 
 .comment-section {
-  margin-top: 30rpx;
+  margin-top: 20rpx; // 减小与action-bar的距离
   padding: 20rpx 0;
+  
+  // #ifdef H5
+  margin-top: 10px;
+  // #endif
 }
   
   .section-title {
@@ -1536,6 +1732,13 @@ html, body {
   transform: translateX(-50%);
   border-radius: 12px 12px 0 0;
   padding: 15px 25px;
+  bottom: 0 !important; // 确保在H5中固定在底部
+  // #endif
+  
+  // #ifdef APP-PLUS
+  // APP环境优化键盘弹出体验
+  transition: bottom 0.3s;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); // 增加安全区域
   // #endif
   
   .comment-input {
