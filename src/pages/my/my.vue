@@ -74,6 +74,7 @@
 					@article-click="viewArticleDetail"
 					@like="handleLike"
 					@share="handleShare"
+					@comment="handleComment"
 					@edit="handleEditArticle"
 					@delete="handleDeleteArticle"
 				/>
@@ -795,7 +796,10 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleComment = (article) => {
-		viewArticleDetail(article.id);
+		// 跳转到文章详情页并显示评论部分
+		uni.navigateTo({
+			url: `/pages/article-detail/article-detail?id=${article.id}&showComments=true`
+		});
 	};
 
 	/**

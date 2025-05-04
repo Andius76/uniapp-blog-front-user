@@ -64,6 +64,12 @@
 						<text v-if="!showManageOptions">分享</text>
 					</view>
 					
+					<!-- 评论按钮 -->
+					<view class="action-item" @click.stop="handleComment(index)">
+						<uni-icons type="chat" size="20" color="#000"></uni-icons>
+						<text>{{article.commentCount || 0}}</text>
+					</view>
+					
 					<!-- 点赞按钮 -->
 					<view class="action-item" @click.stop="handleLike(index)">
 						<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
@@ -1287,4 +1293,4 @@
 			}
 		}
 	}
-</style> 
+</style>
