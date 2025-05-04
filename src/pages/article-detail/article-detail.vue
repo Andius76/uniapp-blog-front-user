@@ -66,7 +66,7 @@
               :key="index"
               class="tag-item"
             >
-              {{ tag.name }}
+              {{ tag }}
             </view>
           </view>
         </view>
