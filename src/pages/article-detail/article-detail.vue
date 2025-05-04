@@ -95,7 +95,11 @@
           <view class="comment-list">
             <view v-for="(comment, index) in data.comments" :key="comment.id" class="comment-card">
               <view class="comment-item">
-                <image :src="formatImageUrl(comment.avatar)" class="comment-avatar"/>
+                <image 
+                  :src="formatImageUrl(comment.avatar)" 
+                  class="comment-avatar"
+                  @error="() => handleAvatarError(index, 'comment')"
+                />
                 <view class="comment-content">
                   <view class="comment-header">
                     <text class="comment-author">{{ comment.author }}</text>
@@ -103,7 +107,7 @@
                       <view class="like-action" @click="handleCommentLike(index)">
                         <uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16" 
                           :color="comment.isLiked ? '#ff6b6b' : '#999'"/>
-                        <text :class="{'liked': comment.isLiked}">{{ comment.likeCount || 0 }}</text>
+                        <text :class="{'liked-text': comment.isLiked}">{{ comment.likeCount }}</text>
                       </view>
                     </view>
                   </view>
@@ -118,7 +122,11 @@
               <!-- 评论回复区域 -->
               <view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
                 <view v-for="(reply, replyIndex) in comment.replies" :key="reply.id" class="reply-item">
-                  <image :src="formatImageUrl(reply.avatar)" class="reply-avatar"/>
+                  <image 
+                    :src="formatImageUrl(reply.avatar)" 
+                    class="reply-avatar"
+                    @error="() => handleAvatarError(index, 'reply', replyIndex)"
+                  />
                   <view class="reply-content-wrapper">
                     <view class="reply-content">
                       <text class="reply-author">{{ reply.author }}</text>
@@ -315,14 +323,21 @@ const getBaseUrl = () => {
 
 // 处理图片URL的函数，确保使用完整URL
 const formatImageUrl = (url) => {
-  if (!url) return '';
+  console.log('处理图片URL:', url, '类型:', typeof url);
+  
+  // 对于空值或未定义，返回默认头像
+  if (!url) {
+    console.log('空URL，返回默认头像');
+    return '/static/images/avatar.png';
+  }
   
   // 移除URL中可能存在的多余空格
   url = url.trim();
   
-  // 确保不是null或undefined
-  if (url === 'null' || url === 'undefined') {
-    return '';
+  // 确保不是字符串形式的null或undefined
+  if (url === 'null' || url === 'undefined' || url === '') {
+    console.log('无效URL值，返回默认头像');
+    return '/static/images/avatar.png';
   }
   
   // 完整URL处理：如果已经是完整URL（包含http）则不处理
@@ -330,20 +345,26 @@ const formatImageUrl = (url) => {
     // 检查并修复双斜杠问题
     if (url.includes('//uploads')) {
       url = url.replace('//uploads', '/uploads');
+      console.log('修复双斜杠问题，结果:', url);
     }
+    console.log('返回完整URL:', url);
     return url;
   }
   // 静态资源处理：如果是静态资源路径则不处理
   else if (url.startsWith('/static')) {
+    console.log('返回静态资源路径:', url);
     return url;
   }
   // 其他情况：添加基础URL前缀
   else {
+    let fullUrl;
     if (url.startsWith('/')) {
-      return getBaseUrl() + url;
+      fullUrl = getBaseUrl() + url;
     } else {
-      return getBaseUrl() + '/' + url;
+      fullUrl = getBaseUrl() + '/' + url;
     }
+    console.log('构建完整URL:', fullUrl);
+    return fullUrl;
   }
 };
 
@@ -488,25 +509,37 @@ const fetchComments = async () => {
         
         // 处理用户信息（适配后端返回结构）
         let userId, nickname, avatar;
-        if (comment.author) {
+        
+        // 增强用户信息提取逻辑
+        if (comment.author && typeof comment.author === 'object') {
           // 新版后端返回格式
-          userId = String(comment.author.id);
-          nickname = comment.author.nickname;
-          avatar = comment.author.avatar;
+          userId = String(comment.author.id || 0);
+          nickname = comment.author.nickname || "未知用户";
+          avatar = comment.author.avatar || "";
+          console.log('从author对象提取头像:', avatar);
+        } else if (comment.user && typeof comment.user === 'object') {
+          // 另一种可能的后端返回格式
+          userId = String(comment.user.id || 0);
+          nickname = comment.user.nickname || "未知用户";
+          avatar = comment.user.avatar || "";
+          console.log('从user对象提取头像:', avatar);
         } else if (comment.userId) {
           // 旧版后端返回格式
           userId = String(comment.userId);
-          nickname = comment.nickname;
-          avatar = comment.avatar;
+          nickname = comment.nickname || "未知用户";
+          avatar = comment.avatar || "";
+          console.log('从评论直接字段提取头像:', avatar);
         } else {
           // 默认值
           userId = "0";
           nickname = "未知用户";
-          avatar = "/static/images/avatar.png";
+          avatar = "";
+          console.log('使用默认头像');
         }
         
-        // 确保头像URL正确
-        avatar = avatar || '/static/images/avatar.png';
+        // 确保头像URL正确 - 一定要使用默认头像
+        avatar = formatImageUrl(avatar);
+        console.log('处理后的头像URL:', avatar);
         
         // 主评论
         const formattedComment = {
@@ -532,26 +565,42 @@ const fetchComments = async () => {
             // 确保回复中的ID也是字符串类型
             const replyId = String(reply.id);
             
-            // 处理回复中的用户信息
+            // 增强回复用户信息提取逻辑
             let replyUserId, replyAuthor, replyAvatar;
+            
+            // 处理回复中的用户ID
             if (reply.userId) {
               replyUserId = String(reply.userId);
             } else if (reply.author && reply.author.id) {
               replyUserId = String(reply.author.id);
+            } else if (reply.user && reply.user.id) {
+              replyUserId = String(reply.user.id);
             } else {
               replyUserId = "0";
             }
             
+            // 处理回复中的用户昵称和头像
             if (reply.author && typeof reply.author === 'object') {
               replyAuthor = reply.author.nickname || "未知用户";
-              replyAvatar = reply.author.avatar || "/static/images/avatar.png";
+              replyAvatar = reply.author.avatar || "";
+              console.log('回复：从author对象提取头像:', replyAvatar);
+            } else if (reply.user && typeof reply.user === 'object') {
+              replyAuthor = reply.user.nickname || "未知用户";
+              replyAvatar = reply.user.avatar || "";
+              console.log('回复：从user对象提取头像:', replyAvatar);
             } else if (reply.author) {
               replyAuthor = reply.author;
-              replyAvatar = reply.avatar || "/static/images/avatar.png";
+              replyAvatar = reply.avatar || "";
+              console.log('回复：从reply直接字段提取头像:', replyAvatar);
             } else {
               replyAuthor = reply.nickname || "未知用户";
-              replyAvatar = reply.avatar || "/static/images/avatar.png";
+              replyAvatar = reply.avatar || "";
+              console.log('回复：从nickname字段提取头像:', replyAvatar);
             }
+            
+            // 处理头像URL，确保使用完整URL和默认头像
+            replyAvatar = formatImageUrl(replyAvatar);
+            console.log('回复：处理后的头像URL:', replyAvatar);
             
             // 处理回复目标用户
             let replyToUserId = null;
@@ -1475,6 +1524,27 @@ const handleReplyLike = async (commentIndex, replyIndex) => {
     });
   }
 };
+
+// 处理头像加载错误
+const handleAvatarError = (commentIndex, type, replyIndex) => {
+  console.log('头像加载失败', commentIndex, type, replyIndex);
+  if (type === 'comment') {
+    // 主评论头像加载失败
+    if (data.comments[commentIndex]) {
+      console.log('主评论头像加载失败，设置默认头像', data.comments[commentIndex].avatar);
+      data.comments[commentIndex].avatar = '/static/images/avatar.png';
+    }
+  } else if (type === 'reply' && replyIndex !== undefined) {
+    // 回复评论头像加载失败
+    if (data.comments[commentIndex] && 
+        data.comments[commentIndex].replies && 
+        data.comments[commentIndex].replies[replyIndex]) {
+      console.log('回复评论头像加载失败，设置默认头像', 
+                 data.comments[commentIndex].replies[replyIndex].avatar);
+      data.comments[commentIndex].replies[replyIndex].avatar = '/static/images/avatar.png';
+    }
+  }
+};
 </script>
 
 <style lang="scss">
@@ -1817,7 +1887,9 @@ html, body {
       border-radius: 50%;
       margin-right: 20rpx;
       flex-shrink: 0;
-      background-color: #f0f0f0; // 添加背景色防止头像加载时的空白
+      background-color: #f0f0f0; /* 添加背景色防止头像加载时的空白 */
+      object-fit: cover; /* 确保头像适当裁剪填充 */
+      border: 1rpx solid #eee; /* 添加边框使头像更清晰 */
     }
     
     .comment-content {
@@ -1929,8 +2001,8 @@ html, body {
   background-color: #f0f0f0;
   border-radius: 12rpx;
   padding: 16rpx;
-        margin-top: 10rpx;
-      }
+  margin-top: 10rpx;
+}
 
 .reply-item {
   margin-bottom: 16rpx;
@@ -1946,7 +2018,9 @@ html, body {
   border-radius: 50%;
   margin-right: 16rpx;
   flex-shrink: 0;
-  background-color: #f0f0f0; // 添加背景色防止头像加载时的空白
+  background-color: #f0f0f0; /* 添加背景色防止头像加载时的空白 */
+  object-fit: cover; /* 确保头像适当裁剪填充 */
+  border: 1rpx solid #eee; /* 添加边框使头像更清晰 */
 }
 
 .reply-content-wrapper {

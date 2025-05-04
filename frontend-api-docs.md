@@ -406,6 +406,83 @@
   - 建议使用CDN加速图片加载，提升国际化访问体验
   - 应使用WebP等现代图片格式优化加载性能
 
+### 3. 评论头像处理最佳实践
+
+**说明：** 在文章详情页的评论和回复中，需要正确处理用户头像。
+
+- **处理流程：**
+  1. 从后端API接收评论数据时，可能存在多种格式的头像数据
+  2. 使用`formatImageUrl`函数统一处理头像URL
+  3. 为空或无效的头像URL提供默认头像
+
+- **主要函数实现：**
+  ```js
+  // 处理图片URL，针对头像进行特殊处理
+  const formatImageUrl = (url) => {
+    // 对于空值或未定义，返回默认头像
+    if (!url) return '/static/images/avatar.png';
+    
+    // 移除URL中可能存在的多余空格
+    url = url.trim();
+    
+    // 确保不是字符串形式的null或undefined
+    if (url === 'null' || url === 'undefined') {
+      return '/static/images/avatar.png';
+    }
+    
+    // 完整URL处理：如果已经是完整URL（包含http）则不处理
+    if (url.startsWith('http')) {
+      // 检查并修复双斜杠问题
+      if (url.includes('//uploads')) {
+        url = url.replace('//uploads', '/uploads');
+      }
+      return url;
+    }
+    // 静态资源处理：如果是静态资源路径则不处理
+    else if (url.startsWith('/static')) {
+      return url;
+    }
+    // 其他情况：添加基础URL前缀
+    else {
+      if (url.startsWith('/')) {
+        return getBaseUrl() + url;
+      } else {
+        return getBaseUrl() + '/' + url;
+      }
+    }
+  };
+  ```
+
+- **应用场景：**
+  - 主评论的用户头像处理：`<image :src="formatImageUrl(comment.avatar)" class="comment-avatar"/>`
+  - 回复评论的用户头像处理：`<image :src="formatImageUrl(reply.avatar)" class="reply-avatar"/>`
+  - 文章作者头像处理
+
+- **样式最佳实践：**
+  ```css
+  .comment-avatar {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 50%;
+    margin-right: 20rpx;
+    flex-shrink: 0;
+    background-color: #f0f0f0; /* 添加背景色防止头像加载时的空白 */
+    object-fit: cover; /* 确保头像适当裁剪填充 */
+    border: 1rpx solid #eee; /* 添加边框使头像更清晰 */
+  }
+  
+  .reply-avatar {
+    width: 60rpx;
+    height: 60rpx;
+    border-radius: 50%;
+    margin-right: 16rpx;
+    flex-shrink: 0;
+    background-color: #f0f0f0;
+    object-fit: cover;
+    border: 1rpx solid #eee;
+  }
+  ```
+
 ## 用户资料管理相关接口
 
 ### 1. 获取用户个人信息
