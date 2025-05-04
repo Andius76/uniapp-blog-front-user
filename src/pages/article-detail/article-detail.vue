@@ -29,6 +29,13 @@
         <view class="article-header">
           <text class="article-title selectable" @longpress="copyText(data.article.title)">{{ data.article.title }}</text>
           <view class="meta-info">
+            <!-- 添加作者头像 -->
+            <image 
+              v-if="data.article.author && data.article.author.avatar" 
+              :src="formatImageUrl(data.article.author.avatar)" 
+              class="author-avatar"
+              @error="handleAuthorAvatarError"
+            />
             <text class="author">{{ data.article.author.nickname }}</text>
             <text class="publish-time">{{ formatDate(data.article.createTime) }}</text>
           </view>
@@ -403,6 +410,27 @@ const handleCoverImageError = () => {
     console.log(`使用默认图片作为封面(原URL:${originalUrl})`);
     data.article.coverImage = '/static/images/img1.png';
   }
+};
+
+// 处理作者头像加载失败
+const handleAuthorAvatarError = () => {
+  console.error(`作者头像加载失败:`, data.article.author?.avatar);
+  
+  // 记录原始URL用于调试
+  const originalUrl = data.article.author?.avatar;
+  
+  // 如果加载失败，尝试修复一些常见问题
+  if (data.article.author?.avatar && data.article.author.avatar.includes('http://localhost:8080')) {
+    // 替换localhost可能不可访问的问题
+    const fixedUrl = data.article.author.avatar.replace('http://localhost:8080', getBaseUrl());
+    console.log(`尝试修复作者头像localhost URL: ${data.article.author.avatar} -> ${fixedUrl}`);
+    data.article.author.avatar = fixedUrl;
+    return; // 给修复的URL一次机会
+  }
+  
+  // 使用默认头像
+  console.log(`使用默认头像作为作者头像(原URL:${originalUrl})`);
+  data.article.author.avatar = '/static/images/avatar.png';
 };
 
 // 加载文章详情
@@ -1662,6 +1690,22 @@ html, body {
     margin-top: 20rpx;
     display: flex;
     align-items: center;
+    
+    .author-avatar {
+      width: 60rpx;
+      height: 60rpx;
+      border-radius: 50%;
+      margin-right: 10rpx;
+      flex-shrink: 0;
+      background-color: #f0f0f0; /* 添加背景色防止头像加载时的空白 */
+      object-fit: cover; /* 确保头像适当裁剪填充 */
+      border: 1rpx solid #eee; /* 添加边框使头像更清晰 */
+      
+      // #ifdef H5
+      width: 32px;
+      height: 32px;
+      // #endif
+    }
     
     .author {
       font-size: 28rpx;
