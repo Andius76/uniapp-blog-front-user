@@ -7,7 +7,11 @@
       @refresherrestore="onRestore"
       :refresher-background="'#f2f2f2'"
       refresher-default-style="black"
-      @scrolltolower="loadMoreComments">
+      @scrolltolower="loadMoreComments"
+      @scroll="handleScroll"
+      :id="'article-scroll-view'"
+      @touchstart="handleTouchStart"
+      @touchend="handleTouchEnd">
       <!-- 返回按钮 - 在非H5环境下显示 -->
       <!-- #ifndef H5 -->
       <view class="back-button" @click="goBack">
@@ -20,6 +24,13 @@
         <uni-icons type="checkmarkempty" size="16" color="#09BB07"></uni-icons>
         <text>刷新成功</text>
       </view>
+      
+      <!-- #ifdef H5 -->
+      <!-- 自定义刷新指示器 -->
+      <view class="refresh-indicator" :class="{'visible': data.isScrollingDown}">
+        <text>下拉可以刷新</text>
+      </view>
+      <!-- #endif -->
       
       <!-- 加载中提示 -->
       <view class="loading-container" v-if="data.loading">
@@ -185,11 +196,18 @@
       />
       <button class="send-btn" :disabled="!data.commentContent.trim()" @click="submitComment">发送</button>
     </view>
+    
+    <!-- #ifdef H5 -->
+    <!-- 滚动到顶部按钮 -->
+    <view class="scroll-top-btn" :class="{'visible': data.showScrollTopBtn}" @click="scrollToTop">
+      <uni-icons type="top" size="22" color="#ffffff"></uni-icons>
+    </view>
+    <!-- #endif -->
   </view>
 </template>
 
 <script setup>
-import { reactive, onMounted } from 'vue';
+import { reactive, onMounted, onUnmounted } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getArticleDetail, likeArticle, collectArticle, getArticleComments, commentArticle, likeComment } from '@/api/article';
 
@@ -229,7 +247,13 @@ const data = reactive({
   currentPage: 1, // 当前评论页码
   pageSize: 10, // 每页评论数量
   hasMoreComments: true, // 是否还有更多评论
-  isLoadingMore: false // 是否正在加载更多评论
+  isLoadingMore: false, // 是否正在加载更多评论
+  
+  // H5滑块优化相关
+  showScrollTopBtn: false, // 是否显示滚动到顶部按钮
+  isScrollingDown: false, // 是否正在向下滚动
+  lastScrollTop: 0, // 上次滚动位置
+  scrollTimer: null // 滚动定时器
 });
 
 // 日期格式化函数
@@ -896,7 +920,16 @@ const onRefresh = () => {
 // 刷新文章数据
 const refreshArticleData = async () => {
   try {
+    // 显示加载提示
+    uni.showLoading({
+      title: '刷新中...',
+      mask: true
+    });
+    
     await fetchArticleDetail();
+    
+    // 隐藏加载提示
+    uni.hideLoading();
     
     // 刷新完成后显示成功提示
     data.refreshing = false;
@@ -906,9 +939,20 @@ const refreshArticleData = async () => {
     setTimeout(() => {
       data.showRefreshSuccess = false;
     }, 2000);
+    
+    // 震动反馈
+    // #ifdef APP-PLUS || MP-WEIXIN
+    uni.vibrateShort();
+    // #endif
   } catch (error) {
     console.error('刷新文章数据出错:', error);
     data.refreshing = false;
+    uni.hideLoading();
+    
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
   }
 };
 
@@ -940,6 +984,121 @@ const formatHtmlContent = (htmlContent) => {
   
   return content;
 };
+
+// 处理滚动事件
+const handleScroll = (e) => {
+  // 获取当前滚动位置
+  const scrollTop = e.detail.scrollTop;
+  
+  // 根据滚动位置决定是否显示回到顶部按钮
+  data.showScrollTopBtn = scrollTop > 300;
+  
+  // 判断滚动方向
+  const isScrollingDown = scrollTop > data.lastScrollTop;
+  data.isScrollingDown = isScrollingDown && scrollTop < 100; // 仅在顶部附近显示下拉提示
+  
+  // 更新上次滚动位置
+  data.lastScrollTop = scrollTop;
+  
+  // 防抖处理
+  if (data.scrollTimer) {
+    clearTimeout(data.scrollTimer);
+  }
+  
+  data.scrollTimer = setTimeout(() => {
+    // 滚动停止后，隐藏下拉提示
+    data.isScrollingDown = false;
+  }, 200);
+};
+
+// 滚动到顶部
+const scrollToTop = () => {
+  // 使用选择器查询获取滚动视图元素
+  const query = uni.createSelectorQuery();
+  query.select('.article-detail').boundingClientRect();
+  query.selectViewport().scrollOffset();
+  query.exec(res => {
+    if (res && res[0]) {
+      // 使用uni-app的API滚动到顶部
+      uni.pageScrollTo({
+        scrollTop: 0,
+        duration: 300
+      });
+      
+      // H5环境下使用DOM API完成流畅滚动
+      // #ifdef H5
+      const scrollView = document.querySelector('.article-detail');
+      if (scrollView) {
+        scrollView.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
+      // #endif
+    }
+  });
+};
+
+// 添加触摸滑动支持
+let touchStartY = 0;
+let touchEndY = 0;
+
+// 触摸开始事件
+const handleTouchStart = (event) => {
+  // #ifdef H5
+  // 在H5环境中处理原生事件对象
+  if (event.touches) {
+    touchStartY = event.touches[0].pageY;
+  } else if (event.changedTouches) {
+    // 处理uni-app事件对象
+    touchStartY = event.changedTouches[0].pageY;
+  } else if (event.detail && event.detail.touches) {
+    // 处理scroll-view传递的事件对象
+    touchStartY = event.detail.touches[0].pageY;
+  }
+  // #endif
+  
+  // #ifndef H5
+  // 非H5环境直接使用uni-app事件对象
+  touchStartY = event.touches[0].pageY;
+  // #endif
+};
+
+// 触摸结束事件
+const handleTouchEnd = (event) => {
+  // #ifdef H5
+  // 在H5环境中处理原生事件对象
+  if (event.changedTouches) {
+    touchEndY = event.changedTouches[0].pageY;
+  } else if (event.detail && event.detail.changedTouches) {
+    // 处理scroll-view传递的事件对象
+    touchEndY = event.detail.changedTouches[0].pageY;
+  }
+  // #endif
+  
+  // #ifndef H5
+  // 非H5环境直接使用uni-app事件对象
+  touchEndY = event.changedTouches[0].pageY;
+  // #endif
+  
+  const diff = touchEndY - touchStartY;
+  
+  // 下拉幅度大于100px且当前在顶部区域，触发刷新
+  if (diff > 100 && data.lastScrollTop < 50) {
+    onRefresh();
+  }
+};
+
+// 设置页面加载完成后的钩子
+onMounted(() => {
+  // 在下一帧执行，确保DOM已经渲染
+  setTimeout(() => {
+    // #ifdef H5
+    // H5环境下不再需要额外添加事件监听
+    // 因为模板中已经绑定了事件处理函数
+    // #endif
+  }, 20);
+});
 </script>
 
 <style lang="scss">
@@ -966,6 +1125,29 @@ const formatHtmlContent = (htmlContent) => {
   // H5环境增加阅读舒适度
   padding: 0 40px;
   box-sizing: border-box;
+  
+  // 优化H5滚动条样式
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+  
+  // 添加平滑滚动
+  scroll-behavior: smooth;
   // #endif
 }
 
@@ -1636,6 +1818,135 @@ const formatHtmlContent = (htmlContent) => {
   
   .comment-input-container {
     bottom: 30px;
+  }
+}
+
+// 滑动反馈优化
+.article-detail {
+  // 添加滑动阻尼效果
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain; // 防止滚动穿透
+  
+  // 滑动时的交互反馈
+  .refresh-indicator {
+    transition: all 0.3s ease;
+    opacity: 0;
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    pointer-events: none;
+    z-index: 100;
+    
+    &.visible {
+      opacity: 1;
+    }
+  }
+}
+
+// 添加滚动到顶部按钮样式
+.scroll-top-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 120px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(67, 97, 238, 0.8);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 99;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+  
+  &.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+// 优化滑动触感
+@supports (-webkit-overflow-scrolling: touch) {
+  .article-detail {
+    touch-action: pan-y;
+    scroll-snap-type: y proximity;
+    
+    // 平滑滚动过渡
+    & > * {
+      scroll-snap-align: start;
+    }
+    
+    // 滑动终点定义
+    .article-header {
+      scroll-snap-align: start;
+      scroll-margin-top: 20px;
+    }
+    
+    .tag-section {
+      scroll-snap-align: start;
+    }
+    
+    .comment-section {
+      scroll-snap-align: start;
+      scroll-margin-top: 20px;
+    }
+    
+    .action-bar {
+      scroll-snap-align: end;
+    }
+  }
+}
+
+// 过渡动画优化
+.scroll-top-btn {
+  // 改进动画
+  will-change: opacity, transform;
+  animation-fill-mode: both;
+}
+
+// 滚动过程中的视觉提示
+.scrolling-indicator {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  width: 3px;
+  height: 100px;
+  background: rgba(200, 200, 200, 0.3);
+  border-radius: 3px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  
+  &.visible {
+    opacity: 1;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 30px;
+    background: #4361ee;
+    border-radius: 3px;
+    top: 0;
+    transform-origin: center top;
+    transition: transform 0.2s;
   }
 }
 // #endif
