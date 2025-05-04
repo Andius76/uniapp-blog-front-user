@@ -4,7 +4,7 @@
 		<!-- #ifdef H5 -->
 		<scroll-view scroll-y class="article-scroll" @scrolltolower="handleLoadMore" :refresher-enabled="true"
 			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
-			refresher-background="#f5f5f5">
+			refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop">
 			<!-- 网格布局文章列表 -->
 			<view class="article-grid">
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
@@ -80,6 +80,11 @@
 					<uni-icons type="info" size="50" color="#ddd"></uni-icons>
 					<text>{{ emptyText }}</text>
 				</view>
+			</view>
+			
+			<!-- 回到顶部按钮 -->
+			<view v-if="showBackTop" class="back-to-top" @click="scrollToTop">
+				<uni-icons type="top" size="20" color="#fff"></uni-icons>
 			</view>
 		</scroll-view>
 		<!-- #endif -->
@@ -266,6 +271,33 @@
 	const noMoreData = ref(false);
 	const currentPage = ref(1);
 	const pageSize = ref(10);
+	
+	// 滚动相关
+	const scrollTop = ref(0);
+	const showBackTop = ref(false);
+	const oldScrollTop = ref(0);
+	
+	// 处理滚动事件
+	const handleScroll = (e) => {
+		// 获取滚动条位置
+		const scrollTop = e.detail.scrollTop;
+		
+		// 当滚动超过500rpx时显示回到顶部按钮
+		showBackTop.value = scrollTop > 500;
+		
+		// 保存旧的滚动位置用于后续比较
+		oldScrollTop.value = scrollTop;
+	};
+	
+	// 回到顶部
+	const scrollToTop = () => {
+		scrollTop.value = 0; // 设置滚动位置为0
+		
+		// 延迟隐藏按钮，保证动画流畅
+		setTimeout(() => {
+			showBackTop.value = false;
+		}, 300);
+	};
 
 	// 获取当前登录用户信息
 	const getCurrentUserId = () => {
@@ -1227,12 +1259,64 @@
 			height: v-bind(height);
 		}
 
+		// 回到顶部按钮
+		.back-to-top {
+			position: fixed;
+			bottom: 140rpx;
+			right: 30rpx;
+			width: 80rpx;
+			height: 80rpx;
+			background-color: rgba(67, 97, 238, 0.8);
+			border-radius: 50%;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
+			z-index: 100;
+			animation: fadeIn 0.3s;
+			transition: all 0.3s;
+			
+			&:hover {
+				background-color: rgba(67, 97, 238, 1);
+				transform: translateY(-3rpx);
+				box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.3);
+			}
+			
+			&:active {
+				transform: scale(0.95);
+			}
+		}
+		
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(20rpx);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
 		// 网格布局样式 (H5模式)
 		.article-grid {
 			width: 100%;
 			display: flex;
 			flex-wrap: wrap;
 			padding: 10rpx;
+			padding-bottom: 100rpx; // 添加底部内边距，确保最后一行不被遮挡
+			
+			// #ifdef H5
+			// 添加顶部的小间距，防止内容太靠近顶部
+			padding-top: 20rpx;
+			
+			// 添加适当的底部内边距
+			padding-bottom: 140rpx;
+			
+			// 确保容器足够宽以放置多列
+			min-width: 100%;
+			box-sizing: border-box;
+			// #endif
 			
 			.article-grid-item {
 				width: 25%; // 默认一行4个
@@ -1619,7 +1703,11 @@
 			color: #999;
 			margin-top: 20rpx;
 			padding-top: 20rpx;
-			padding-bottom: 50rpx; // 增加底部间距
+			padding-bottom: 120rpx; // 增加底部间距，确保不被底部导航栏遮挡
+
+			// #ifdef H5
+			padding-bottom: 160rpx; // H5环境下增加更多的底部间距
+			// #endif
 
 			// 无内容提示
 			.no-content {
