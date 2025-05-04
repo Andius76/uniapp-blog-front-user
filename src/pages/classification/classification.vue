@@ -373,39 +373,23 @@ const loadMore = () => {
 const viewArticleDetail = (index) => {
 	// 获取文章完整数据
 	const article = articleList.value[index];
+	const articleId = article.id;
 	
-	// 创建要传递的文章数据对象
-	const articleData = {
-		id: article.id,
-		title: article.title,
-		content: article.summary, // 这里使用摘要，实际项目中可能需要获取完整内容
-		author: article.author,
-		publishTime: article.publishTime || '2025-05-01 12:00', // 假设有发布时间
-		tags: article.tags || [],
-		likeCount: article.likeCount,
-		commentCount: article.commentCount,
-		collectCount: article.collectCount,
-		isLiked: article.isLiked,
-		isCollected: article.isCollected,
-		imageType: article.imageType,
-		coverImg: article.coverImg,
-		images: article.images
-	};
+	// #ifdef H5
+	// H5环境下，新窗口打开文章详情页
+	// 获取正确的基础路径
+	const currentUrl = window.location.href;
+	const baseUrl = currentUrl.split('#')[0];
+	const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
+	window.open(detailUrl, '_blank');
+	// #endif
 	
-	// 将数据转换为JSON字符串并进行URI编码
-	const articleDataStr = encodeURIComponent(JSON.stringify(articleData));
-	
-	// 跳转到文章详情页面，传递文章数据
+	// #ifndef H5
+	// 非H5环境下，正常跳转
 	uni.navigateTo({
-		url: `/pages/article-detail/article-detail?articleData=${articleDataStr}`
+		url: `/pages/article-detail/article-detail?id=${articleId}`
 	});
-	
-	/* 
-	// 如果文章详情页面支持通过ID获取数据，也可以只传ID
-	uni.navigateTo({
-		url: `/pages/article-detail/article-detail?id=${article.id}`
-	});
-	*/
+	// #endif
 };
 
 /**

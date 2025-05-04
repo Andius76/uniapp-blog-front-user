@@ -21,7 +21,7 @@ function getBaseUrl() {
 	// 获取当前运行的平台
 	// #ifdef APP-PLUS
 	// APP端不能使用localhost/127.0.0.1，需要使用本机IP地址
-	return 'http://10.9.83.43:8080'; // 请替换为开发服务器的IP地址
+	return 'http://10.9.99.181:8080'; // 请替换为开发服务器的IP地址
 	// #endif
 
 	// #ifdef H5 || MP-WEIXIN
@@ -169,7 +169,7 @@ function request(options) {
 
 	// 请求拦截
 	const interceptedOptions = requestInterceptor(mergedOptions);
-	
+
 	// 详细日志
 	console.log('===== 发起请求 =====');
 	console.log('请求URL:', interceptedOptions.url);

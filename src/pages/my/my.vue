@@ -772,7 +772,19 @@
 	 * @param {Number} articleId - 文章ID
 	 */
 	const viewArticleDetail = (articleId) => {
+		// #ifdef H5
+		// H5环境下，新窗口打开文章详情页
+		// 获取正确的基础路径
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
+		window.open(detailUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转
 		navigateTo(`/pages/article-detail/article-detail?id=${articleId}`);
+		// #endif
 	};
 
 	/**
@@ -1253,17 +1265,17 @@
 			lockTimeoutId = null;
 		}
 		
-		// 清理刷新定时器
-		if (refreshTimeoutId) {
-			clearTimeout(refreshTimeoutId);
-			refreshTimeoutId = null;
-		}
-		
-		// 重置全局加载锁
-		globalLoadingLock.reset();
-		
-		// 恢复原始手势设置
-		restoreBackGesture();
+	// 清理刷新定时器
+	if (refreshTimeoutId) {
+		clearTimeout(refreshTimeoutId);
+		refreshTimeoutId = null;
+	}
+	
+	// 重置全局加载锁
+	globalLoadingLock.reset();
+	
+	// 恢复原始手势设置
+	restoreBackGesture();
 	});
 </script>
 

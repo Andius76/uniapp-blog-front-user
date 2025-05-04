@@ -537,13 +537,19 @@
 	 * @param {Number} id - 文章ID
 	 */
 	const viewArticleDetail = (id) => {
-		uni.showToast({
-			title: '查看文章详情: ' + id,
-			icon: 'none'
-		});
+		// #ifdef H5
+		// H5环境下，新窗口打开文章详情页
+		// 获取正确的基础路径
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${id}`;
+		window.open(detailUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转
 		uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${id}` });
-		// TODO: 跳转到文章详情页
-		// uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${id}` });
+		// #endif
 	};
 
 	/**
