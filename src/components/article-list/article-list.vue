@@ -31,7 +31,7 @@
 				<!-- 文章内容 -->
 				<view class="article-content" @click="handleArticleClick(article.id)">
 					<text class="article-title">{{article.title}}</text>
-					<text class="article-summary">{{article.summary}}...全文</text>
+					<text class="article-summary">{{stripHtmlTags(article.summary, 100)}}{{article.summary ? '...全文' : ''}}</text>
 
 					<!-- 文章标签 -->
 					<view class="article-tags" v-if="article.tags && article.tags.length > 0">
@@ -498,6 +498,13 @@
 				article.author.nickname = currentUserInfo.nickname || article.author.nickname;
 			}
 			
+			// 处理文章摘要中可能存在的HTML标签
+			if (article.summary) {
+				// 保留原始摘要，以便将来可能的富文本渲染
+				article.originalSummary = article.summary;
+				// 不在这里处理，而是在显示时使用stripHtmlTags函数处理
+			}
+			
 			// 确保头像地址是完整URL
 			if (article.author.avatar && !article.author.avatar.startsWith('http') && !article.author.avatar.startsWith('/static')) {
 				if (article.author.avatar.startsWith('/')) {
@@ -692,6 +699,21 @@
 		// #ifdef MP-WEIXIN
 		return 'http://localhost:8080';
 		// #endif
+	};
+	
+	/**
+	 * 去除HTML标签，只保留纯文本内容，并限制文本长度
+	 * 用于处理可能包含HTML标签的文章摘要
+	 * @param {String} html - 可能包含HTML标签的文本
+	 * @param {Number} maxLength - 最大文本长度，默认为100个字符
+	 * @return {String} 去除HTML标签后的纯文本，并限制长度
+	 */
+	const stripHtmlTags = (html, maxLength = 100) => {
+		if (!html) return '';
+		// 替换所有HTML标签为空字符串
+		const plainText = html.replace(/<\/?[^>]+(>|$)/g, '');
+		// 限制文本长度
+		return plainText.length > maxLength ? plainText.substring(0, maxLength) : plainText;
 	};
 	
 	// 处理下拉刷新
@@ -1154,6 +1176,13 @@
 					margin-bottom: 20rpx;
 					line-height: 1.5;
 					display: block;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					display: -webkit-box;
+					-webkit-line-clamp: 3; /* 限制最多显示3行 */
+					-webkit-box-orient: vertical;
+					word-break: break-word;
+					max-height: 126rpx; /* 3行文本的大致高度 (28rpx * 1.5 * 3) */
 				}
 				
 				// 文章标签
