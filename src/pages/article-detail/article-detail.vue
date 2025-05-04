@@ -32,7 +32,7 @@
       <block v-else-if="data.article.id">
         <!-- 文章标题区域 -->
         <view class="article-header">
-          <text class="article-title">{{ data.article.title }}</text>
+          <text class="article-title selectable" @longpress="copyText(data.article.title)">{{ data.article.title }}</text>
           <view class="meta-info">
             <text class="author">{{ data.article.author.nickname }}</text>
             <text class="publish-time">{{ formatDate(data.article.createTime) }}</text>
@@ -46,6 +46,7 @@
             :src="data.article.coverImage"
             mode="aspectFill"
             class="cover-image"
+            @click="previewCoverImage"
           />
         </view>
         
@@ -53,11 +54,11 @@
         <view class="content-section">
           <!-- 简单文本渲染 -->
           <view v-if="!data.article.htmlContent">
-            <text class="article-content">{{ data.article.content }}</text>
+            <text class="article-content selectable">{{ data.article.content }}</text>
           </view>
           
           <!-- 富文本渲染预留 -->
-          <rich-text v-else class="article-rich-content" :nodes="formatHtmlContent(data.article.htmlContent)"></rich-text>
+          <rich-text v-else class="article-rich-content selectable" :nodes="formatHtmlContent(data.article.htmlContent)"></rich-text>
         </view>
 
         <!-- 标签区域 -->
@@ -110,7 +111,7 @@
                       </view>
                     </view>
                   </view>
-                  <text class="comment-text">{{ comment.content }}</text>
+                  <text class="comment-text selectable" @longpress="copyText(comment.content)">{{ comment.content }}</text>
                   <view class="comment-footer">
                     <text class="comment-time">{{ formatDate(comment.createTime) }}</text>
                     <text class="reply-btn" @click="replyToComment(index)">回复</text>
@@ -125,7 +126,7 @@
                     <text class="reply-author">{{ reply.author }}</text>
                     <text v-if="reply.replyUser" class="reply-to">回复</text>
                     <text v-if="reply.replyUser" class="reply-to-author">@{{ reply.replyUser }}</text>
-                    <text class="reply-text">：{{ reply.content }}</text>
+                    <text class="reply-text selectable" @longpress="copyText(reply.content)">：{{ reply.content }}</text>
                   </view>
                   <view class="reply-footer">
                     <text class="reply-time">{{ formatDate(reply.createTime) }}</text>
@@ -1244,6 +1245,32 @@ onMounted(() => {
     // #endif
   }, 20);
 });
+
+// 封面图片预览
+const previewCoverImage = () => {
+  if (data.article.coverImage) {
+    uni.previewImage({
+      urls: [data.article.coverImage],
+      current: data.article.coverImage,
+      indicator: 'number',
+      loop: false
+    });
+  }
+};
+
+// 长按复制文本功能
+const copyText = (text) => {
+  uni.setClipboardData({
+    data: text,
+    success: () => {
+      uni.showToast({
+        title: '复制成功',
+        icon: 'success',
+        duration: 1500
+      });
+    }
+  });
+};
 </script>
 
 <style lang="scss">
@@ -1349,6 +1376,7 @@ html, body {
     line-height: 1.4;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    user-select: text;
     
     // #ifdef H5
     font-size: 36px;
@@ -1405,10 +1433,30 @@ html, body {
     height: 400rpx;
     border-radius: 8rpx;
     object-fit: cover;
+    position: relative;
     
     // #ifdef H5
     height: 400px;
     border-radius: 8px;
+    cursor: pointer; // 鼠标变为手指形状，提示可点击
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: scale(1.01);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      
+      &::after {
+        content: '点击查看大图';
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+    }
     // #endif
   }
   
@@ -1613,6 +1661,43 @@ html, body {
   word-wrap: break-word;
   white-space: normal;
   overflow-wrap: break-word;
+  
+  // #ifdef H5
+  padding: 6px 0;
+  
+  &.selectable {
+    position: relative;
+    
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.02);
+      border-radius: 4px;
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      right: -16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    &:hover::after {
+      content: '长按复制';
+      opacity: 1;
+      width: auto;
+      height: auto;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  }
+  // #endif
 }
 
 .comment-footer {
@@ -2139,6 +2224,18 @@ html, body {
     transform-origin: center top;
     transition: transform 0.2s;
   }
+}
+
+/* 可选择文本样式 */
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+  
+  // #ifdef APP-PLUS || MP-WEIXIN
+  position: relative;
+  z-index: 1; // 确保文本在最上层，可以被选择
+  // #endif
 }
 // #endif
 </style>
