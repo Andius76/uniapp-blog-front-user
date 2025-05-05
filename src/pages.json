@@ -4,7 +4,10 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "首页"
+				"navigationBarTitleText": "首页",
+				"h5": {
+					"removePageWrapper": true
+				}
 			}
 		},
 		{

@@ -1,17 +1,25 @@
 <template>
 	<view class="container">
-		<!-- 固定在顶部的标题和搜索栏 -->
+		<!-- 顶部导航栏 -->
+		<!-- #ifdef H5 -->
 		<view class="header-fixed">
 			<view class="header-top">
+				<navigator url="/pages/index/index" class="logo">首页</navigator>
+				<navigator url="/pages/my/my" class="my-link">我的</navigator>
+				<!-- 搜索框 -->
 				<view class="search-bar">
 					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
 					<button class="search-btn" @click="handleSearch">搜索</button>
 				</view>
-
-				<button type="primary" size="mini" class="publish-btn" @click="handlePost"
-					:style="{ borderRadius: '50rpx', padding: '0 30rpx' }">
-					发表
-				</button>
+				<!-- 消息通知和用户头像 -->
+				<view class="header-right">
+					<view class="notification" @click="goToMessage">
+						<uni-icons type="notification" size="24" />
+					</view>
+					<view class="user-avatar" @click="goToUserProfile">
+						<image :src="userAvatar" mode="aspectFill"></image>
+					</view>
+				</view>
 			</view>
 
 			<!-- 导航菜单 -->
@@ -22,15 +30,91 @@
 				</view>
 			</view>
 		</view>
+		<!-- #endif -->
 
-		<!-- 内容区域，添加上边距为header高度 -->
+		<!-- APP和小程序的顶部布局 -->
+		<!-- #ifndef H5 -->
+		<view class="mp-header">
+			<!-- 搜索框 -->
+			<view class="search-bar">
+				<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
+				<button class="search-btn" @click="handleSearch">搜索</button>
+			</view>
+			<!-- 导航菜单 -->
+			<view class="nav-menu">
+				<view v-for="(item, index) in data.navItems" :key="index" class="nav-item"
+					:class="{ active: data.currentNav === index }" @click="switchNav(index)">
+					{{ item.name }}
+				</view>
+			</view>
+		</view>
+		<!-- #endif -->
+
+		<!-- 内容区域 -->
+		<!-- #ifdef H5 -->
 		<view class="content-area">
-			<!-- 使用ArticleList组件替换原有的文章列表 -->
+			<!-- 左侧空白区域 -->
+			<view class="left-sidebar"></view>
+
+			<!-- 中间文章列表区域 -->
+			<view class="main-content">
+				<ArticleList 
+					ref="articleListRef"
+					:key="data.currentNav"
+					:list-type="getListType()"
+					:height="getListHeight()"
+					:empty-text="'暂无文章内容'"
+					@article-click="viewArticleDetail"
+					@like="handleLike"
+					@share="handleShare"
+					@comment="handleComment"
+					@collect="handleCollect"
+				/>
+			</view>
+
+			<!-- 右侧创作中心区域 -->
+			<view class="right-sidebar">
+				<view class="creator-center">
+					<view class="creator-header">
+						<uni-icons type="compose" size="24" />
+						<text>创作中心</text>
+					</view>
+					<button class="write-btn" @click="handlePost">
+						<uni-icons type="write" size="16" />
+						<text>写文章</text>
+					</button>
+				</view>
+
+				<!-- 用户数据统计 -->
+				<view class="user-stats">
+					<view class="stat-item">
+						<uni-icons type="star" size="20" />
+						<text>我的收藏</text>
+						<text class="count">0</text>
+					</view>
+					<view class="stat-item">
+						<uni-icons type="heart" size="20" />
+						<text>我的关注</text>
+						<text class="count">0</text>
+					</view>
+					<view class="stat-item">
+						<uni-icons type="person" size="20" />
+						<text>我的粉丝</text>
+						<text class="count">0</text>
+					</view>
+				</view>
+			</view>
+		</view>
+		<!-- #endif -->
+
+		<!-- APP和小程序的内容区域 -->
+		<!-- #ifndef H5 -->
+		<view class="mp-content">
 			<ArticleList 
 				ref="articleListRef"
 				:key="data.currentNav"
 				:list-type="getListType()"
-				:height="getListHeight()"
+				:height="getMPListHeight()"
 				:empty-text="'暂无文章内容'"
 				@article-click="viewArticleDetail"
 				@like="handleLike"
@@ -39,6 +123,7 @@
 				@collect="handleCollect"
 			/>
 		</view>
+		<!-- #endif -->
 	</view>
 </template>
 
@@ -553,93 +638,346 @@
 		// 默认高度
 		return 'calc(100vh - 220rpx)';
 	};
+
+	// 添加获取APP和小程序文章列表高度的方法
+	const getMPListHeight = () => {
+		// #ifdef APP-PLUS || MP-WEIXIN
+		// 减去搜索框高度(90rpx)和导航菜单高度(80rpx)以及状态栏高度
+		return 'calc(100vh - 170rpx - var(--status-bar-height))';
+		// #endif
+		return '100vh';
+	};
 </script>
 
 <style lang="scss">
 	page {
 		background-color: #f5f5f5;
-		min-height: 100vh;
+		height: 100vh;
+		overflow: hidden;
 	}
+
+	// #ifdef H5
+	.uni-page-wrapper {
+		min-height: 100% !important;
+		height: auto !important;
+	}
+
+	.uni-page-body {
+		height: auto !important;
+		min-height: 100%;
+	}
+	// #endif
 
 	.container {
 		display: flex;
 		flex-direction: column;
-		position: relative;
 		height: 100vh;
+		overflow: hidden;
 	}
 
-	// 固定在顶部的标题和搜索栏
+	// 顶部导航栏
 	.header-fixed {
 		position: fixed;
 		top: 0;
 		left: 0;
 		right: 0;
-		background-color: #f5f5f5;
-		padding: 5rpx;
-		padding-top: calc(5rpx + var(--status-bar-height, 0px));
+		background-color: #fff;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-		// #ifdef APP-PLUS || MP-WEIXIN
-		padding-top: calc(5rpx + var(--status-bar-height, 25px));
-		// #endif
 
-		// 顶部区域(搜索栏和发表按钮)容器
 		.header-top {
 			display: flex;
 			align-items: center;
-			position: relative;
-			margin: 0 20rpx;
-		}
+			height: 60px;
+			padding: 0 20px;
+			max-width: 1200px;
+			margin: 0 auto;
 
-		// 搜索栏
-		.search-bar {
-			display: flex;
-			background: #fff;
-			border-radius: 40rpx;
-			overflow: hidden;
-			padding: 0 20rpx;
-			flex: 1;
-			box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+			.logo {
+				font-size: 20px;
+				font-weight: bold;
+				color: #333;
+				margin-right: 30px;
+			}
 
-			input {
+			.my-link {
+				font-size: 16px;
+				color: #666;
+				margin-right: 30px;
+			}
+
+			.search-bar {
 				flex: 1;
-				height: 80rpx;
-				padding: 0 20rpx;
-				font-size: 28rpx;
+				display: flex;
+				align-items: center;
+				background: #f5f5f5;
+				border-radius: 4px;
+				padding: 0 15px;
+				max-width: 500px;
+				margin: 0 20px;
+
+				input {
+					flex: 1;
+					height: 36px;
+					font-size: 14px;
+					background: transparent;
+					border: none;
+				}
+
+				.search-btn {
+					padding: 0 15px;
+					height: 32px;
+					line-height: 32px;
+					font-size: 14px;
+					color: #fff;
+					background: #4361ee;
+					border-radius: 4px;
+					margin-left: 10px;
+				}
+			}
+
+			.header-right {
+				display: flex;
+				align-items: center;
+				gap: 20px;
+
+				.notification {
+					cursor: pointer;
+				}
+
+				.user-avatar {
+					width: 40px;
+					height: 40px;
+					border-radius: 50%;
+					overflow: hidden;
+					cursor: pointer;
+
+					image {
+						width: 100%;
+						height: 100%;
+						object-fit: cover;
+					}
+				}
 			}
 		}
 
-		// 搜索按钮
-		.search-btn {
-			height: 60rpx;
-			line-height: 60rpx;
-			margin: 10rpx 0;
-			background-color: #4361ee;
-			color: #fff;
-			font-size: 26rpx;
-			border-radius: 30rpx;
-			padding: 0 30rpx;
-		}
-
-		// 发表按钮
-		.publish-btn {
-			height: 60rpx;
-			line-height: 60rpx;
-			padding: 0 30rpx;
-			font-size: 26rpx;
-			margin-left: 20rpx;
-		}
-
-		// 导航菜单
 		.nav-menu {
+			height: 46px;
+			border-top: 1px solid #f0f0f0;
 			display: flex;
-			padding: 10rpx 30rpx 5rpx;
-			background-color: #f5f5f5;
+			align-items: center;
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 0 20px;
 
 			.nav-item {
-				padding: 10rpx 24rpx;
-				margin: 0 15rpx;
-				font-size: 30rpx;
+				padding: 0 20px;
+				font-size: 16px;
+				color: #666;
+				position: relative;
+				cursor: pointer;
+
+				&.active {
+					color: #4361ee;
+					font-weight: bold;
+
+					&::after {
+						content: '';
+						position: absolute;
+						bottom: -13px;
+						left: 50%;
+						transform: translateX(-50%);
+						width: 24px;
+						height: 3px;
+						background-color: #4361ee;
+						border-radius: 1.5px;
+					}
+				}
+			}
+		}
+	}
+
+	// 内容区域
+	.content-area {
+		display: flex;
+		justify-content: space-between;
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 106px 20px 0;
+		gap: 20px;
+		position: relative;
+		height: 100%;
+		overflow: hidden;
+
+		.left-sidebar {
+			position: fixed;
+			width: 110px;
+			top: 106px;
+			bottom: 0;
+			background: transparent;
+			overflow: hidden;
+		}
+
+		.main-content {
+			flex: 1;
+			min-width: 0;
+			background: #fff;
+			border-radius: 4px;
+			padding: 20px;
+			margin-left: 130px;
+			margin-right: 320px;
+			overflow: hidden;
+		}
+
+		.right-sidebar {
+			position: fixed;
+			width: 300px;
+			top: 106px;
+			right: calc((100% - 1200px) / 2 + 20px);
+			bottom: 0;
+			background: transparent;
+			overflow: hidden;
+
+			.creator-center {
+				background: #fff;
+				border-radius: 4px;
+				padding: 20px;
+				margin-bottom: 20px;
+
+				.creator-header {
+					display: flex;
+					align-items: center;
+					gap: 10px;
+					margin-bottom: 15px;
+					font-size: 16px;
+					font-weight: bold;
+				}
+
+				.write-btn {
+					width: 100%;
+					height: 40px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					gap: 8px;
+					background: #4361ee;
+					color: #fff;
+					border-radius: 4px;
+					font-size: 14px;
+				}
+			}
+
+			.user-stats {
+				background: #fff;
+				border-radius: 4px;
+				padding: 20px;
+
+				.stat-item {
+					display: flex;
+					align-items: center;
+					gap: 10px;
+					padding: 12px 0;
+					border-bottom: 1px solid #f0f0f0;
+					cursor: pointer;
+
+					&:last-child {
+						border-bottom: none;
+					}
+
+					text {
+						color: #666;
+						font-size: 14px;
+					}
+
+					.count {
+						margin-left: auto;
+						color: #999;
+					}
+				}
+			}
+		}
+	}
+
+	// 全局禁用滚动条
+	::-webkit-scrollbar {
+		width: 0;
+		height: 0;
+		display: none;
+	}
+
+	// 响应式布局
+	@media screen and (max-width: 1200px) {
+		.content-area {
+			.left-sidebar {
+				display: none;
+			}
+			.main-content {
+				margin-left: 20px;
+			}
+			.right-sidebar {
+				right: 20px;
+			}
+		}
+	}
+
+	@media screen and (max-width: 960px) {
+		.content-area {
+			.main-content {
+				margin-right: 20px;
+			}
+			.right-sidebar {
+				display: none;
+			}
+		}
+	}
+
+	// APP和小程序的样式
+	// #ifndef H5
+	.mp-header {
+		background-color: #fff;
+		padding-top: var(--status-bar-height);
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 100;
+
+		.search-bar {
+			display: flex;
+			align-items: center;
+			padding: 20rpx;
+			background: #fff;
+
+			input {
+				flex: 1;
+				height: 70rpx;
+				background: #f5f5f5;
+				border-radius: 35rpx;
+				padding: 0 30rpx;
+				font-size: 28rpx;
+			}
+
+			.search-btn {
+				padding: 0 30rpx;
+				height: 70rpx;
+				line-height: 70rpx;
+				font-size: 28rpx;
+				color: #fff;
+				background: #4361ee;
+				border-radius: 35rpx;
+				margin-left: 20rpx;
+			}
+		}
+
+		.nav-menu {
+			display: flex;
+			padding: 20rpx 30rpx;
+			background: #fff;
+			border-bottom: 1rpx solid #f0f0f0;
+
+			.nav-item {
+				padding: 0 20rpx;
+				font-size: 28rpx;
 				color: #666;
 				position: relative;
 
@@ -650,7 +988,7 @@
 					&::after {
 						content: '';
 						position: absolute;
-						bottom: -6rpx;
+						bottom: -10rpx;
 						left: 50%;
 						transform: translateX(-50%);
 						width: 30rpx;
@@ -663,21 +1001,9 @@
 		}
 	}
 
-	// 内容区域
-	.content-area {
-		padding: 220rpx 20rpx 0rpx 20rpx;
-		// #ifdef APP-PLUS || MP-WEIXIN
-		padding-top: calc(220rpx + var(--status-bar-height, 25px));
-		// #endif
-		flex: 1;
+	.mp-content {
+		padding-top: calc(170rpx + var(--status-bar-height));
+		background: #f5f5f5;
 	}
-
-	// 全局样式覆盖
-	.uni-scroll-view-refresh {
-		background-color: #f5f5f5 !important;
-
-		&-inner {
-			color: #b82222;
-		}
-	}
+	// #endif
 </style>

@@ -47,5 +47,30 @@ onShow(() => {
 uni-tabbar {
   display: none !important;
 }
+
+/* 移除tabbar底部空白区域 */
+.uni-app--showtabbar uni-page-wrapper::after {
+  height: 0 !important;
+  display: none !important;
+}
+
+/* 移除uni-page-wrapper相关样式 */
+uni-page-wrapper {
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+uni-page-wrapper uni-page {
+  min-height: 100% !important;
+}
+
+uni-page-wrapper uni-page uni-page-head {
+  display: none !important;
+}
+
+uni-page-body {
+  height: auto !important;
+  min-height: 100% !important;
+}
 /* #endif */
 </style>
