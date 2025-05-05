@@ -45,14 +45,14 @@
 						<!-- 评论按钮 -->
 						<view class="action-item" @click.stop="handleComment(index)">
 							<uni-icons type="chat" size="20" color="#000"></uni-icons>
-							<text>{{article.commentCount || 0}}</text>
+							<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
 						</view>
 
 						<!-- 点赞按钮 -->
 						<view class="action-item" @click.stop="handleLike(index)">
 							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
 								:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
-							<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
+							<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
 						</view>
 
 						<!-- 编辑按钮（根据权限条件显示） -->
@@ -136,14 +136,14 @@
 					<!-- 评论按钮 -->
 					<view class="action-item" @click.stop="handleComment(index)">
 						<uni-icons type="chat" size="20" color="#000"></uni-icons>
-						<text>{{article.commentCount || 0}}</text>
+						<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
 					</view>
 
 					<!-- 点赞按钮 -->
 					<view class="action-item" @click.stop="handleLike(index)">
 						<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
 							:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
-						<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
+						<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
 					</view>
 
 					<!-- 编辑按钮（根据权限条件显示） -->
@@ -330,6 +330,28 @@
 			resetList();
 			loadArticles();
 		});
+		
+		// 监听文章点赞/收藏/评论事件
+		uni.$on('article_like_updated', (data) => {
+			console.log('接收到文章点赞更新事件:', data);
+			if (data.articleId && (data.likeCount !== undefined || data.isLiked !== undefined)) {
+				refreshArticleById(data.articleId, data);
+			}
+		});
+		
+		uni.$on('article_collect_updated', (data) => {
+			console.log('接收到文章收藏更新事件:', data);
+			if (data.articleId && (data.collectCount !== undefined || data.isCollected !== undefined)) {
+				refreshArticleById(data.articleId, data);
+			}
+		});
+		
+		uni.$on('article_comment_updated', (data) => {
+			console.log('接收到文章评论更新事件:', data);
+			if (data.articleId && data.commentCount !== undefined) {
+				refreshArticleById(data.articleId, data);
+			}
+		});
 
 		// 监听用户信息更新事件
 		uni.$on('user_info_updated', () => {
@@ -345,6 +367,9 @@
 	onBeforeUnmount(() => {
 		uni.$off('article_published');
 		uni.$off('article_updated');
+		uni.$off('article_like_updated');
+		uni.$off('article_collect_updated');
+		uni.$off('article_comment_updated');
 		uni.$off('user_info_updated');
 	});
 
@@ -529,6 +554,35 @@
 			const original = JSON.parse(JSON.stringify(article));
 			console.log('原始文章数据:', original);
 
+			// 检查数据库字段映射问题
+			// 统一点赞数字段
+			if (article.like_count !== undefined && article.likeCount === undefined) {
+				article.likeCount = article.like_count;
+			}
+			
+			// 统一评论数字段
+			if (article.comment_count !== undefined && article.commentCount === undefined) {
+				article.commentCount = article.comment_count;
+			}
+			
+			// 修正为0的点赞和评论数
+			article.likeCount = article.likeCount || 0;
+			article.commentCount = article.commentCount || 0;
+			
+			// 检查点赞状态字段
+			if (article.is_liked !== undefined && article.isLiked === undefined) {
+				article.isLiked = article.is_liked;
+			}
+			
+			// 检查收藏状态字段
+			if (article.is_collected !== undefined && article.isCollected === undefined) {
+				article.isCollected = article.is_collected;
+			}
+			
+			// 确保布尔值格式正确
+			article.isLiked = !!article.isLiked;
+			article.isCollected = !!article.isCollected;
+			
 			// 检查数据库字段映射 - 后端用cover_image，前端用coverImage
 			if (article.cover_image && !article.coverImage) {
 				console.log(`检测到cover_image字段映射问题[${article.id}], 进行修正`);
@@ -1075,7 +1129,24 @@
 
 	// 处理评论
 	const handleComment = (index) => {
-		emit('comment', articleList.value[index]);
+		const article = articleList.value[index];
+		
+		// #ifdef H5
+		// H5环境下，在新窗口打开文章评论页面
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`;
+		window.open(detailUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，跳转到文章详情页并显示评论区
+		uni.navigateTo({
+			url: `/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`
+		});
+		// #endif
+		
+		emit('comment', article);
 	};
 
 	// 处理收藏
@@ -1090,13 +1161,24 @@
 				title: '请先登录',
 				icon: 'none'
 			});
+			
+			// 可选：跳转到登录页
+			// uni.navigateTo({ url: '/pages/login/login' });
 			return;
 		}
 
 		try {
+			// 先保存原始收藏状态，以便在请求失败时恢复
+			const originalIsCollected = article.isCollected;
+			const originalCollectCount = article.collectCount || 0;
+			
+			// 提前在UI上更新，提供即时反馈
+			article.isCollected = !article.isCollected;
+			article.collectCount = (article.collectCount || 0) + (article.isCollected ? 1 : -1);
+			
 			// 构建请求
 			const url = `${baseUrl}/api/article/collect/${articleId}`;
-			const method = article.isCollected ? 'DELETE' : 'POST';
+			const method = originalIsCollected ? 'DELETE' : 'POST';
 
 			// 发起请求
 			uni.request({
@@ -1108,10 +1190,7 @@
 				},
 				success: (res) => {
 					if (res.statusCode === 200) {
-						// 切换收藏状态
-						article.isCollected = !article.isCollected;
-						article.collectCount = (article.collectCount || 0) + (article.isCollected ? 1 :
-							-1);
+						// 请求成功，收藏状态已更新
 
 						// 显示提示
 						uni.showToast({
@@ -1121,7 +1200,16 @@
 
 						// 触发事件
 						emit('collect', article);
+						
+						// 如果可能，从响应中获取确切的收藏数并更新
+						if (res.data && res.data.data && res.data.data.collectCount !== undefined) {
+							article.collectCount = res.data.data.collectCount;
+						}
 					} else {
+						// 请求失败，恢复原始状态
+						article.isCollected = originalIsCollected;
+						article.collectCount = originalCollectCount;
+						
 						uni.showToast({
 							title: res.data?.message || '操作失败',
 							icon: 'none'
@@ -1129,6 +1217,10 @@
 					}
 				},
 				fail: (err) => {
+					// 请求失败，恢复原始状态
+					article.isCollected = originalIsCollected;
+					article.collectCount = originalCollectCount;
+					
 					console.error('收藏操作失败:', err);
 					uni.showToast({
 						title: '网络异常，请稍后再试',
@@ -1157,13 +1249,24 @@
 				title: '请先登录',
 				icon: 'none'
 			});
+			
+			// 可选：跳转到登录页
+			// uni.navigateTo({ url: '/pages/login/login' });
 			return;
 		}
 
 		try {
+			// 先保存原始点赞状态，以便在请求失败时恢复
+			const originalIsLiked = article.isLiked;
+			const originalLikeCount = article.likeCount || 0;
+			
+			// 提前在UI上更新，提供即时反馈
+			article.isLiked = !article.isLiked;
+			article.likeCount = article.likeCount + (article.isLiked ? 1 : -1);
+			
 			// 构建请求
 			const url = `${baseUrl}/api/article/like/${articleId}`;
-			const method = article.isLiked ? 'DELETE' : 'POST';
+			const method = originalIsLiked ? 'DELETE' : 'POST';
 
 			// 发起请求
 			uni.request({
@@ -1175,9 +1278,7 @@
 				},
 				success: (res) => {
 					if (res.statusCode === 200) {
-						// 切换点赞状态
-						article.isLiked = !article.isLiked;
-						article.likeCount = (article.likeCount || 0) + (article.isLiked ? 1 : -1);
+						// 请求成功，点赞状态已更新
 
 						// 显示提示
 						uni.showToast({
@@ -1187,7 +1288,16 @@
 
 						// 触发事件
 						emit('like', article);
+						
+						// 如果可能，从响应中获取确切的点赞数并更新
+						if (res.data && res.data.data && res.data.data.likeCount !== undefined) {
+							article.likeCount = res.data.data.likeCount;
+						}
 					} else {
+						// 请求失败，恢复原始状态
+						article.isLiked = originalIsLiked;
+						article.likeCount = originalLikeCount;
+						
 						uni.showToast({
 							title: res.data?.message || '操作失败',
 							icon: 'none'
@@ -1195,6 +1305,10 @@
 					}
 				},
 				fail: (err) => {
+					// 请求失败，恢复原始状态
+					article.isLiked = originalIsLiked;
+					article.likeCount = originalLikeCount;
+					
 					console.error('点赞操作失败:', err);
 					uni.showToast({
 						title: '网络异常，请稍后再试',
@@ -1358,6 +1472,38 @@
 	const handleTouchEnd = () => {
 		// 重置触摸状态
 		isScrolling.value = false;
+	};
+
+	// 刷新特定文章的数据
+	const refreshArticleById = (articleId, updatedData) => {
+		if (!articleId || !updatedData) return;
+		
+		// 查找文章在列表中的索引
+		const index = articleList.value.findIndex(article => article.id == articleId);
+		if (index === -1) return;
+		
+		console.log(`刷新文章[${articleId}]数据:`, updatedData);
+		
+		// 更新文章数据
+		if (updatedData.likeCount !== undefined) {
+			articleList.value[index].likeCount = updatedData.likeCount;
+		}
+		
+		if (updatedData.isLiked !== undefined) {
+			articleList.value[index].isLiked = updatedData.isLiked;
+		}
+		
+		if (updatedData.commentCount !== undefined) {
+			articleList.value[index].commentCount = updatedData.commentCount;
+		}
+		
+		if (updatedData.collectCount !== undefined) {
+			articleList.value[index].collectCount = updatedData.collectCount;
+		}
+		
+		if (updatedData.isCollected !== undefined) {
+			articleList.value[index].isCollected = updatedData.isCollected;
+		}
 	};
 </script>
 

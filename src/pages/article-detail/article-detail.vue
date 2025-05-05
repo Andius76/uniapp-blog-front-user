@@ -929,6 +929,20 @@
 					icon: 'success',
 					duration: 1500
 				});
+
+				// 点赞成功后添加事件通知
+				uni.showToast({
+					title: newIsLiked ? '点赞成功' : '已取消点赞',
+					icon: 'success',
+					duration: 1500
+				});
+
+				// 发送全局事件，通知文章列表更新点赞状态
+				uni.$emit('article_like_updated', {
+					articleId: data.articleId,
+					isLiked: data.article.isLiked,
+					likeCount: data.article.likeCount
+				});
 			}
 		} catch (error) {
 			console.error('点赞操作出错:', error);
@@ -1024,6 +1038,20 @@
 					title: newIsCollected ? '收藏成功' : '已取消收藏',
 					icon: 'success',
 					duration: 1500
+				});
+
+				// 收藏成功后添加事件通知
+				uni.showToast({
+					title: newIsCollected ? '收藏成功' : '已取消收藏',
+					icon: 'success',
+					duration: 1500
+				});
+
+				// 发送全局事件，通知文章列表更新收藏状态
+				uni.$emit('article_collect_updated', {
+					articleId: data.articleId,
+					isCollected: data.article.isCollected, 
+					collectCount: data.article.collectCount
 				});
 			}
 		} catch (error) {
@@ -1360,6 +1388,13 @@
 					data.currentPage = 1;
 					fetchComments();
 				}
+
+				// 评论成功后添加事件通知
+				// 发送全局事件，通知文章列表更新评论数
+				uni.$emit('article_comment_updated', {
+					articleId: data.articleId,
+					commentCount: data.article.commentCount
+				});
 			} else {
 				uni.showToast({
 					title: response.message || '评论失败',
