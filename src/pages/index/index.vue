@@ -692,29 +692,32 @@
 			padding: 0 20px;
 			max-width: 1200px;
 			margin: 0 auto;
+			justify-content: center;
+			gap: 20px;
 
 			.logo {
-				font-size: 20px;
+				font-size: 18px;
 				font-weight: bold;
 				color: #333;
-				margin-right: 30px;
+				padding: 0 15px;
+				white-space: nowrap;
 			}
 
 			.my-link {
 				font-size: 16px;
 				color: #666;
-				margin-right: 30px;
+				padding: 0 15px;
+				white-space: nowrap;
 			}
 
 			.search-bar {
-				flex: 1;
+				flex: 0 1 400px;
 				display: flex;
 				align-items: center;
 				background: #f5f5f5;
 				border-radius: 4px;
 				padding: 0 15px;
-				max-width: 500px;
-				margin: 0 20px;
+				margin: 0 10px;
 
 				input {
 					flex: 1;
@@ -739,15 +742,17 @@
 			.header-right {
 				display: flex;
 				align-items: center;
-				gap: 20px;
+				gap: 15px;
+				white-space: nowrap;
 
 				.notification {
 					cursor: pointer;
+					padding: 0 5px;
 				}
 
 				.user-avatar {
-					width: 40px;
-					height: 40px;
+					width: 36px;
+					height: 36px;
 					border-radius: 50%;
 					overflow: hidden;
 					cursor: pointer;
@@ -766,16 +771,22 @@
 			border-top: 1px solid #f0f0f0;
 			display: flex;
 			align-items: center;
+			justify-content: flex-start;
 			max-width: 1200px;
 			margin: 0 auto;
-			padding: 0 20px;
+			padding: 0;
 
 			.nav-item {
-				padding: 0 20px;
+				padding: 0 25px;
 				font-size: 16px;
 				color: #666;
 				position: relative;
 				cursor: pointer;
+				transition: color 0.3s;
+				
+				&:first-child {
+					margin-left: 150px;
+				}
 
 				&.active {
 					color: #4361ee;
@@ -792,6 +803,10 @@
 						background-color: #4361ee;
 						border-radius: 1.5px;
 					}
+				}
+
+				&:hover {
+					color: #4361ee;
 				}
 			}
 		}
@@ -833,7 +848,7 @@
 			position: fixed;
 			width: 300px;
 			top: 106px;
-			right: calc((100% - 1200px) / 2 + 20px);
+			right: calc((100% - 1200px) / 2 + 30px);
 			bottom: 0;
 			background: transparent;
 			overflow: hidden;
@@ -843,6 +858,7 @@
 				border-radius: 4px;
 				padding: 20px;
 				margin-bottom: 20px;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 
 				.creator-header {
 					display: flex;
@@ -915,7 +931,7 @@
 				margin-left: 20px;
 			}
 			.right-sidebar {
-				right: 20px;
+				right: 30px;
 			}
 		}
 	}
