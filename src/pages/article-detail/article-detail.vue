@@ -1332,11 +1332,14 @@
 								const newReply = {
 									id: String(response.data.id),
 									author: response.data.author,
+									avatar: response.data.avatar || '/static/images/avatar.png', // 添加头像字段
 									content: response.data.content,
 									createTime: response.data.createTime,
 									userId: String(response.data.userId),
 									replyUser: data.replyTarget,
-									replyUserId: commentData.replyUserId
+									replyUserId: commentData.replyUserId,
+									likeCount: 0, // 初始化点赞数
+									isLiked: false // 初始化点赞状态
 								};
 
 								// 将回复添加到主评论的回复列表开头
