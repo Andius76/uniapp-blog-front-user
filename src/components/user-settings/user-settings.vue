@@ -1,21 +1,39 @@
 <template>
   <view class="user-settings-wrapper" @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
     <!-- 弹出层背景蒙版 -->
-    <view class="mask" @click="handleBackOrClose" v-if="visible"></view>
+    <view class="mask" :class="{ 'visible': panelVisible }" @click="handleBackOrClose" v-if="visible"></view>
     
     <!-- 设置面板 -->
-    <view class="settings-panel" :class="{ 'visible': visible, 'fullscreen': true, 'sliding': isSliding }">
+    <view 
+      class="settings-panel" 
+      :class="{ 
+        'visible': panelVisible, 
+        'fullscreen': true, 
+        'sliding': isSliding 
+      }"
+      :style="{ 
+        transform: isSliding ? `translateY(${Math.max(0, touchStartY.value - touchCurrentY)}px)` : '' 
+      }"
+    >
       <view class="panel-header">
         <text class="panel-title">
           {{ isConfirmingLogout ? '退出登录' : (isEditingNickname ? '修改昵称' : '用户设置') }}
         </text>
         <view class="close-btn" @click="handleBackOrClose">
-          <uni-icons :type="isEditingNickname || isConfirmingLogout ? 'left' : 'close'" size="24" color="#333"></uni-icons>
+          <uni-icons 
+            :type="isEditingNickname || isConfirmingLogout ? 'left' : 'close'" 
+            size="24" 
+            color="#333"
+          ></uni-icons>
         </view>
       </view>
       
       <!-- 主设置面板 -->
-      <view class="panel-content" v-if="!isEditingNickname && !isConfirmingLogout">
+      <view 
+        class="panel-content" 
+        v-if="!isEditingNickname && !isConfirmingLogout"
+        :class="{ 'panel-content--active': panelVisible }"
+      >
         <!-- 账号信息（邮箱）- 不可更改 -->
         <view class="settings-item non-clickable">
           <view class="item-label">
@@ -34,7 +52,11 @@
             <text>修改头像</text>
           </view>
           <view class="item-content">
-            <image class="avatar-preview" :src="processImageUrl(userInfo.avatar)" mode="aspectFill"></image>
+            <image 
+              class="avatar-preview" 
+              :src="processImageUrl(userInfo.avatar)" 
+              mode="aspectFill"
+            ></image>
             <uni-icons type="right" size="18" color="#999"></uni-icons>
           </view>
         </view>
@@ -61,7 +83,11 @@
       </view>
       
       <!-- 昵称编辑面板 -->
-      <view class="nickname-edit-panel" v-else-if="isEditingNickname">
+      <view 
+        class="nickname-edit-panel" 
+        v-else-if="isEditingNickname"
+        :class="{ 'panel-content--active': panelVisible }"
+      >
         <view class="nickname-input-container">
           <input 
             class="nickname-input"
@@ -69,33 +95,59 @@
             v-model="newNickname"
             placeholder="请输入新昵称"
             maxlength="20"
-            focus
+            :focus="isEditingNickname"
+            @focus="handleInputFocus"
+            @blur="handleInputBlur"
           />
-          <text class="char-count">{{ newNickname.length }}/20</text>
+          <text class="char-count" :class="{ 'char-count--warning': newNickname.length >= 15 }">
+            {{ newNickname.length }}/20
+          </text>
         </view>
         
         <view class="nickname-actions">
-          <view class="nickname-action-btn cancel" @click="cancelEditNickname">
+          <view 
+            class="nickname-action-btn cancel" 
+            :class="{ 'disabled': isProcessing }"
+            @click="cancelEditNickname"
+          >
             取消
           </view>
-          <view class="nickname-action-btn confirm" @click="updateNickname">
+          <view 
+            class="nickname-action-btn confirm" 
+            :class="{ 
+              'disabled': isProcessing || !newNickname.trim() || newNickname === originalNickname.value 
+            }"
+            @click="updateNickname"
+          >
             确认
           </view>
         </view>
       </view>
       
       <!-- 退出登录确认面板 -->
-      <view class="logout-confirm-panel" v-else-if="isConfirmingLogout">
+      <view 
+        class="logout-confirm-panel" 
+        v-else-if="isConfirmingLogout"
+        :class="{ 'panel-content--active': panelVisible }"
+      >
         <view class="logout-confirm-content">
           <uni-icons type="help" size="60" color="#ff6b6b"></uni-icons>
           <text class="logout-confirm-text">确定要退出登录吗？</text>
         </view>
         
         <view class="logout-actions">
-          <view class="logout-action-btn cancel" @click="cancelLogout">
+          <view 
+            class="logout-action-btn cancel" 
+            :class="{ 'disabled': isProcessing }"
+            @click="cancelLogout"
+          >
             取消
           </view>
-          <view class="logout-action-btn confirm" @click="logout">
+          <view 
+            class="logout-action-btn confirm" 
+            :class="{ 'disabled': isProcessing }"
+            @click="logout"
+          >
             确认退出
           </view>
         </view>
@@ -166,46 +218,71 @@ const touchStartX = ref(0);
 const touchStartY = ref(0);
 const isSliding = ref(false);
 const panelWidth = ref(0);
-const touchThreshold = 50; // 滑动阈值，超过这个值才认为是有效滑动
-const gestureLocked = ref(false); // 防止连续触发滑动关闭
+const touchThreshold = 50; // 滑动阈值
+const gestureLocked = ref(false); // 防止连续触发
+const panelVisible = ref(false); // 控制面板实际显示状态
 
-// 监听面板显示状态，显示时根据初始视图参数决定显示哪个界面
+// 添加处理状态
+const isProcessing = ref(false);
+const touchCurrentY = ref(0);
+const isInputFocused = ref(false);
+
+// 添加防抖控制
+let debounceTimer = null;
+const debounce = (fn, delay = 300) => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fn();
+    debounceTimer = null;
+  }, delay);
+};
+
+// 监听面板显示状态
 watch(() => props.visible, (newVal) => {
   if (newVal) {
-    // 如果面板显示，根据初始视图设置显示哪个界面
-    if (props.initialView === 'nickname') {
-      showNicknameEdit();
-    } else if (props.initialView === 'bio') {
-      // 如果需要处理bio编辑初始视图
-    }
-    // 注册返回按键监听和TabBar点击拦截
-    registerBackButtonListener();
-    registerTabBarInterceptor();
-    // 重置滑动状态
-    isSliding.value = false;
-    gestureLocked.value = false;
+    // 先设置面板为可见
+    panelVisible.value = true;
     
-    // 获取屏幕宽度
-    uni.getSystemInfo({
-      success: (res) => {
-        panelWidth.value = res.windowWidth;
+    // 延迟添加动画类，确保过渡效果正常
+    nextTick(() => {
+      // 如果面板显示，根据初始视图设置显示界面
+      if (props.initialView === 'nickname') {
+        showNicknameEdit();
       }
+      // 注册事件监听
+      registerBackButtonListener();
+      registerTabBarInterceptor();
+      // 重置状态
+      isSliding.value = false;
+      gestureLocked.value = false;
+      
+      // 获取屏幕信息
+      uni.getSystemInfo({
+        success: (res) => {
+          panelWidth.value = res.windowWidth;
+        }
+      });
     });
   } else {
-    // 面板隐藏时重置所有状态
-    isEditingNickname.value = false;
-    isConfirmingLogout.value = false;
-    hasUnsavedChanges.value = false;
-    
-    // 移除返回按键监听和TabBar点击拦截
-    unregisterBackButtonListener();
-    unregisterTabBarInterceptor();
-    
-    // 添加延时锁定滑动手势，防止连续两次滑动导致退出程序
-    gestureLocked.value = true;
-    setTimeout(() => {
-      gestureLocked.value = false;
-    }, 800); // 设置一个合理的延迟时间，避免连续滑动触发
+    // 面板关闭时使用防抖，避免频繁切换状态
+    debounce(() => {
+      // 先移除动画类
+      panelVisible.value = false;
+      // 重置所有状态
+      isEditingNickname.value = false;
+      isConfirmingLogout.value = false;
+      hasUnsavedChanges.value = false;
+      
+      // 移除事件监听
+      unregisterBackButtonListener();
+      unregisterTabBarInterceptor();
+      
+      // 锁定手势防止连续触发
+      gestureLocked.value = true;
+      setTimeout(() => {
+        gestureLocked.value = false;
+      }, 800);
+    });
   }
 });
 
@@ -260,14 +337,20 @@ const cancelAbandonChanges = () => {
 
 // 关闭设置面板
 const closeSettings = () => {
-  // 锁定手势一段时间，防止连续滑动
-  gestureLocked.value = true;
-  emit('update:visible', false);
+  // 如果正在处理中，直接返回
+  if (gestureLocked.value) return;
   
-  // 添加延时解锁，时间要长于面板关闭动画
+  // 锁定手势
+  gestureLocked.value = true;
+  
+  // 添加关闭动画
+  panelVisible.value = false;
+  
+  // 延迟发送关闭事件，等待动画完成
   setTimeout(() => {
+    emit('update:visible', false);
     gestureLocked.value = false;
-  }, 800);
+  }, 300);
 };
 
 /**
@@ -354,24 +437,90 @@ const cancelEditNickname = () => {
   hasUnsavedChanges.value = false;
 };
 
-// 更新昵称
-const updateNickname = () => {
-  if (!newNickname.value.trim()) {
-    uni.showToast({
-      title: '昵称不能为空',
-      icon: 'none'
-    });
+// 处理输入框焦点
+const handleInputFocus = () => {
+  isInputFocused.value = true;
+};
+
+const handleInputBlur = () => {
+  isInputFocused.value = false;
+};
+
+// 更新触摸移动处理
+const handleTouchMove = (e) => {
+  if (!props.visible || gestureLocked.value) return;
+  
+  if (!e.touches[0] || !touchStartX.value) return;
+  
+  const currentX = e.touches[0].clientX;
+  const currentY = e.touches[0].clientY;
+  touchCurrentY.value = currentY;
+  
+  // 计算水平和垂直滑动距离
+  const diffX = currentX - touchStartX.value;
+  const diffY = currentY - touchStartY.value;
+  
+  // 判断是否为水平滑动（水平位移大于垂直位移）
+  if (Math.abs(diffX) > Math.abs(diffY)) {
+    // 在iOS设备上，从左边缘向右滑动通常是返回手势
+    // #ifdef APP-PLUS
+    if (diffX > touchThreshold) {
+      // 检查是否有未保存的更改
+      if (isEditingNickname.value && hasUnsavedChanges.value) {
+        showConfirmAbandonDialog();
+        touchStartX.value = 0;
+        touchCurrentY.value = 0;
+        return;
+      } else if (isEditingNickname.value) {
+        cancelEditNickname();
+        touchStartX.value = 0;
+        touchCurrentY.value = 0;
+        return;
+      } else if (isConfirmingLogout.value) {
+        cancelLogout();
+        touchStartX.value = 0;
+        touchCurrentY.value = 0;
+        return;
+      } else {
+        isSliding.value = true;
+        e.preventDefault();
+      }
+    }
+    // #endif
+  }
+};
+
+// 处理触摸结束事件
+const handleTouchEnd = (e) => {
+  if (!props.visible || gestureLocked.value) return;
+  
+  // 如果正在滑动，则关闭设置面板
+  if (isSliding.value) {
+    closeSettings();
+    isSliding.value = false;
+  }
+  
+  // 重置触摸起始点
+  touchStartX.value = 0;
+  touchStartY.value = 0;
+};
+
+// 更新昵称方法
+const updateNickname = async () => {
+  if (isProcessing.value || !newNickname.value.trim() || newNickname.value === originalNickname.value) {
     return;
   }
   
-  // 这里可以添加更新昵称到服务器的逻辑
-  // 模拟更新成功
-  uni.showLoading({
-    title: '更新中...'
-  });
+  isProcessing.value = true;
   
-  setTimeout(() => {
-    uni.hideLoading();
+  try {
+    uni.showLoading({
+      title: '更新中...'
+    });
+    
+    // 这里添加实际的API调用
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     // 通知父组件昵称已更改
     emit('nickname-change', newNickname.value);
     
@@ -386,7 +535,15 @@ const updateNickname = () => {
     
     // 返回主设置界面
     isEditingNickname.value = false;
-  }, 1000);
+  } catch (error) {
+    uni.showToast({
+      title: '更新失败，请重试',
+      icon: 'error'
+    });
+  } finally {
+    uni.hideLoading();
+    isProcessing.value = false;
+  }
 };
 
 // 显示退出登录确认
@@ -399,15 +556,20 @@ const cancelLogout = () => {
   isConfirmingLogout.value = false;
 };
 
-// 确认退出登录
-const logout = () => {
-  uni.showLoading({
-    title: '退出中...'
-  });
+// 更新退出登录方法
+const logout = async () => {
+  if (isProcessing.value) return;
   
-  // 这里可以添加实际的退出登录逻辑，如清除token等
-  setTimeout(() => {
-    uni.hideLoading();
+  isProcessing.value = true;
+  
+  try {
+    uni.showLoading({
+      title: '退出中...'
+    });
+    
+    // 这里添加实际的退出登录逻辑
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     // 通知父组件用户已退出登录
     emit('logout');
     closeSettings();
@@ -416,7 +578,15 @@ const logout = () => {
       title: '已退出登录',
       icon: 'success'
     });
-  }, 1000);
+  } catch (error) {
+    uni.showToast({
+      title: '退出失败，请重试',
+      icon: 'error'
+    });
+  } finally {
+    uni.hideLoading();
+    isProcessing.value = false;
+  }
 };
 
 // 注册返回按钮监听
@@ -489,72 +659,6 @@ const interceptTabBarClick = (e) => {
   return e; // 不拦截
 };
 
-// 处理触摸开始事件
-const handleTouchStart = (e) => {
-  if (!props.visible || gestureLocked.value) return;
-  
-  // 记录触摸起始点
-  touchStartX.value = e.touches[0].clientX;
-  touchStartY.value = e.touches[0].clientY;
-};
-
-// 处理触摸移动事件
-const handleTouchMove = (e) => {
-  if (!props.visible || gestureLocked.value) return;
-  
-  // 仅在全屏模式下处理左右滑动
-  if (!e.touches[0] || !touchStartX.value) return;
-  
-  const currentX = e.touches[0].clientX;
-  const currentY = e.touches[0].clientY;
-  
-  // 计算水平和垂直滑动距离
-  const diffX = currentX - touchStartX.value;
-  const diffY = currentY - touchStartY.value;
-  
-  // 判断是否为水平滑动（水平位移大于垂直位移）
-  if (Math.abs(diffX) > Math.abs(diffY)) {
-    // 在iOS设备上，从左边缘向右滑动通常是返回手势
-    // #ifdef APP-PLUS
-    if (diffX > touchThreshold) {
-      // 检查是否有未保存的更改
-      if (isEditingNickname.value && hasUnsavedChanges.value) {
-        showConfirmAbandonDialog();
-        touchStartX.value = 0; // 重置触摸起始点
-        return;
-      } else if (isEditingNickname.value) {
-        cancelEditNickname();
-        touchStartX.value = 0; // 重置触摸起始点
-        return;
-      } else if (isConfirmingLogout.value) {
-        cancelLogout();
-        touchStartX.value = 0; // 重置触摸起始点
-        return;
-      } else {
-        // 标记为正在滑动
-        isSliding.value = true;
-        e.preventDefault(); // 阻止默认行为
-      }
-    }
-    // #endif
-  }
-};
-
-// 处理触摸结束事件
-const handleTouchEnd = (e) => {
-  if (!props.visible || gestureLocked.value) return;
-  
-  // 如果正在滑动，则关闭设置面板
-  if (isSliding.value) {
-    closeSettings();
-    isSliding.value = false;
-  }
-  
-  // 重置触摸起始点
-  touchStartX.value = 0;
-  touchStartY.value = 0;
-};
-
 // 组件挂载时
 onMounted(() => {
   // 监听页面路由变化，确保关闭设置面板
@@ -594,37 +698,44 @@ onUnmounted(() => {
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    
+    &.visible {
+      opacity: 1;
+    }
   }
   
   .settings-panel {
     position: fixed;
-    bottom: -800rpx; // 初始位置在屏幕外
+    bottom: 0;
     left: 0;
     right: 0;
     height: 750rpx;
     background-color: #fff;
     border-radius: 30rpx 30rpx 0 0;
     z-index: 1000;
-    transition: transform 0.3s ease;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
+    box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.1);
     
     &.visible {
-      transform: translateY(-800rpx);
+      transform: translateY(0);
     }
     
     &.fullscreen {
       height: 100vh;
-      bottom: -100vh;
       border-radius: 0;
       
-      &.visible {
-        transform: translateY(-100vh);
+      .panel-content {
+        -webkit-overflow-scrolling: touch; // 增加iOS滚动惯性
       }
     }
     
     &.sliding {
-      transition: none; // 滑动时禁用过渡效果
+      transition: none;
     }
     
     .panel-header {
@@ -633,15 +744,27 @@ onUnmounted(() => {
       align-items: center;
       padding: 30rpx;
       border-bottom: 2rpx solid #f5f5f5;
+      background-color: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 1;
       
       .panel-title {
         font-size: 32rpx;
-        font-weight: bold;
+        font-weight: 600;
         color: #333;
       }
       
       .close-btn {
         padding: 10rpx;
+        margin: -10rpx;
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+        
+        &:active {
+          background-color: #f5f5f5;
+        }
       }
     }
     
@@ -656,9 +779,18 @@ onUnmounted(() => {
         align-items: center;
         padding: 30rpx;
         border-bottom: 2rpx solid #f5f5f5;
+        transition: background-color 0.2s ease;
+        
+        &:active {
+          background-color: #f9f9f9;
+        }
         
         &.non-clickable {
           background-color: #fafafa;
+          
+          &:active {
+            background-color: #fafafa;
+          }
         }
         
         .item-label {
@@ -682,6 +814,12 @@ onUnmounted(() => {
             border-radius: 50%;
             margin-right: 15rpx;
             background-color: #eee;
+            border: 2rpx solid #f0f0f0;
+            transition: transform 0.2s ease;
+            
+            &:active {
+              transform: scale(0.95);
+            }
           }
           
           .nickname-preview,
@@ -698,6 +836,7 @@ onUnmounted(() => {
           
           .email-preview {
             color: #999;
+            user-select: none;
           }
         }
         
@@ -707,6 +846,10 @@ onUnmounted(() => {
           
           .logout-text {
             color: #ff6b6b;
+          }
+          
+          &:active {
+            background-color: #fff5f5;
           }
         }
       }
@@ -730,6 +873,12 @@ onUnmounted(() => {
           padding: 0 20rpx;
           font-size: 30rpx;
           color: #333;
+          transition: border-color 0.2s ease;
+          
+          &:focus {
+            border-color: #4361ee;
+            background-color: #fff;
+          }
         }
         
         .char-count {
@@ -754,16 +903,26 @@ onUnmounted(() => {
           justify-content: center;
           border-radius: 8rpx;
           font-size: 30rpx;
+          transition: all 0.2s ease;
           
           &.cancel {
             background-color: #f8f8f8;
             color: #666;
             border: 2rpx solid #eee;
+            
+            &:active {
+              background-color: #f0f0f0;
+            }
           }
           
           &.confirm {
             background-color: #4361ee;
             color: #fff;
+            
+            &:active {
+              background-color: #3651d4;
+              transform: translateY(2rpx);
+            }
           }
         }
       }
@@ -804,16 +963,26 @@ onUnmounted(() => {
           justify-content: center;
           border-radius: 8rpx;
           font-size: 30rpx;
+          transition: all 0.2s ease;
           
           &.cancel {
             background-color: #f8f8f8;
             color: #666;
             border: 2rpx solid #eee;
+            
+            &:active {
+              background-color: #f0f0f0;
+            }
           }
           
           &.confirm {
             background-color: #ff6b6b;
             color: #fff;
+            
+            &:active {
+              background-color: #ff5252;
+              transform: translateY(2rpx);
+            }
           }
         }
       }
@@ -822,6 +991,10 @@ onUnmounted(() => {
     .version-info {
       padding: 30rpx;
       text-align: center;
+      background-color: #fff;
+      position: sticky;
+      bottom: 0;
+      border-top: 2rpx solid #f5f5f5;
       
       text {
         font-size: 24rpx;

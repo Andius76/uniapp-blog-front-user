@@ -127,15 +127,25 @@
 		<!-- #endif -->
 
 		<!-- #ifdef H5 -->
-		<user-settings 
-			v-if="showUserSettings"
-			:visible="showUserSettings"
-			:userInfo="userInfo"
-			@update:visible="showUserSettings = $event"
-			@avatar-change="handleAvatarChange"
-			@nickname-change="handleNicknameChange"
-			@logout="handleLogout"
-		/>
+		<view class="settings-mask" v-if="showUserSettings" @click.self="closeUserSettings"></view>
+		<view class="user-settings" v-if="showUserSettings">
+			<view class="settings-header">
+				<text class="title">用户设置</text>
+				<view class="close-btn" @click="closeUserSettings">
+					<uni-icons type="close" size="20" color="#333"></uni-icons>
+				</view>
+			</view>
+			<view class="settings-body">
+				<user-settings 
+					:visible="true"
+					:userInfo="userInfo"
+					@update:visible="handleVisibleChange"
+					@avatar-change="handleAvatarChange"
+					@nickname-change="handleNicknameChange"
+					@logout="handleLogout"
+				/>
+			</view>
+		</view>
 		<!-- #endif -->
 	</view>
 </template>
@@ -705,7 +715,10 @@
 			userInfo.email = latestUserInfo.email || '';
 		}
 		
-		showUserSettings.value = true;
+		// 显示设置面板
+		nextTick(() => {
+			showUserSettings.value = true;
+		});
 	};
 
 	const handleAvatarChange = (newAvatar) => {
@@ -752,6 +765,17 @@
 		});
 		// #endif
 	});
+
+	const handleVisibleChange = (visible) => {
+		// 只处理关闭事件
+		if (!visible) {
+			closeUserSettings();
+		}
+	};
+
+	const closeUserSettings = () => {
+		showUserSettings.value = false;
+	};
 </script>
 
 <style lang="scss">
@@ -1151,17 +1175,107 @@
 	}
 	// #endif
 
+	.settings-mask {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.3);
+		z-index: 9998;
+	}
+
 	.user-settings {
 		position: fixed;
-		top: 60px;
-		right: calc((100% - 1200px) / 2 + 30px);
-		z-index: 1000;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		z-index: 9999;
 		background: #fff;
-		border-radius: 4px;
+		border-radius: 8px;
 		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+		width: 90%;
+		max-width: 500px;
+		max-height: 90vh;
+		display: flex;
+		flex-direction: column;
 		
-		@media screen and (max-width: 1200px) {
-			right: 30px;
+		.settings-header {
+			padding: 16px 20px;
+			border-bottom: 1px solid #eee;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			
+			.title {
+				font-size: 16px;
+				font-weight: bold;
+				color: #333;
+			}
+			
+			.close-btn {
+				cursor: pointer;
+				width: 32px;
+				height: 32px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: 4px;
+				
+				&:hover {
+					background: #f5f5f5;
+				}
+			}
+		}
+		
+		.settings-body {
+			flex: 1;
+			overflow-y: auto;
+			
+			:deep(.user-settings-wrapper) {
+				height: auto;
+				background: transparent;
+				
+				.mask {
+					display: none;
+				}
+				
+				.settings-panel {
+					position: relative;
+					top: 0;
+					right: 0;
+					width: 100%;
+					height: auto;
+					box-shadow: none;
+					border-radius: 0;
+					
+					.panel-header {
+						display: none;
+					}
+					
+					.panel-content {
+						padding: 20px;
+						
+						.settings-item {
+							padding: 15px;
+							border-bottom: 1px solid #f0f0f0;
+							
+							&:last-child {
+								border-bottom: none;
+							}
+							
+							.item-label {
+								font-size: 14px;
+								color: #333;
+							}
+							
+							.item-content {
+								margin-top: 10px;
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 
