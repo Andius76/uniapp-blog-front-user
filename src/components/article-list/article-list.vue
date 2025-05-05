@@ -11,14 +11,14 @@
 			<view class="article-grid">
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
 					<!-- 文章内容 -->
-					<view class="article-content" @click="handleArticleClick(article.id)">
-						<!-- 封面图片 - 放在前面，显示在左侧 -->
-						<view class="article-image">
+					<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
+						<!-- 封面图片 - 仅当有封面时才显示 -->
+						<view class="article-image" v-if="article.coverImage">
 							<image :src="article.coverImage" mode="aspectFill" class="grid-image"
 								@error="handleImageError(index)"></image>
 						</view>
 						
-						<!-- 文章标题和简介 - 放在后面，显示在右侧 -->
+						<!-- 文章标题和简介 -->
 						<view class="article-info">
 							<text class="article-title">{{article.title}}</text>
 							
@@ -93,7 +93,7 @@
 			<!-- 文章列表循环 -->
 			<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
 				<!-- 文章内容 -->
-				<view class="article-content" @click="handleArticleClick(article.id)">
+				<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
 					<text class="article-title">{{article.title}}</text>
 					<text
 						class="article-summary">{{stripHtmlTags(article.summary, 100)}}{{article.summary ? '...全文' : ''}}</text>
@@ -106,8 +106,8 @@
 						</view>
 					</view>
 
-					<!-- 封面图片 - 始终显示，无论是coverImage还是默认图片 -->
-					<view class="article-image">
+					<!-- 封面图片 - 只在有封面图片时显示 -->
+					<view class="article-image" v-if="article.coverImage">
 						<image :src="article.coverImage" mode="aspectFill" class="single-image"
 							@error="handleImageError(index)" :style="{ 'object-fit': 'cover' }"></image>
 					</view>
@@ -1457,6 +1457,27 @@
 					height: 390rpx; // H5环境下增大高度
 					flex-direction: row; // H5环境下改为横向布局
 					box-shadow: none; // 去掉内容区的阴影，让整体阴影生效
+					
+					// 无封面样式
+					&.no-cover {
+						.article-info {
+							width: 100%; // 文字内容占满整个宽度
+							padding: 40rpx; // 增大内边距，提升可读性
+						}
+					}
+					// #endif
+					
+					// #ifndef H5
+					// 无封面样式
+					&.no-cover {
+						.article-title {
+							margin-bottom: 20rpx; // 增大标题与摘要之间的间距
+						}
+						
+						.article-summary {
+							-webkit-line-clamp: 5; // 无图片时允许显示更多文本行
+						}
+					}
 					// #endif
 					
 					// #ifndef H5

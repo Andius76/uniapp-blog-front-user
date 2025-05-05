@@ -1004,7 +1004,7 @@
 			border-radius: 4px;
 			padding: 20px;
 			margin-left: 130px;
-			margin-right: 320px;
+			margin-right: 340px;
 			overflow: hidden;
 		}
 
@@ -1013,10 +1013,11 @@
 			width: 300px;
 			min-width: 280px;
 			top: 106px;
-			right: calc((100% - 1200px) / 2 + 30px);
+			right: calc((100% - 1200px) / 2 + 50px);
 			bottom: 0;
 			background: transparent;
 			overflow: hidden;
+			z-index: 10;
 
 			.creator-center {
 				background: #fff;
@@ -1096,7 +1097,7 @@
 				margin-left: 20px;
 			}
 			.right-sidebar {
-				right: 30px;
+				right: 50px;
 			}
 		}
 	}
