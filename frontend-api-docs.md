@@ -2544,3 +2544,156 @@
    - 文章状态变更时自动刷新相关列表
    - 确保用户数据在多个页面间的一致性
    - 提供统一的API响应处理逻辑，确保数据格式一致
+
+## 用户设置面板问题修复
+
+### 1. H5环境设置面板点击问题修复
+
+**问题描述：** 在H5环境中，当用户打开设置面板后，点击面板内的选项（如修改头像、修改昵称等）会导致整个设置面板意外关闭。
+
+**修复方案：**
+
+1. **事件冒泡阻止机制：**
+   - 在H5环境下，为所有内部操作按钮添加事件冒泡阻止
+   - 在模板中使用`@click.stop`指令阻止事件冒泡
+   - 在JS处理函数中添加`e.stopPropagation()`
+
+2. **特殊操作状态标记：**
+   - 添加`isInOperation`标记变量，用于标识正在进行特殊操作（如选择头像）
+   - 全局点击事件监听器检查此标记，避免在特殊操作时关闭面板
+   ```js
+   document.addEventListener('click', (event) => {
+     if (showUserSettings.value && !isInOperation.value) {
+       const settingsPanel = document.querySelector('.user-settings-wrapper');
+       if (settingsPanel && !settingsPanel.contains(event.target)) {
+         showUserSettings.value = false;
+       }
+     }
+   });
+   ```
+
+3. **添加头像选择前事件通知：**
+   - 新增`before-avatar-select`事件，通知父组件即将开始头像选择
+   ```js
+   const changeAvatar = (e) => {
+     // H5环境下阻止事件冒泡
+     // #ifdef H5
+     if (e) e.stopPropagation();
+     // #endif
+     
+     // 重置状态
+     isAvatarUpdated.value = false;
+     
+     // 触发头像选择前事件，通知父组件正在进行特殊操作
+     emit('before-avatar-select');
+     
+     // 选择头像逻辑...
+   };
+   ```
+
+### 2. 设置面板交互逻辑优化
+
+**修复内容：**
+
+1. **面板内导航优化：**
+   - 修改`handleBackOrClose`函数，实现分层导航逻辑
+   - 点击"取消"按钮现在会返回主设置页面，而不是关闭整个设置面板
+   ```js
+   const handleBackOrClose = (e) => {
+     // #ifdef H5
+     if (e) e.stopPropagation();
+     // #endif
+     
+     if (isEditingNickname.value && hasUnsavedChanges.value) {
+       // 如果有未保存的修改，显示确认弹窗
+       showConfirmAbandonDialog();
+     } else if (isEditingNickname.value) {
+       // 返回主设置页面
+       cancelEditNickname(e);
+     } else if (isConfirmingLogout.value) {
+       // 返回主设置页面
+       cancelLogout(e);
+     } else {
+       // 关闭整个设置面板
+       closeSettings();
+     }
+   };
+   ```
+
+2. **修改头像流程优化：**
+   - 修改头像成功后不再关闭设置面板
+   - 添加成功视觉反馈（高亮动画和"更新成功"提示文本）
+   ```js
+   // 设置头像更新成功状态
+   isAvatarUpdated.value = true;
+   
+   // 显示成功提示
+   uni.showToast({
+     title: '头像更新成功',
+     icon: 'success',
+     duration: 2000
+   });
+   
+   // 3秒后重置状态
+   setTimeout(() => {
+     isAvatarUpdated.value = false;
+   }, 3000);
+   
+   // 成功后不关闭设置页面
+   ```
+
+3. **状态管理优化：**
+   - 使用`panelVisible`变量控制面板动画状态
+   - 添加`isAvatarUpdated`标记更新成功状态
+   - 使用条件编译区分不同平台的交互行为
+
+### 3. 跨平台兼容性增强
+
+**优化内容：**
+
+1. **CSS增强：**
+   - 为H5环境添加特殊样式规则，确保事件处理正确
+   ```css
+   // #ifdef H5
+   // H5环境下强制禁止点击事件冒泡导致面板消失
+   pointer-events: auto !important;
+   // #endif
+   ```
+
+2. **动画优化：**
+   - 使用CSS动画显示头像更新成功状态
+   ```css
+   &.avatar-updated {
+     border-color: #4361ee;
+     box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+     animation: avatar-pulse 1.5s infinite;
+   }
+   
+   @keyframes avatar-pulse {
+     0% {
+       box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4);
+     }
+     70% {
+       box-shadow: 0 0 0 6px rgba(67, 97, 238, 0);
+     }
+     100% {
+       box-shadow: 0 0 0 0 rgba(67, 97, 238, 0);
+     }
+   }
+   ```
+
+3. **条件编译应用：**
+   - 使用条件编译确保在不同平台上的行为一致
+   ```js
+   // H5环境下忽略此操作，APP和小程序才执行
+   // #ifndef H5
+   if (!props.visible || gestureLocked.value) return;
+   
+   if (e.touches && e.touches.length > 0) {
+     touchStartX.value = e.touches[0].clientX;
+     touchStartY.value = e.touches[0].clientY;
+   }
+   // #endif
+   ```
+
+通过以上修复，解决了用户设置面板在H5环境中的交互问题，使用户可以在设置面板中流畅地完成头像修改、昵称修改和退出登录确认等操作，而不会意外关闭整个设置面板。同时，增强了设置面板在不同平台上的兼容性和一致性。
