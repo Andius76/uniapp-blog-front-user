@@ -12,30 +12,22 @@
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
 					<!-- 文章内容 -->
 					<view class="article-content" @click="handleArticleClick(article.id)">
-						<!-- 作者信息（第一行） -->
-						<view class="user-info">
-							<image class="avatar" :src="formatAvatarUrl(article.author?.avatar)" mode="aspectFill"
-								@click.stop="handleAuthorClick(article.author?.id)"></image>
-							<text class="nickname"
-								@click.stop="handleAuthorClick(article.author?.id)">{{article.author?.nickname}}</text>
-						</view>
-						
-						<!-- 文章标题（第二行） -->
+						<!-- 文章标题 -->
 						<view class="article-info">
 							<text class="article-title">{{article.title}}</text>
 							
-							<!-- 文章简介（第三行） -->
+							<!-- 文章简介 -->
 							<text class="article-summary">{{stripHtmlTags(article.summary, 60)}}{{article.summary ? '...' : ''}}</text>
 						</view>
 						
-						<!-- 封面图片（第四行） -->
+						<!-- 封面图片 -->
 						<view class="article-image">
 							<image :src="article.coverImage" mode="aspectFill" class="grid-image"
 								@error="handleImageError(index)"></image>
 						</view>
 					</view>
 
-					<!-- 文章操作按钮（第五行） -->
+					<!-- 文章操作按钮 -->
 					<view class="article-actions">
 						<!-- 分享按钮 -->
 						<view class="action-item" @click.stop="handleShare(index)">
@@ -100,19 +92,6 @@
 			@touchend="handleTouchEnd">
 			<!-- 文章列表循环 -->
 			<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
-				<!-- 用户信息 -->
-				<view class="user-info">
-					<image class="avatar" :src="formatAvatarUrl(article.author?.avatar)" mode="aspectFill"
-						@click="handleAuthorClick(article.author?.id)"></image>
-					<text class="nickname"
-						@click="handleAuthorClick(article.author?.id)">{{article.author?.nickname}}</text>
-					<!-- 只有非当前用户时才显示关注按钮 -->
-					<button v-if="!isCurrentUser(article.author?.id) && !showManageOptions" class="follow-btn"
-						:class="{'followed': article.author?.isFollowed}" @click.stop="handleFollow(index)">
-						{{ article.author?.isFollowed ? '已关注' : '+ 关注' }}
-					</button>
-				</view>
-
 				<!-- 文章内容 -->
 				<view class="article-content" @click="handleArticleClick(article.id)">
 					<text class="article-title">{{article.title}}</text>
@@ -1440,7 +1419,7 @@
 				box-sizing: border-box;
 				padding: 10rpx;
 				margin-bottom: 20rpx;
-				height: 460rpx; // 设置固定总高度
+				height: 380rpx; // 减小总高度，移除了头像昵称部分
 				
 				// 文章内容
 				.article-content {
@@ -1449,7 +1428,7 @@
 					overflow: hidden;
 					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.1);
 					transition: transform 0.3s, box-shadow 0.3s;
-					height: 400rpx; // 固定内容区高度
+					height: 320rpx; // 减小内容区高度
 					display: flex;
 					flex-direction: column;
 					
@@ -1458,162 +1437,82 @@
 						box-shadow: 0 10rpx 25rpx rgba(0, 0, 0, 0.15);
 					}
 					
-					// 用户信息 - 第一行
-					.user-info {
-						display: flex;
-						align-items: center;
-						padding: 15rpx;
-						border-bottom: 1px solid #f5f5f5;
-						height: 80rpx; // 固定高度
-						box-sizing: border-box;
-						
-						.avatar {
-							width: 50rpx;
-							height: 50rpx;
-							border-radius: 50%;
-							margin-right: 10rpx;
-							border: 1px solid #f0f0f0;
-						}
-						
-						.nickname {
-							font-size: 24rpx;
-							color: #666;
-							overflow: hidden;
-							text-overflow: ellipsis;
-							white-space: nowrap;
-							flex: 1;
-						}
-					}
-					
-					// 文章信息 - 第二、三行
+					// 文章信息
 					.article-info {
-						padding: 12rpx 15rpx;
-						height: 120rpx; // 固定高度
-						box-sizing: border-box;
+						padding: 15rpx;
+						flex: 1;
 						display: flex;
 						flex-direction: column;
+						justify-content: space-between;
 						
 						.article-title {
 							font-size: 28rpx;
 							font-weight: bold;
 							color: #333;
-							display: block;
-							overflow: hidden;
-							text-overflow: ellipsis;
-							white-space: nowrap;
-							margin-bottom: 8rpx;
-							line-height: 1.3;
-							height: 40rpx; // 固定高度
-						}
-						
-						// 文章摘要 - 第三行
-						.article-summary {
-							font-size: 24rpx;
-							color: #999;
-							display: block;
+							margin-bottom: 10rpx;
 							overflow: hidden;
 							text-overflow: ellipsis;
 							display: -webkit-box;
-							-webkit-line-clamp: 2; // 显示2行
+							-webkit-line-clamp: 1;
 							-webkit-box-orient: vertical;
-							line-height: 1.4;
-							height: 70rpx; // 固定高度，两行
-							margin: 0;
+							line-height: 1.3;
+						}
+						
+						.article-summary {
+							font-size: 24rpx;
+							color: #666;
+							overflow: hidden;
+							text-overflow: ellipsis;
+							display: -webkit-box;
+							-webkit-line-clamp: 2;
+							-webkit-box-orient: vertical;
+							line-height: 1.3;
+							flex: 1;
 						}
 					}
 					
-					// 封面图片 - 第四行
+					// 封面图片
 					.article-image {
 						width: 100%;
-						height: 200rpx; // 固定高度
-						overflow: hidden;
-						position: relative;
-						flex: 1; // 填充剩余空间
-						
-						&::after {
-							content: '';
-							position: absolute;
-							bottom: 0;
-							left: 0;
-							right: 0;
-							height: 40rpx;
-							background: linear-gradient(to top, rgba(0,0,0,0.2), transparent);
-							z-index: 1;
-						}
+						height: 180rpx;
 						
 						.grid-image {
 							width: 100%;
 							height: 100%;
-							object-fit: cover;
-							transition: transform 0.3s;
-							
-							&:hover {
-								transform: scale(1.05);
-							}
+							background-color: #f5f5f5;
 						}
 					}
 				}
 				
-				// 文章操作按钮 - 第五行
+				// 文章操作按钮
 				.article-actions {
-					display: flex;
-					justify-content: space-between;
-					padding: 10rpx 15rpx;
+					height: 60rpx;
 					background-color: #fff;
+					display: flex;
+					align-items: center;
+					justify-content: space-around;
+					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.1);
 					border-radius: 0 0 12rpx 12rpx;
-					box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
-					border-top: 1px solid #f5f5f5;
-					height: 60rpx; // 固定高度
-					box-sizing: border-box;
 					
 					.action-item {
 						display: flex;
 						align-items: center;
-						
-						.uni-icons {
-							margin-right: 5rpx;
-						}
+						justify-content: center;
+						font-size: 24rpx;
+						color: #333;
 						
 						text {
-							font-size: 22rpx;
-							color: #666;
+							margin-left: 6rpx;
 							
 							&.liked {
 								color: #ff6b6b;
 							}
 						}
-					}
-					
-					.manage-btn {
-						width: 40rpx;
-						height: 40rpx;
-						display: flex;
-						align-items: center;
-						justify-content: center;
 						
-						.uni-icons {
-							margin-right: 0;
+						&.manage-btn {
+							margin-left: auto;
 						}
 					}
-				}
-				
-				// 媒体查询 - 根据屏幕宽度调整每行显示数量
-				// 小屏幕设备 (手机竖屏)
-				@media screen and (max-width: 767px) {
-					width: 50%; // 小屏幕一行显示2个
-					height: 460rpx; // 保持高度一致
-				}
-				
-				// 中等屏幕设备 (平板竖屏或手机横屏)
-				@media screen and (min-width: 768px) and (max-width: 1023px) {
-					width: 33.33%; // 中等屏幕一行显示3个
-					height: 460rpx; // 保持高度一致
-				}
-				
-				// 大屏幕设备 (平板横屏或桌面) 和更大的屏幕
-				@media screen and (min-width: 1024px) {
-					width: 25%; // 所有大屏幕一行最多显示4个
-					height: 460rpx; // 保持高度一致
 				}
 			}
 		}
@@ -1621,50 +1520,11 @@
 		// 文章卡片 - 用于非H5模式
 		.article-card {
 			background-color: #fff;
-			border-radius: 20rpx;
-			padding: 30rpx;
-			margin-top: 5rpx;
+			border-radius: 12rpx;
+			padding: 20rpx;
+			margin: 20rpx;
 			margin-bottom: 20rpx;
 			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-
-			// 用户信息
-			.user-info {
-				display: flex;
-				align-items: center;
-				margin-bottom: 20rpx;
-
-				.avatar {
-					width: 80rpx;
-					height: 80rpx;
-					border-radius: 50%;
-					margin-right: 20rpx;
-					background-color: #eee;
-				}
-
-				.nickname {
-					flex: 1;
-					font-size: 28rpx;
-					color: #333;
-					font-weight: 500;
-				}
-
-				.follow-btn {
-					height: 50rpx;
-					line-height: 50rpx;
-					background-color: #fff;
-					color: #4361ee;
-					font-size: 24rpx;
-					border: 2rpx solid #4361ee;
-					border-radius: 25rpx;
-					padding: 0 20rpx;
-					margin: 0;
-
-					&.followed {
-						color: #999;
-						border-color: #999;
-					}
-				}
-			}
 
 			// 文章内容
 			.article-content {
@@ -1674,7 +1534,7 @@
 					font-size: 32rpx;
 					font-weight: bold;
 					color: #333;
-					margin-bottom: 10rpx;
+					margin-bottom: 15rpx;
 					display: block;
 				}
 
@@ -1712,26 +1572,38 @@
 					}
 				}
 
-				// 封面图片 - 始终显示，无论是coverImage还是默认图片
+				// 封面图片
 				.article-image {
 					width: 100%;
 					height: 300rpx;
 					border-radius: 12rpx;
 					overflow: hidden;
-					margin-top: 20rpx;
+					margin-top: 10rpx;
 					margin-bottom: 20rpx;
 					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.15); // 增强阴影效果
 					background-color: #f0f0f0; // 图片加载前显示的背景色
-
+					
 					.single-image {
 						width: 100%;
 						height: 100%;
-						object-fit: cover; // 确保图片正确填充容器
-						transition: transform 0.3s; // 添加过渡效果
+						background-color: #f5f5f5; // 图片加载前显示的背景色
+					}
+				}
 
-						&:hover {
-							transform: scale(1.02); // 鼠标悬停时轻微放大效果
-						}
+				// 多图布局
+				.image-grid {
+					width: 100%;
+					display: flex;
+					justify-content: space-between;
+					margin-top: 10rpx;
+					margin-bottom: 20rpx;
+					height: 180rpx;
+
+					.grid-image {
+						width: 32%;
+						height: 100%;
+						border-radius: 8rpx;
+						background-color: #f5f5f5;
 					}
 				}
 			}
@@ -1739,53 +1611,28 @@
 			// 文章操作按钮
 			.article-actions {
 				display: flex;
+				align-items: center;
 				justify-content: space-around;
-				border-top: 2rpx solid #f0f0f0;
-				padding-top: 20rpx;
-				padding-bottom: 10rpx;
-				flex-wrap: wrap;
-				position: relative;
+				border-top: 1rpx solid #f5f5f5;
+				padding-top: 15rpx;
 
 				.action-item {
 					display: flex;
 					align-items: center;
 					justify-content: center;
-					margin-bottom: 10rpx;
-					padding: 0 15rpx;
-
-					.uni-icons {
-						margin-right: 10rpx;
-					}
+					font-size: 26rpx;
+					color: #666;
 
 					text {
-						font-size: 24rpx;
-						color: #666;
+						margin-left: 10rpx;
 
 						&.liked {
 							color: #ff6b6b;
 						}
-
-						&.collected {
-							color: #ffc107;
-						}
-					}
-				}
-
-				.manage-btn {
-					width: 70rpx;
-					height: 70rpx;
-					background-color: #f8f8f8;
-					border-radius: 50%;
-					justify-content: center;
-					margin-right: 0;
-
-					.uni-icons {
-						margin-right: 0;
 					}
 
-					&:active {
-						opacity: 0.8;
-						transform: scale(0.95);
+					&.manage-btn {
+						padding: 0 15rpx;
 					}
 				}
 			}
