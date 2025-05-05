@@ -1417,28 +1417,37 @@
 			.article-grid-item {
 				// #ifdef H5
 				width: 100%; // 修改为一行一个
+				margin-bottom: 60rpx; // 增加文章项之间的间距，从40rpx改为60rpx
+				// 添加阴影和边框，使整个文章项成为一个整体
+				box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+				border-radius: 12rpx;
+				overflow: hidden; // 确保边框圆角生效
 				// #endif
 				
 				// #ifndef H5
 				width: 25%; // 非H5环境保持一行4个
+				margin-bottom: 20rpx;
 				// #endif
 				
 				box-sizing: border-box;
 				padding: 10rpx;
-				margin-bottom: 20rpx;
 				height: 380rpx; // 减小总高度，移除了头像昵称部分
 				
 				// #ifdef H5
 				// 增大H5环境下的高度，使其更加明显
-				height: 450rpx;
+				height: 470rpx; // 从450rpx增加到470rpx，为功能栏留出更多空间
+				padding: 0; // 去掉内边距，让内容紧贴边框
 				// #endif
 				
 				// 文章内容
 				.article-content {
 					background-color: #fff;
+					// #ifndef H5
 					border-radius: 12rpx 12rpx 0 0; // 顶部圆角
-					overflow: hidden;
 					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.1);
+					// #endif
+					
+					overflow: hidden;
 					transition: transform 0.3s, box-shadow 0.3s;
 					height: 320rpx; // 减小内容区高度
 					display: flex;
@@ -1447,12 +1456,21 @@
 					// #ifdef H5
 					height: 390rpx; // H5环境下增大高度
 					flex-direction: row; // H5环境下改为横向布局
+					box-shadow: none; // 去掉内容区的阴影，让整体阴影生效
 					// #endif
 					
+					// #ifndef H5
 					&:hover {
 						transform: translateY(-5rpx);
 						box-shadow: 0 10rpx 25rpx rgba(0, 0, 0, 0.15);
 					}
+					// #endif
+					
+					// #ifdef H5
+					&:hover {
+						background-color: #f8f9fa; // 悬停时背景色变化
+					}
+					// #endif
 					
 					// 文章信息
 					.article-info {
@@ -1529,11 +1547,15 @@
 					display: flex;
 					align-items: center;
 					justify-content: space-around;
+					// #ifndef H5
 					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.1);
 					border-radius: 0 0 12rpx 12rpx;
+					// #endif
 					
 					// #ifdef H5
-					height: 80rpx; // H5环境下增大高度
+					height: 100rpx; // H5环境下增大高度，从80rpx增加到100rpx
+					border-top: 1px solid #eaeaea; // 添加顶部边框，与内容区分隔
+					padding-bottom: 10rpx; // 添加底部内边距
 					// #endif
 					
 					.action-item {
