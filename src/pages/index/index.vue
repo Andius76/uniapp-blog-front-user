@@ -16,8 +16,9 @@
 					<view class="notification" @click="goToMessage">
 						<uni-icons type="notification" size="24" />
 					</view>
-					<view class="user-avatar" @click="goToUserProfile">
-						<image :src="userAvatar" mode="aspectFill"></image>
+					<view class="user-info" @click="goToUserProfile">
+						<image class="avatar" :src="userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+						<text class="nickname">{{ userInfo.nickname || '未登录' }}</text>
 					</view>
 				</view>
 			</view>
@@ -217,6 +218,22 @@
 		],
 		currentNav: 1, // 默认选中推荐
 	});
+
+	const userInfo = reactive({
+		avatar: uni.getStorageSync('userInfo')?.avatar || '',
+		nickname: uni.getStorageSync('userInfo')?.nickname || ''
+	});
+
+	// 监听登录状态变化
+	watch(() => uni.getStorageSync('userInfo'), (newVal) => {
+		if (newVal) {
+			userInfo.avatar = newVal.avatar || '';
+			userInfo.nickname = newVal.nickname || '';
+		} else {
+			userInfo.avatar = '';
+			userInfo.nickname = '';
+		}
+	}, { deep: true });
 
 	// 在onBeforeMount阶段拦截，避免多个生命周期重复加载
 	onBeforeMount(() => {
@@ -750,17 +767,34 @@
 					padding: 0 5px;
 				}
 
-				.user-avatar {
-					width: 36px;
-					height: 36px;
-					border-radius: 50%;
-					overflow: hidden;
+				.user-info {
+					display: flex;
+					align-items: center;
+					gap: 8px;
 					cursor: pointer;
+					padding: 4px 8px;
+					border-radius: 20px;
+					transition: background-color 0.3s;
+					
+					&:hover {
+						background-color: #f5f5f5;
+					}
 
-					image {
-						width: 100%;
-						height: 100%;
+					.avatar {
+						width: 32px;
+						height: 32px;
+						border-radius: 50%;
 						object-fit: cover;
+						border: 1px solid #eee;
+					}
+
+					.nickname {
+						font-size: 14px;
+						color: #333;
+						max-width: 100px;
+						overflow: hidden;
+						text-overflow: ellipsis;
+						white-space: nowrap;
 					}
 				}
 			}
