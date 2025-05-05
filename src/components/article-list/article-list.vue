@@ -12,18 +12,18 @@
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
 					<!-- 文章内容 -->
 					<view class="article-content" @click="handleArticleClick(article.id)">
-						<!-- 文章标题 -->
+						<!-- 封面图片 - 放在前面，显示在左侧 -->
+						<view class="article-image">
+							<image :src="article.coverImage" mode="aspectFill" class="grid-image"
+								@error="handleImageError(index)"></image>
+						</view>
+						
+						<!-- 文章标题和简介 - 放在后面，显示在右侧 -->
 						<view class="article-info">
 							<text class="article-title">{{article.title}}</text>
 							
 							<!-- 文章简介 -->
 							<text class="article-summary">{{stripHtmlTags(article.summary, 60)}}{{article.summary ? '...' : ''}}</text>
-						</view>
-						
-						<!-- 封面图片 -->
-						<view class="article-image">
-							<image :src="article.coverImage" mode="aspectFill" class="grid-image"
-								@error="handleImageError(index)"></image>
 						</view>
 					</view>
 
@@ -1415,11 +1415,23 @@
 			// #endif
 			
 			.article-grid-item {
-				width: 25%; // 默认一行4个
+				// #ifdef H5
+				width: 100%; // 修改为一行一个
+				// #endif
+				
+				// #ifndef H5
+				width: 25%; // 非H5环境保持一行4个
+				// #endif
+				
 				box-sizing: border-box;
 				padding: 10rpx;
 				margin-bottom: 20rpx;
 				height: 380rpx; // 减小总高度，移除了头像昵称部分
+				
+				// #ifdef H5
+				// 增大H5环境下的高度，使其更加明显
+				height: 450rpx;
+				// #endif
 				
 				// 文章内容
 				.article-content {
@@ -1431,6 +1443,11 @@
 					height: 320rpx; // 减小内容区高度
 					display: flex;
 					flex-direction: column;
+					
+					// #ifdef H5
+					height: 390rpx; // H5环境下增大高度
+					flex-direction: row; // H5环境下改为横向布局
+					// #endif
 					
 					&:hover {
 						transform: translateY(-5rpx);
@@ -1445,6 +1462,10 @@
 						flex-direction: column;
 						justify-content: space-between;
 						
+						// #ifdef H5
+						padding: 30rpx; // H5环境下增大内边距
+						// #endif
+						
 						.article-title {
 							font-size: 28rpx;
 							font-weight: bold;
@@ -1456,6 +1477,12 @@
 							-webkit-line-clamp: 1;
 							-webkit-box-orient: vertical;
 							line-height: 1.3;
+							
+							// #ifdef H5
+							font-size: 36rpx; // H5环境下增大字体
+							-webkit-line-clamp: 2;
+							margin-bottom: 20rpx;
+							// #endif
 						}
 						
 						.article-summary {
@@ -1468,6 +1495,12 @@
 							-webkit-box-orient: vertical;
 							line-height: 1.3;
 							flex: 1;
+							
+							// #ifdef H5
+							font-size: 28rpx; // H5环境下增大字体
+							-webkit-line-clamp: 3; // 显示更多行
+							line-height: 1.5;
+							// #endif
 						}
 					}
 					
@@ -1475,6 +1508,11 @@
 					.article-image {
 						width: 100%;
 						height: 180rpx;
+						
+						// #ifdef H5
+						width: 40%; // H5环境下设置为固定比例
+						height: 100%;
+						// #endif
 						
 						.grid-image {
 							width: 100%;
@@ -1494,6 +1532,10 @@
 					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.1);
 					border-radius: 0 0 12rpx 12rpx;
 					
+					// #ifdef H5
+					height: 80rpx; // H5环境下增大高度
+					// #endif
+					
 					.action-item {
 						display: flex;
 						align-items: center;
@@ -1501,12 +1543,21 @@
 						font-size: 24rpx;
 						color: #333;
 						
+						// #ifdef H5
+						padding: 0 20rpx; // H5环境下增加内边距
+						font-size: 28rpx; // H5环境下增大字体
+						// #endif
+						
 						text {
 							margin-left: 6rpx;
 							
 							&.liked {
 								color: #ff6b6b;
 							}
+							
+							// #ifdef H5
+							margin-left: 10rpx; // H5环境下增大间距
+							// #endif
 						}
 						
 						&.manage-btn {
