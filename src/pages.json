@@ -102,7 +102,10 @@
 				"iconPath": "static/tabbar/my-un.png",
 				"selectedIconPath": "static/tabbar/my.png"
 			}
-		]
+		],
+		"condition": {
+			"h5": false
+		}
 	},
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
@@ -110,7 +113,10 @@
 		"backgroundColor": "#F8F8F8",
 		"h5": {
 			"navigationBarTitleText": "",
-			"navigationStyle": "custom"
+			"navigationStyle": "custom",
+			"tabBar": {
+				"display": "none"
+			}
 		}
 	}
 }

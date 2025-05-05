@@ -41,4 +41,11 @@ onShow(() => {
 
 <style>
 @import "@/static/icon/iconfont.css";
+
+/* H5平台下隐藏底部导航栏 */
+/* #ifdef H5 */
+uni-tabbar {
+  display: none !important;
+}
+/* #endif */
 </style>
