@@ -88,20 +88,20 @@
 
 				<!-- 用户数据统计 -->
 				<view class="user-stats">
-					<view class="stat-item">
+					<view class="stat-item" @click="navigateToCollection">
 						<uni-icons type="star" size="20" />
 						<text>我的收藏</text>
-						<text class="count">0</text>
+						<text class="count">{{ userInfo.collectionCount || 0 }}</text>
 					</view>
-					<view class="stat-item">
+					<view class="stat-item" @click="navigateToFollows">
 						<uni-icons type="heart" size="20" />
 						<text>我的关注</text>
-						<text class="count">0</text>
+						<text class="count">{{ userInfo.followCount || 0 }}</text>
 					</view>
-					<view class="stat-item">
+					<view class="stat-item" @click="navigateToFollowers">
 						<uni-icons type="person" size="20" />
 						<text>我的粉丝</text>
-						<text class="count">0</text>
+						<text class="count">{{ userInfo.followerCount || 0 }}</text>
 					</view>
 				</view>
 			</view>
@@ -164,6 +164,7 @@
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	// 导入API接口
 	import { getArticleDetail } from '@/api/article';
+	import { getUserInfo } from '@/api/user'; // 导入getUserInfo接口
 	import { onLoad, onShow } from '@dcloudio/uni-app';
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
@@ -246,7 +247,10 @@
 	const userInfo = reactive({
 		avatar: uni.getStorageSync('userInfo')?.avatar || '',
 		nickname: uni.getStorageSync('userInfo')?.nickname || '',
-		email: uni.getStorageSync('userInfo')?.email || ''
+		email: uni.getStorageSync('userInfo')?.email || '',
+		collectionCount: uni.getStorageSync('userInfo')?.collectionCount || 0,
+		followCount: uni.getStorageSync('userInfo')?.followCount || 0,
+		followerCount: uni.getStorageSync('userInfo')?.followerCount || 0
 	});
 
 	// 监听登录状态变化
@@ -255,10 +259,16 @@
 			userInfo.avatar = newVal.avatar || '';
 			userInfo.nickname = newVal.nickname || '';
 			userInfo.email = newVal.email || '';
+			userInfo.collectionCount = newVal.collectionCount || 0;
+			userInfo.followCount = newVal.followCount || 0;
+			userInfo.followerCount = newVal.followerCount || 0;
 		} else {
 			userInfo.avatar = '';
 			userInfo.nickname = '';
 			userInfo.email = '';
+			userInfo.collectionCount = 0;
+			userInfo.followCount = 0;
+			userInfo.followerCount = 0;
 		}
 	}, { deep: true });
 
@@ -271,12 +281,17 @@
 
 	// 页面初始化
 	onMounted(async () => {
+		// 加载用户信息和统计数据
+		await loadUserData();
 		// 使用统一的数据加载入口
 		await loadArticleData();
 	});
 
 	// 页面显示时刷新数据
 	onShow(() => {
+		// 每次页面显示时更新用户数据
+		loadUserData();
+		
 		// 如果全局锁定中，跳过刷新
 		if (globalLoadingLock.isActive()) {
 			console.log('全局锁定中，onShow跳过文章列表刷新');
@@ -717,6 +732,9 @@
 			userInfo.avatar = latestUserInfo.avatar || '';
 			userInfo.nickname = latestUserInfo.nickname || '';
 			userInfo.email = latestUserInfo.email || '';
+			userInfo.collectionCount = latestUserInfo.collectionCount || 0;
+			userInfo.followCount = latestUserInfo.followCount || 0;
+			userInfo.followerCount = latestUserInfo.followerCount || 0;
 		}
 		
 		// 显示设置面板
@@ -750,11 +768,39 @@
 		userInfo.avatar = '';
 		userInfo.nickname = '';
 		userInfo.email = '';
+		userInfo.collectionCount = 0;
+		userInfo.followCount = 0;
+		userInfo.followerCount = 0;
 		showUserSettings.value = false;
 		
 		uni.showToast({
 			title: '已退出登录',
 			icon: 'success'
+		});
+	};
+
+	/**
+	 * 跳转到消息通知页面
+	 */
+	const goToMessage = () => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			setTimeout(() => {
+				uni.navigateTo({
+					url: '/pages/login/login'
+				});
+			}, 1500);
+			return;
+		}
+		
+		// 跳转到消息页面
+		uni.navigateTo({
+			url: '/pages/message/message'
 		});
 	};
 
@@ -788,6 +834,103 @@
 	const handleBeforeAvatarSelect = () => {
 		// 标记正在进行头像选择操作，阻止关闭面板
 		isInOperation.value = true;
+	};
+
+	const navigateToCollection = () => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			setTimeout(() => {
+				uni.navigateTo({
+					url: '/pages/login/login'
+				});
+			}, 1500);
+			return;
+		}
+		
+		uni.navigateTo({
+			url: '/pages/collection/collection'
+		});
+	};
+
+	const navigateToFollows = () => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			setTimeout(() => {
+				uni.navigateTo({
+					url: '/pages/login/login'
+				});
+			}, 1500);
+			return;
+		}
+		
+		uni.navigateTo({
+			url: '/pages/follows/follows'
+		});
+	};
+
+	const navigateToFollowers = () => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			setTimeout(() => {
+				uni.navigateTo({
+					url: '/pages/login/login'
+				});
+			}, 1500);
+			return;
+		}
+		
+		uni.navigateTo({
+			url: '/pages/followers/followers'
+		});
+	};
+
+	/**
+	 * 加载用户数据
+	 */
+	const loadUserData = async () => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			console.log('未登录，不加载用户数据');
+			return;
+		}
+
+		try {
+			// 调用获取用户信息API
+			const res = await getUserInfo();
+			
+			if (res.code === 200 && res.data) {
+				// 更新本地存储
+				uni.setStorageSync('userInfo', res.data);
+				
+				// 更新响应式数据
+				userInfo.avatar = res.data.avatar || '';
+				userInfo.nickname = res.data.nickname || '';
+				userInfo.email = res.data.email || '';
+				userInfo.followCount = res.data.followCount || 0;
+				userInfo.followerCount = res.data.followerCount || 0;
+				userInfo.collectionCount = res.data.collectionCount || 0;
+				
+				console.log('用户数据已更新', res.data);
+			}
+		} catch (error) {
+			console.error('获取用户数据失败', error);
+		}
 	};
 </script>
 
@@ -1053,6 +1196,7 @@
 				background: #fff;
 				border-radius: 4px;
 				padding: 20px;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 
 				.stat-item {
 					display: flex;
@@ -1061,6 +1205,9 @@
 					padding: 12px 0;
 					border-bottom: 1px solid #f0f0f0;
 					cursor: pointer;
+					transition: all 0.2s ease;
+					position: relative;
+					overflow: hidden;
 
 					&:last-child {
 						border-bottom: none;
@@ -1069,11 +1216,47 @@
 					text {
 						color: #666;
 						font-size: 14px;
+						transition: color 0.2s ease;
 					}
 
 					.count {
 						margin-left: auto;
-						color: #999;
+						color: #4361ee;
+						font-weight: bold;
+						background-color: rgba(67, 97, 238, 0.1);
+						padding: 2px 10px;
+						border-radius: 12px;
+						min-width: 25px;
+						text-align: center;
+						transition: all 0.2s ease;
+					}
+					
+					&:hover {
+						background-color: #f8f9fc;
+						padding-left: 5px;
+						
+						text {
+							color: #4361ee;
+						}
+						
+						.count {
+							background-color: rgba(67, 97, 238, 0.2);
+							transform: scale(1.05);
+						}
+						
+						&::after {
+							content: '';
+							position: absolute;
+							left: 0;
+							top: 0;
+							height: 100%;
+							width: 3px;
+							background-color: #4361ee;
+						}
+					}
+					
+					&:active {
+						background-color: #eef0fc;
 					}
 				}
 			}
