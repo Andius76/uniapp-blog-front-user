@@ -12,10 +12,6 @@
 					:style="{ borderRadius: '50rpx', padding: '0 30rpx' }">
 					发表
 				</button>
-				<!-- <button type="primary" size="mini" class="publish-btn" @click="handleTest"
-					:style="{ borderRadius: '50rpx', padding: '0 30rpx' }">
-					发表
-				</button> -->
 			</view>
 
 			<!-- 导航菜单 -->
@@ -29,65 +25,19 @@
 
 		<!-- 内容区域，添加上边距为header高度 -->
 		<view class="content-area">
-			<scroll-view scroll-y class="article-list" @scrolltolower="loadMore" refresher-enabled
-				:refresher-triggered="data.isRefreshing" @refresherrefresh="refreshList">
-				<!-- 文章列表循环 -->
-				<view v-for="(article, index) in data.articleList" :key="index" class="article-card">
-					<view class="user-info">
-						<image class="avatar" :src="article.author.avatar || '/static/images/avatar.png'"
-							mode="aspectFill"></image>
-						<text class="nickname">{{article.author.nickname}}</text>
-						<button class="follow-btn" :class="{'followed': article.author.isFollowed}"
-							@click="toggleFollow(index)">
-							{{ article.author.isFollowed ? '已关注' : '+ 关注' }}
-						</button>
-					</view>
-
-					<view class="article-content" @click="viewArticleDetail(article.id)">
-						<text class="article-title">{{article.title}}</text>
-						<text class="article-summary">{{article.summary}}...全文</text>
-
-						<!-- 单图布局 -->
-						<view class="article-image" v-if="article.imageType === 'single'">
-							<image :src="article.coverImg" mode="aspectFill" class="single-image"></image>
-						</view>
-
-						<!-- 多图布局 -->
-						<view class="image-grid" v-else-if="article.imageType === 'multi'">
-							<image v-for="(img, imgIndex) in article.images" :key="imgIndex" :src="img"
-								mode="aspectFill" class="grid-image"></image>
-						</view>
-					</view>
-
-					<view class="article-actions">
-						<view class="action-item" @click="handleShare(index)">
-							<uni-icons type="redo-filled" size="20" color="#666"></uni-icons>
-							<text>分享</text>
-						</view>
-						<view class="action-item" @click="handleComment(index)">
-							<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
-							<text>{{article.commentCount}}</text>
-						</view>
-						<view class="action-item" @click="handleCollect(index)">
-							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20"
-								:color="article.isCollected ? '#ffc107' : '#666'"></uni-icons>
-							<text :class="{'collected': article.isCollected}">{{article.collectCount}}</text>
-						</view>
-						<view class="action-item" @click="handleLike(index)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
-								:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-							<text :class="{'liked': article.isLiked}">{{article.likeCount}}</text>
-						</view>
-					</view>
-				</view>
-
-				<!-- 加载状态 -->
-				<view class="loading-state">
-					<text v-if="data.isLoading">加载中...</text>
-					<text v-else-if="data.noMoreData">没有更多文章了</text>
-					<text v-else>↓向下滑动加载更多文章列表↓</text>
-				</view>
-			</scroll-view>
+			<!-- 使用ArticleList组件替换原有的文章列表 -->
+			<ArticleList 
+				ref="articleListRef"
+				:key="data.currentNav"
+				:list-type="getListType()"
+				:height="getListHeight()"
+				:empty-text="'暂无文章内容'"
+				@article-click="viewArticleDetail"
+				@like="handleLike"
+				@share="handleShare"
+				@comment="handleComment"
+				@collect="handleCollect"
+			/>
 		</view>
 	</view>
 </template>
@@ -95,10 +45,63 @@
 <script setup>
 	import {
 		reactive,
-		onMounted
+		onMounted,
+		ref,
+		nextTick,
+		watch,
+		onBeforeMount
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+	// 导入API接口
+	import { getArticleDetail } from '@/api/article';
+	import { onLoad, onShow } from '@dcloudio/uni-app';
+	// 导入ArticleList组件
+	import ArticleList from '@/components/article-list/article-list.vue';
+
+	// 添加引用
+	const articleListRef = ref(null);
+	
+	// 添加全局防抖标记，使用闭包确保跨页面刷新时重置
+	const globalLoadingLock = (() => {
+		let isLocked = false;
+		let lockTimer = null;
+		
+		// 设置锁定方法
+		const lock = (duration = 3000) => {
+			if (lockTimer) clearTimeout(lockTimer);
+			isLocked = true;
+			lockTimer = setTimeout(() => {
+				isLocked = false;
+				lockTimer = null;
+			}, duration);
+			return true;
+		};
+		
+		// 检查是否锁定
+		const isActive = () => isLocked;
+		
+		// 解除锁定
+		const unlock = () => {
+			isLocked = false;
+			if (lockTimer) {
+				clearTimeout(lockTimer);
+				lockTimer = null;
+			}
+		};
+		
+		// 重置
+		const reset = () => {
+			unlock();
+		};
+		
+		return {
+			lock,
+			isActive,
+			unlock,
+			reset
+		};
+	})();
 
 	// 使用reactive统一管理数据
 	const data = reactive({
@@ -106,12 +109,8 @@
 		searchText: '',
 
 		// 文章列表数据与状态
-		articleList: [],
-		isLoading: false,
-		noMoreData: false,
-		currentPage: 1,
-		pageSize: 5, // 每页5条数据
 		isRefreshing: false,
+		lastRequestTime: 0, // 添加最近请求时间戳，用于限制频率
 
 		// 导航菜单数据和状态
 		navItems: [{
@@ -134,282 +133,203 @@
 		currentNav: 1, // 默认选中推荐
 	});
 
-	// 模拟文章数据
-	const mockArticles = [{
-			id: 1,
-			title: '前端学习路线图 - Vue3新特性解析',
-			collectCount: 45,
-			isCollected: false,
-			summary: 'Vue3带来了Composition API、Teleport、Fragments等新特性，本文详细介绍这些新特性的使用方法和优势',
-			imageType: 'single',
-			coverImg: '/static/images/default.png',
-			likeCount: 156,
-			commentCount: 38,
-			isLiked: false,
-			author: {
-				nickname: '前端达人',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		},
-		{
-			id: 2,
-			title: 'uniapp跨平台开发实战经验分享',
-			collectCount: 32,
-			isCollected: true,
-			summary: '使用uniapp开发跨平台应用的实战经验，包括性能优化、组件复用、条件编译等多个方面的技巧',
-			imageType: 'multi',
-			images: [
-				'/static/images/default.png',
-				'/static/images/default.png',
-				'/static/images/default.png'
-			],
-			likeCount: 98,
-			commentCount: 25,
-			isLiked: false,
-			author: {
-				nickname: '移动开发专家',
-				avatar: '/static/images/avatar.png',
-				isFollowed: true
-			}
-		},
-		{
-			id: 3,
-			title: '如何搭建一个高性能的博客系统',
-			summary: '本文介绍了搭建高性能博客系统的技术选型、架构设计以及性能优化策略，适合有一定web开发基础的读者',
-			imageType: 'single',
-			coverImg: '/static/images/default.png',
-			likeCount: 76,
-			commentCount: 15,
-			isLiked: false,
-			author: {
-				nickname: '后端工程师',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		},
-		{
-			id: 4,
-			title: '响应式设计与移动优先策略',
-			summary: '讨论响应式设计的核心原则和移动优先策略的重要性，以及如何在实际项目中应用这些概念',
-			imageType: 'multi',
-			images: [
-				'/static/images/default.png',
-				'/static/images/default.png'
-			],
-			likeCount: 112,
-			commentCount: 28,
-			isLiked: false,
-			author: {
-				nickname: 'UI设计师',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		},
-		{
-			id: 5,
-			title: 'JavaScript性能优化技巧',
-			summary: '分享JavaScript代码优化的实用技巧，包括内存管理、DOM操作优化和异步编程模式等方面的内容',
-			imageType: 'single',
-			coverImg: '/static/images/default.png',
-			likeCount: 189,
-			commentCount: 42,
-			isLiked: false,
-			author: {
-				nickname: 'JS专家',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		}
-	];
-
-	// 所有文章数据源（模拟）
-	const allArticles = [
-		...mockArticles,
-		{
-			id: 6,
-			title: 'CSS Grid与Flexbox布局详解',
-			summary: '比较CSS Grid和Flexbox两种现代布局方式的特点和使用场景，帮助开发者选择合适的布局方案',
-			imageType: 'multi',
-			images: [
-				'/static/images/default.png',
-				'/static/images/default.png',
-				'/static/images/default.png'
-			],
-			likeCount: 145,
-			commentCount: 32,
-			isLiked: false,
-			author: {
-				nickname: 'CSS大师',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		},
-		{
-			id: 7,
-			title: '微信小程序开发技巧总结',
-			summary: '总结微信小程序开发中的常见问题和解决方案，包括性能优化、组件复用和API调用等方面',
-			imageType: 'single',
-			coverImg: '/static/images/default.png',
-			likeCount: 201,
-			commentCount: 47,
-			isLiked: false,
-			author: {
-				nickname: '小程序开发者',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		},
-		{
-			id: 8,
-			title: 'TypeScript高级类型应用',
-			summary: '深入解析TypeScript中的高级类型特性，如交叉类型、联合类型、映射类型和条件类型等，提升代码的类型安全性',
-			imageType: 'single',
-			coverImg: '/static/images/default.png',
-			likeCount: 132,
-			commentCount: 29,
-			isLiked: false,
-			author: {
-				nickname: 'TS爱好者',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		},
-		{
-			id: 9,
-			title: 'Web安全防护最佳实践',
-			summary: '介绍Web应用中常见的安全漏洞和对应的防护措施，包括XSS、CSRF、SQL注入等方面的内容',
-			imageType: 'multi',
-			images: [
-				'/static/images/default.png',
-				'/static/images/default.png'
-			],
-			likeCount: 178,
-			commentCount: 39,
-			isLiked: false,
-			author: {
-				nickname: '安全工程师',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		},
-		{
-			id: 10,
-			title: 'Node.js后端开发实战',
-			summary: '分享使用Node.js进行后端开发的实战经验，包括Express框架使用、数据库交互和API设计等方面',
-			imageType: 'single',
-			coverImg: '/static/images/default.png',
-			likeCount: 165,
-			commentCount: 36,
-			isLiked: false,
-			author: {
-				nickname: 'Node全栈',
-				avatar: '/static/images/avatar.png',
-				isFollowed: false
-			}
-		}
-	];
+	// 在onBeforeMount阶段拦截，避免多个生命周期重复加载
+	onBeforeMount(() => {
+		console.log('页面开始挂载前');
+		// 重置全局加载锁
+		globalLoadingLock.reset();
+	});
 
 	// 页面初始化
-	onMounted(() => {
-		// 初始加载文章列表
-		loadArticles();
+	onMounted(async () => {
+		// 使用统一的数据加载入口
+		await loadArticleData();
+	});
 
-		// TODO: 后续添加实际API调用，如获取用户信息、获取文章列表等
+	// 页面显示时刷新数据
+	onShow(() => {
+		// 如果全局锁定中，跳过刷新
+		if (globalLoadingLock.isActive()) {
+			console.log('全局锁定中，onShow跳过文章列表刷新');
+			return;
+		}
+		
+		// 检查请求频率限制 - 如果距离上次请求不足1秒，则跳过刷新
+		const now = Date.now();
+		if (now - data.lastRequestTime < 1000) {
+			console.log('请求过于频繁，跳过本次刷新');
+			return;
+		}
+		
+		// 刷新文章列表
+		if (articleListRef.value) {
+			// 记录本次请求时间
+			data.lastRequestTime = now;
+			
+			// 检查组件上的加载状态
+			const isComponentLoading = articleListRef.value.isLoading || articleListRef.value.loading || false;
+			
+			if (!isComponentLoading && !data.isRefreshing) {
+				// 设置刷新状态为true，防止短时间内重复刷新
+				data.isRefreshing = true;
+				
+				console.log('检测到页面显示，刷新文章列表');
+				// 设置一个小延迟，避免可能的竞态条件
+				setTimeout(() => {
+					articleListRef.value.resetList();
+					// 添加延迟再加载文章，避免可能的并发请求
+					setTimeout(() => {
+						articleListRef.value.loadArticles();
+					}, 50);
+				}, 50);
+				
+				// 2秒后重置刷新状态，允许下次刷新
+				setTimeout(() => {
+					data.isRefreshing = false;
+				}, 2000);
+			} else if (isComponentLoading) {
+				console.log('组件正在加载中，跳过本次刷新');
+			} else {
+				console.log('已在刷新中，跳过本次刷新');
+			}
+		} else {
+			console.warn('文章列表组件未初始化，无法刷新');
+		}
 	});
 
 	/**
-	 * 加载文章列表
-	 * TODO: 实际项目中应替换为API调用
+	 * 加载文章数据
+	 * 统一的数据加载入口，确保只调用一次
 	 */
-	const loadArticles = () => {
-		// 如果已经没有更多数据或正在加载中，则不处理
-		if (data.noMoreData || data.isLoading) return;
-
-		data.isLoading = true;
-
-		// 模拟API请求延迟
-		setTimeout(() => {
-			// 计算起始和结束索引
-			const startIndex = (data.currentPage - 1) * data.pageSize;
-			const endIndex = startIndex + data.pageSize;
-
-			// 从所有文章中获取当前页的数据
-			const pageData = allArticles.slice(startIndex, endIndex);
-
-			// 如果没有获取到数据，说明已经没有更多数据了
-			if (pageData.length === 0) {
-				data.noMoreData = true;
-				data.isLoading = false;
+	const loadArticleData = async () => {
+		// 如果已经在加载中，跳过
+		if (globalLoadingLock.isActive()) {
+			console.log('全局加载锁激活中，跳过加载');
 				return;
 			}
 
-			// 添加到文章列表
-			data.articleList.push(...pageData);
-
-			// 更新页码
-			data.currentPage++;
-
-			// 如果获取的数据不足一页，也标记为没有更多数据
-			if (pageData.length < data.pageSize) {
-				data.noMoreData = true;
-			}
-
-			data.isLoading = false;
-
-			// 如果是刷新状态，结束刷新
-			if (data.isRefreshing) {
-				data.isRefreshing = false;
-			}
-		}, 800);
-
-		// TODO: 替换为实际API调用
-		// 示例：
-		// api.getArticles({
-		//   page: data.currentPage,
-		//   pageSize: data.pageSize,
-		//   type: data.navItems[data.currentNav].type
-		// }).then(res => {
-		//   // 处理响应数据
-		//   if (res.data.length > 0) {
-		//     data.articleList.push(...res.data);
-		//     data.currentPage++;
-		//     data.noMoreData = res.data.length < data.pageSize;
-		//   } else {
-		//     data.noMoreData = true;
-		//   }
-		//   data.isLoading = false;
-		//   if (data.isRefreshing) data.isRefreshing = false;
-		// }).catch(err => {
-		//   console.error('获取文章列表失败', err);
-		//   data.isLoading = false;
-		//   if (data.isRefreshing) data.isRefreshing = false;
-		// });
-	};
-
-	/**
-	 * 刷新列表
-	 */
-	const refreshList = () => {
+		// 设置加载锁，防止重复加载
+		globalLoadingLock.lock(3000);
+		
 		// 设置刷新状态
 		data.isRefreshing = true;
-
-		// 重置数据
-		data.articleList = [];
-		data.currentPage = 1;
-		data.noMoreData = false;
-
-		// 重新加载
-		loadArticles();
-
-		// TODO: 实际项目中可以添加获取最新数据的逻辑
+		
+		// 记录请求时间
+		data.lastRequestTime = Date.now();
+		
+		console.log('=== 开始统一加载文章数据 ===');
+		
+		try {
+			// 显示加载提示
+			uni.showLoading({
+				title: '加载中...'
+			});
+			
+			// 等待DOM更新，确保引用有效
+			await nextTick();
+			
+			// 延迟加载文章列表，确保组件已经完全挂载
+			setTimeout(() => {
+				// 等待下一个DOM更新周期，文章列表组件会自动加载
+				nextTick(() => {
+					console.log('文章列表组件已渲染，将自动加载数据');
+					
+					// 隐藏加载提示
+					uni.hideLoading();
+				
+					// 延迟重置刷新状态
+					setTimeout(() => {
+						data.isRefreshing = false;
+						console.log('重置刷新状态');
+					}, 2000);
+				});
+			}, 300);
+		} catch (error) {
+			console.error('统一加载失败:', error);
+			uni.showToast({
+				title: '加载失败，请重试',
+				icon: 'none'
+			});
+			uni.hideLoading();
+			
+			// 出错时也要重置状态
+				data.isRefreshing = false;
+			globalLoadingLock.unlock();
+		}
 	};
 
 	/**
-	 * 加载更多
+	 * 获取当前导航对应的列表类型
 	 */
-	const loadMore = () => {
-		loadArticles();
+	const getListType = () => {
+		const navType = data.navItems[data.currentNav].type;
+		switch(navType) {
+			case 'follow':
+				return 'follow';
+			case 'recommend':
+				return 'recommend';
+			case 'hot':
+				return 'hot';
+			case 'new':
+				return 'latest';
+			default:
+				return 'recommend';
+		}
+	};
+
+	/**
+	 * 获取基础URL
+	 */
+	const getBaseUrl = () => {
+		// #ifdef APP-PLUS
+		return 'http://10.9.99.181:8080'; // 安卓模拟器访问本机服务器的地址
+		// #endif
+
+		// #ifdef H5
+		return 'http://localhost:8080';
+		// #endif
+
+		// #ifdef MP-WEIXIN
+		return 'http://localhost:8080';
+		// #endif
+	};
+
+	/**
+	 * 处理头像URL格式
+	 * @param {String} url - 头像URL
+	 * @return {String} 处理后的头像URL
+	 */
+	const formatAvatarUrl = (url) => {
+		if (!url) return '/static/images/avatar.png';
+		
+		// 移除URL中可能存在的多余空格
+		url = url.trim();
+		
+		// 确保不是null或undefined
+		if (url === 'null' || url === 'undefined') {
+			return '/static/images/avatar.png';
+		}
+		
+		// 完整URL处理：如果已经是完整URL（包含http）则不处理
+		if (url.startsWith('http')) {
+			// 检查并修复双斜杠问题
+			if (url.includes('//uploads')) {
+				url = url.replace('//uploads', '/uploads');
+			}
+			return url;
+		}
+		// 静态资源处理：如果是静态资源路径则不处理
+		else if (url.startsWith('/static')) {
+			return url;
+		}
+		// 其他情况：添加基础URL前缀
+		else {
+			if (url.startsWith('/')) {
+				return getBaseUrl() + url;
+			} else {
+				return getBaseUrl() + '/' + url;
+			}
+		}
 	};
 
 	/**
@@ -424,132 +344,164 @@
 			return;
 		}
 
-		// 模拟搜索
-		uni.showToast({
-			title: '搜索: ' + data.searchText,
-			icon: 'none'
+		// 跳转到搜索结果页面
+		uni.navigateTo({
+			url: `/pages/search/search?keyword=${encodeURIComponent(data.searchText)}`
 		});
-
-		// TODO: 实际搜索API调用
-		// api.searchArticles(data.searchText).then(res => {
-		//   // 处理搜索结果
-		// });
 	};
 
 	/**
 	 * 发表文章处理
 	 */
 	const handlePost = () => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			
+			setTimeout(() => {
+				uni.navigateTo({
+					url: `/pages/login/login?redirect=${encodeURIComponent('/pages/publish/publish')}`
+				});
+			}, 1500);
+			return;
+		}
+		
 		uni.navigateTo({
 			url: '/pages/publish/publish'
 		});
 	};
-	const handleTest = () => {
-		uni.navigateTo({
-			url: '/pages/collection/collection'
-		});
-	};
-
-	/**
-	 * 点赞处理
-	 * @param {Number} index - 文章索引
-	 */
-	const handleLike = (index) => {
-		const article = data.articleList[index];
-
-		// 切换点赞状态
-		article.isLiked = !article.isLiked;
-
-		// 更新点赞数
-		if (article.isLiked) {
-			// 点赞
-			article.likeCount++;
-			uni.showToast({
-				title: '点赞成功',
-				icon: 'success'
-			});
-		} else {
-			// 取消点赞
-			article.likeCount--;
-			uni.showToast({
-				title: '已取消点赞',
-				icon: 'none'
-			});
-		}
-
-		// TODO: 实际点赞API调用
-		// api.likeArticle(article.id, article.isLiked);
-	};
-
-	/**
-	 * 评论处理
-	 * @param {Number} index - 文章索引
-	 */
-	const handleComment = (index) => {
-		uni.showToast({
-			title: '打开评论列表',
-			icon: 'none'
-		});
-
-		// TODO: 跳转到评论页面
-		// uni.navigateTo({ url: `/pages/comment/comment?id=${data.articleList[index].id}` });
-	};
-
-	/**
-	 * 分享处理
-	 * @param {Number} index - 文章索引
-	 */
-	const handleShare = (index) => {
-		uni.showToast({
-			title: '分享成功',
-			icon: 'success'
-		});
-
-		// TODO: 实际分享API调用
-	};
-
-	/**
-	 * 切换关注状态
-	 * @param {Number} index - 文章索引
-	 */
-	const toggleFollow = (index) => {
-		const author = data.articleList[index].author;
-		author.isFollowed = !author.isFollowed;
-
-		if (author.isFollowed) {
-			uni.showToast({
-				title: '关注成功',
-				icon: 'success'
-			});
-		} else {
-			uni.showToast({
-				title: '已取消关注',
-				icon: 'none'
-			});
-		}
-
-		// TODO: 实际关注/取消关注API调用
-		// api.followAuthor(author.id, author.isFollowed);
-	};
 
 	/**
 	 * 查看文章详情
-	 * @param {Number} id - 文章ID
+	 * @param {Number} articleId - 文章ID
 	 */
-	const viewArticleDetail = (id) => {
+	const viewArticleDetail = (articleId) => {
 		// #ifdef H5
 		// H5环境下，新窗口打开文章详情页
 		// 获取正确的基础路径
 		const currentUrl = window.location.href;
 		const baseUrl = currentUrl.split('#')[0];
-		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${id}`;
+		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
 		window.open(detailUrl, '_blank');
 		// #endif
 		
 		// #ifndef H5
 		// 非H5环境下，正常跳转
-		uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${id}` });
+		uni.navigateTo({
+			url: `/pages/article-detail/article-detail?id=${articleId}`
+		});
 		// #endif
+	};
+
+	/**
+	 * 处理收藏
+	 * @param {Object} article - 文章对象
+	 */
+	const handleCollect = (article) => {
+		uni.showToast({
+			title: article.isCollected ? '收藏成功' : '已取消收藏',
+			icon: article.isCollected ? 'success' : 'none'
+		});
+	};
+
+	/**
+	 * 处理评论
+	 * @param {Object} article - 文章对象
+	 */
+	const handleComment = (article) => {
+		// 跳转到文章详情页并显示评论部分
+		uni.navigateTo({
+			url: `/pages/article-detail/article-detail?id=${article.id}&showComments=true`
+		});
+	};
+
+	/**
+	 * 处理点赞
+	 * @param {Object} article - 文章对象
+	 */
+	const handleLike = (article) => {
+		uni.showToast({
+			title: article.isLiked ? '点赞成功' : '已取消点赞',
+			icon: article.isLiked ? 'success' : 'none'
+		});
+	};
+
+	/**
+	 * 处理分享
+	 * @param {Object} article - 文章对象
+	 */
+	const handleShare = (article) => {
+		// 分享菜单
+		uni.showActionSheet({
+			itemList: ['分享到微信', '复制链接', '生成分享图'],
+			success: (res) => {
+				switch (res.tapIndex) {
+					case 0: // 分享到微信
+						// #ifdef APP-PLUS
+						uni.share({
+							provider: 'weixin',
+							scene: 'WXSceneSession',
+							type: 0,
+							title: article.title,
+							summary: article.summary || '来自我的博客',
+							imageUrl: article.coverImage || '',
+							href: `${getBaseUrl()}/article/${article.id}`,
+							success: () => {
+								uni.showToast({
+									title: '分享成功',
+									icon: 'success'
+								});
+							}
+						});
+						// #endif
+						
+						// #ifdef H5 || MP-WEIXIN
+						uni.showToast({
+							title: '已复制链接，请手动分享',
+							icon: 'none'
+						});
+						uni.setClipboardData({
+							data: `${getBaseUrl()}/article/${article.id}`,
+							success: () => {
+								console.log('链接已复制');
+							}
+						});
+						// #endif
+						break;
+						
+					case 1: // 复制链接
+						uni.setClipboardData({
+							data: `${getBaseUrl()}/article/${article.id}`,
+							success: () => {
+								uni.showToast({
+									title: '链接已复制',
+									icon: 'success'
+								});
+							}
+						});
+						break;
+						
+					case 2: // 生成分享图
+						uni.showToast({
+							title: '分享图生成中...',
+							icon: 'loading',
+							duration: 2000
+						});
+						
+						setTimeout(() => {
+							uni.showToast({
+								title: '分享图已生成',
+								icon: 'success'
+							});
+						}, 2000);
+						break;
+				}
+			}
+		});
 	};
 
 	/**
@@ -557,42 +509,49 @@
 	 * @param {Number} index - 导航索引
 	 */
 	const switchNav = (index) => {
-		if (data.currentNav === index) return;
+		if (data.currentNav === index) {
+			// 如果点击当前选中的选项卡，则视为刷新操作
+			refreshArticleList();
+			return;
+		}
 
 		data.currentNav = index;
-
-		// 重置文章列表
-		data.articleList = [];
-		data.currentPage = 1;
-		data.noMoreData = false;
 
 		// 显示加载提示
 		uni.showLoading({
 			title: '加载中...'
 		});
 
-		// 根据不同的导航类型加载不同的数据
+		// 由于添加了key属性，组件会重新创建，不需要手动调用重置和加载方法
 		setTimeout(() => {
-			loadArticles();
 			uni.hideLoading();
 		}, 500);
-
-		// TODO: 根据不同的导航类型调用不同的API
-		// api.getArticles({
-		//   type: data.navItems[index].type,
-		//   page: 1,
-		//   pageSize: data.pageSize
-		// }).then(/* 处理响应 */);
 	};
 
-	const handleCollect = (index) => {
-		const article = data.articleList[index];
-		article.isCollected = !article.isCollected;
-		article.collectCount += article.isCollected ? 1 : -1;
-		uni.showToast({
-			title: article.isCollected ? '收藏成功' : '已取消收藏',
-			icon: article.isCollected ? 'success' : 'none'
-		});
+	/**
+	 * 手动刷新文章列表
+	 */
+	const refreshArticleList = () => {
+		// 使用统一的加载入口进行刷新
+		loadArticleData();
+	};
+
+	/**
+	 * 获取文章列表高度
+	 */
+	const getListHeight = () => {
+		// #ifdef APP-PLUS || MP-WEIXIN
+		// 在APP和小程序中减去状态栏高度
+		return 'calc(100vh - 220rpx - var(--status-bar-height, 25px))';
+		// #endif
+		
+		// #ifdef H5
+		// 在H5中使用固定值
+		return 'calc(100vh - 220rpx)';
+		// #endif
+		
+		// 默认高度
+		return 'calc(100vh - 220rpx)';
 	};
 </script>
 
@@ -617,8 +576,12 @@
 		right: 0;
 		background-color: #f5f5f5;
 		padding: 5rpx;
+		padding-top: calc(5rpx + var(--status-bar-height, 0px));
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		// #ifdef APP-PLUS || MP-WEIXIN
+		padding-top: calc(5rpx + var(--status-bar-height, 25px));
+		// #endif
 
 		// 顶部区域(搜索栏和发表按钮)容器
 		.header-top {
@@ -702,146 +665,11 @@
 
 	// 内容区域
 	.content-area {
-		padding: 165rpx 20rpx 0rpx 20rpx;
+		padding: 220rpx 20rpx 0rpx 20rpx;
+		// #ifdef APP-PLUS || MP-WEIXIN
+		padding-top: calc(220rpx + var(--status-bar-height, 25px));
+		// #endif
 		flex: 1;
-
-		.article-list {
-			height: calc(100vh - 165rpx); // 减去底部导航栏高度
-		}
-
-		// 文章卡片
-		.article-card {
-			background-color: #fff;
-			border-radius: 20rpx;
-			padding: 30rpx;
-			margin-top: 5rpx;
-			margin-bottom: 20rpx;
-			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-
-			// 用户信息
-			.user-info {
-				display: flex;
-				align-items: center;
-				margin-bottom: 20rpx;
-
-				.avatar {
-					width: 80rpx;
-					height: 80rpx;
-					border-radius: 50%;
-					margin-right: 20rpx;
-					background-color: #eee;
-				}
-
-				.nickname {
-					flex: 1;
-					font-size: 28rpx;
-					color: #333;
-					font-weight: 500;
-				}
-
-				.follow-btn {
-					height: 50rpx;
-					line-height: 50rpx;
-					background-color: #fff;
-					color: #4361ee;
-					font-size: 24rpx;
-					border: 2rpx solid #4361ee;
-					border-radius: 25rpx;
-					padding: 0 20rpx;
-
-					&.followed {
-						color: #999;
-						border-color: #999;
-					}
-				}
-			}
-
-			// 文章内容
-			.article-content {
-				margin-bottom: 20rpx;
-
-				.article-title {
-					font-size: 32rpx;
-					font-weight: bold;
-					color: #333;
-					margin-bottom: 10rpx;
-					display: block;
-				}
-
-				.article-summary {
-					font-size: 28rpx;
-					color: #666;
-					margin-bottom: 20rpx;
-					line-height: 1.5;
-					display: block;
-				}
-
-				// 单图布局
-				.article-image {
-					width: 100%;
-					height: 300rpx;
-					border-radius: 10rpx;
-					overflow: hidden;
-					margin-bottom: 20rpx;
-
-					.single-image {
-						width: 100%;
-						height: 100%;
-						background-color: #eee;
-					}
-				}
-
-				// 多图布局
-				.image-grid {
-					display: flex;
-					justify-content: space-between;
-					margin-bottom: 20rpx;
-
-					.grid-image {
-						width: 32%;
-						height: 200rpx;
-						border-radius: 10rpx;
-						background-color: #eee;
-					}
-				}
-			}
-
-			// 文章操作按钮
-			.article-actions {
-				display: flex;
-				justify-content: space-around;
-				border-top: 2rpx solid #f0f0f0;
-				padding-top: 20rpx;
-
-				.action-item {
-					display: flex;
-					align-items: center;
-
-					.uni-icons {
-						margin-right: 10rpx;
-					}
-
-					text {
-						font-size: 24rpx;
-						color: #666;
-
-						&.liked {
-							color: #ff6b6b;
-						}
-					}
-				}
-			}
-		}
-
-		// 加载状态
-		.loading-state {
-			text-align: center;
-			font-size: 24rpx;
-			color: #999;
-			margin-top: 20rpx;
-			padding-top: 20rpx;
-			padding-bottom: 50rpx; // 增加底部间距，确保在底部导航栏上方可见
-		}
 	}
 
 	// 全局样式覆盖
@@ -851,9 +679,5 @@
 		&-inner {
 			color: #b82222;
 		}
-	}
-
-	.collected {
-		color: #ffc107;
 	}
 </style>

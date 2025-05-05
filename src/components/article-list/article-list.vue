@@ -4,7 +4,9 @@
 		<!-- #ifdef H5 -->
 		<scroll-view scroll-y class="article-scroll" @scrolltolower="handleLoadMore" :refresher-enabled="true"
 			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
-			refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop">
+			refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
+			:show-scrollbar="false" :enable-flex="true" :bounce="true" :enhanced="true" :scroll-with-animation="true"
+			@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
 			<!-- 网格布局文章列表 -->
 			<view class="article-grid">
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
@@ -12,7 +14,7 @@
 					<view class="article-content" @click="handleArticleClick(article.id)">
 						<!-- 作者信息（第一行） -->
 						<view class="user-info">
-							<image class="avatar" :src="article.author?.avatar || '/static/images/avatar.png'" mode="aspectFill"
+							<image class="avatar" :src="formatAvatarUrl(article.author?.avatar)" mode="aspectFill"
 								@click.stop="handleAuthorClick(article.author?.id)"></image>
 							<text class="nickname"
 								@click.stop="handleAuthorClick(article.author?.id)">{{article.author?.nickname}}</text>
@@ -93,12 +95,14 @@
 		<!-- #ifndef H5 -->
 		<scroll-view scroll-y class="article-scroll" @scrolltolower="handleLoadMore" :refresher-enabled="true"
 			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
-			refresher-background="#f5f5f5">
+			refresher-background="#f5f5f5" :show-scrollbar="false" :enable-flex="true" :bounce="true" :enhanced="true"
+			:scroll-with-animation="true" @touchstart="handleTouchStart" @touchmove="handleTouchMove"
+			@touchend="handleTouchEnd">
 			<!-- 文章列表循环 -->
 			<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
 				<!-- 用户信息 -->
 				<view class="user-info">
-					<image class="avatar" :src="article.author?.avatar || '/static/images/avatar.png'" mode="aspectFill"
+					<image class="avatar" :src="formatAvatarUrl(article.author?.avatar)" mode="aspectFill"
 						@click="handleAuthorClick(article.author?.id)"></image>
 					<text class="nickname"
 						@click="handleAuthorClick(article.author?.id)">{{article.author?.nickname}}</text>
@@ -623,17 +627,44 @@
 			}
 
 			// 确保头像地址是完整URL
-			if (article.author.avatar && !article.author.avatar.startsWith('http') && !article.author.avatar
-				.startsWith('/static')) {
-				if (article.author.avatar.startsWith('/')) {
-					article.author.avatar = getBaseUrl() + article.author.avatar;
-				} else {
-					article.author.avatar = getBaseUrl() + '/' + article.author.avatar;
+			if (article.author && article.author.avatar) {
+				// 移除URL中可能存在的多余空格
+				article.author.avatar = article.author.avatar.trim();
+				
+				// 确保不是null或undefined
+				if (article.author.avatar === 'null' || article.author.avatar === 'undefined') {
+					article.author.avatar = '/static/images/avatar.png';
 				}
+				// 完整URL处理：如果已经是完整URL（包含http）则不处理
+				else if (article.author.avatar.startsWith('http')) {
+					// 检查并修复双斜杠问题
+					if (article.author.avatar.includes('//uploads')) {
+						article.author.avatar = article.author.avatar.replace('//uploads', '/uploads');
+					}
+				}
+				// 静态资源处理：如果是静态资源路径则不处理
+				else if (article.author.avatar.startsWith('/static')) {
+					// 静态资源路径，不需要修改
+					console.log('保留作者头像静态资源路径:', article.author.avatar);
+				}
+				// 其他情况：添加基础URL前缀
+				else {
+					let oldUrl = article.author.avatar;
+					if (article.author.avatar.startsWith('/')) {
+						article.author.avatar = getBaseUrl() + article.author.avatar;
+					} else {
+						article.author.avatar = getBaseUrl() + '/' + article.author.avatar;
+					}
+					console.log(`作者头像URL更新: ${oldUrl} -> ${article.author.avatar}`);
+				}
+			} else if (article.author) {
+				// 设置默认头像
+				article.author.avatar = '/static/images/avatar.png';
 			}
 
 			// 最终封面URL
 			console.log(`最终封面URL[${article.id}]:`, article.coverImage);
+			console.log(`最终作者头像URL[${article.id}]:`, article.author?.avatar);
 
 			return article;
 		});
@@ -835,6 +866,44 @@
 		// #ifdef MP-WEIXIN
 		return 'http://localhost:8080';
 		// #endif
+	};
+
+	/**
+	 * 处理头像URL格式，确保显示正确的头像
+	 * @param {String} url - 头像URL
+	 * @return {String} 处理后的头像URL
+	 */
+	const formatAvatarUrl = (url) => {
+		if (!url) return '/static/images/avatar.png';
+		
+		// 移除URL中可能存在的多余空格
+		url = url.trim();
+		
+		// 确保不是null或undefined
+		if (url === 'null' || url === 'undefined') {
+			return '/static/images/avatar.png';
+		}
+		
+		// 完整URL处理：如果已经是完整URL（包含http）则不处理
+		if (url.startsWith('http')) {
+			// 检查并修复双斜杠问题
+			if (url.includes('//uploads')) {
+				url = url.replace('//uploads', '/uploads');
+			}
+			return url;
+		}
+		// 静态资源处理：如果是静态资源路径则不处理
+		else if (url.startsWith('/static')) {
+			return url;
+		}
+		// 其他情况：添加基础URL前缀
+		else {
+			if (url.startsWith('/')) {
+				return getBaseUrl() + url;
+			} else {
+				return getBaseUrl() + '/' + url;
+			}
+		}
 	};
 
 	/**
@@ -1249,14 +1318,62 @@
 		refresh: handleRefresh,
 		getArticleList: () => articleList.value
 	});
+	
+	// 触摸相关状态
+	const touchStartY = ref(0);
+	const lastTouchY = ref(0);
+	const isScrolling = ref(false);
+	
+	// 处理触摸开始事件
+	const handleTouchStart = (e) => {
+		touchStartY.value = e.touches[0].clientY;
+		lastTouchY.value = e.touches[0].clientY;
+		isScrolling.value = false;
+	};
+	
+	// 处理触摸移动事件
+	const handleTouchMove = (e) => {
+		const currentY = e.touches[0].clientY;
+		const deltaY = currentY - lastTouchY.value;
+		
+		// 当滚动到顶部且继续下拉时，阻止外部容器滚动
+		if (scrollTop.value <= 0 && deltaY > 0) {
+			// 允许组件自己的下拉刷新行为
+			isScrolling.value = true;
+		}
+		// 当滚动到底部且继续上拉时
+		else if (noMoreData.value && deltaY < 0) {
+			// 标记为正在滚动中
+			isScrolling.value = true;
+		}
+		
+		lastTouchY.value = currentY;
+	};
+	
+	// 处理触摸结束事件
+	const handleTouchEnd = () => {
+		// 重置触摸状态
+		isScrolling.value = false;
+	};
 </script>
 
 <style lang="scss">
 	.article-list-container {
 		width: 100%;
-
+		
+		// 优化滚动区域样式
 		.article-scroll {
 			height: v-bind(height);
+			// 隐藏默认滚动条
+			scrollbar-width: none;
+			-ms-overflow-style: none;
+			&::-webkit-scrollbar {
+				display: none;
+				width: 0 !important;
+			}
+			// 添加弹性滚动效果
+			-webkit-overflow-scrolling: touch;
+			overflow-x: hidden;
 		}
 
 		// 回到顶部按钮
@@ -1493,15 +1610,9 @@
 					height: 460rpx; // 保持高度一致
 				}
 				
-				// 大屏幕设备 (平板横屏或桌面)
+				// 大屏幕设备 (平板横屏或桌面) 和更大的屏幕
 				@media screen and (min-width: 1024px) {
-					width: 25%; // 大屏幕一行显示4个
-					height: 460rpx; // 保持高度一致
-				}
-				
-				// 超大屏幕设备
-				@media screen and (min-width: 1440px) {
-					width: 20%; // 超大屏幕一行显示5个
+					width: 25%; // 所有大屏幕一行最多显示4个
 					height: 460rpx; // 保持高度一致
 				}
 			}
@@ -1621,22 +1732,6 @@
 						&:hover {
 							transform: scale(1.02); // 鼠标悬停时轻微放大效果
 						}
-					}
-				}
-
-				// 多图布局 - 仅在没有coverImage但有images时显示
-				.image-grid {
-					display: flex;
-					justify-content: space-between;
-					margin-top: 20rpx;
-					margin-bottom: 20rpx;
-
-					.grid-image {
-						width: 32%;
-						height: 200rpx;
-						border-radius: 12rpx;
-						background-color: #eee;
-						box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 					}
 				}
 			}
