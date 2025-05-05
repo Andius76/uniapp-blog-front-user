@@ -16,7 +16,7 @@
 					<view class="notification" @click="goToMessage">
 						<uni-icons type="notification" size="24" />
 					</view>
-					<view class="user-info" @click="goToUserProfile">
+					<view class="user-info" @click.stop="handleUserClick">
 						<image class="avatar" :src="userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
 						<text class="nickname">{{ userInfo.nickname || '未登录' }}</text>
 					</view>
@@ -125,6 +125,18 @@
 			/>
 		</view>
 		<!-- #endif -->
+
+		<!-- #ifdef H5 -->
+		<user-settings 
+			v-if="showUserSettings"
+			:visible="showUserSettings"
+			:userInfo="userInfo"
+			@update:visible="showUserSettings = $event"
+			@avatar-change="handleAvatarChange"
+			@nickname-change="handleNicknameChange"
+			@logout="handleLogout"
+		/>
+		<!-- #endif -->
 	</view>
 </template>
 
@@ -144,6 +156,7 @@
 	import { onLoad, onShow } from '@dcloudio/uni-app';
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
+	import UserSettings from '@/components/user-settings/user-settings.vue';
 
 	// 添加引用
 	const articleListRef = ref(null);
@@ -221,7 +234,8 @@
 
 	const userInfo = reactive({
 		avatar: uni.getStorageSync('userInfo')?.avatar || '',
-		nickname: uni.getStorageSync('userInfo')?.nickname || ''
+		nickname: uni.getStorageSync('userInfo')?.nickname || '',
+		email: uni.getStorageSync('userInfo')?.email || ''
 	});
 
 	// 监听登录状态变化
@@ -229,9 +243,11 @@
 		if (newVal) {
 			userInfo.avatar = newVal.avatar || '';
 			userInfo.nickname = newVal.nickname || '';
+			userInfo.email = newVal.email || '';
 		} else {
 			userInfo.avatar = '';
 			userInfo.nickname = '';
+			userInfo.email = '';
 		}
 	}, { deep: true });
 
@@ -664,6 +680,78 @@
 		// #endif
 		return '100vh';
 	};
+
+	const showUserSettings = ref(false);
+
+	// 修改 user-info 的点击事件处理
+	const handleUserClick = (event) => {
+		if (event) {
+			event.stopPropagation();
+		}
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.navigateTo({
+				url: '/pages/login/login'
+			});
+			return;
+		}
+		
+		// 更新最新的用户信息
+		const latestUserInfo = uni.getStorageSync('userInfo');
+		if (latestUserInfo) {
+			userInfo.avatar = latestUserInfo.avatar || '';
+			userInfo.nickname = latestUserInfo.nickname || '';
+			userInfo.email = latestUserInfo.email || '';
+		}
+		
+		showUserSettings.value = true;
+	};
+
+	const handleAvatarChange = (newAvatar) => {
+		userInfo.avatar = newAvatar;
+		uni.setStorageSync('userInfo', {
+			...uni.getStorageSync('userInfo'),
+			avatar: newAvatar
+		});
+	};
+
+	const handleNicknameChange = (newNickname) => {
+		userInfo.nickname = newNickname;
+		uni.setStorageSync('userInfo', {
+			...uni.getStorageSync('userInfo'),
+			nickname: newNickname
+		});
+	};
+
+	const handleLogout = () => {
+		uni.removeStorageSync('token');
+		uni.removeStorageSync('userInfo');
+		userInfo.avatar = '';
+		userInfo.nickname = '';
+		userInfo.email = '';
+		showUserSettings.value = false;
+		
+		uni.showToast({
+			title: '已退出登录',
+			icon: 'success'
+		});
+	};
+
+	// 添加全局点击事件监听，点击其他区域关闭设置面板
+	onMounted(() => {
+		// #ifdef H5
+		// 点击其他区域关闭设置面板
+		document.addEventListener('click', (event) => {
+			if (showUserSettings.value) {
+				const settingsPanel = document.querySelector('.user-settings-wrapper');
+				if (settingsPanel && !settingsPanel.contains(event.target)) {
+					showUserSettings.value = false;
+				}
+			}
+		});
+		// #endif
+	});
 </script>
 
 <style lang="scss">
@@ -690,6 +778,7 @@
 		flex-direction: column;
 		height: 100vh;
 		overflow: hidden;
+		min-width: 1000px;
 	}
 
 	// 顶部导航栏
@@ -701,6 +790,7 @@
 		background-color: #fff;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		min-width: 1000px;
 
 		.header-top {
 			display: flex;
@@ -708,6 +798,7 @@
 			height: 60px;
 			padding: 0 20px;
 			max-width: 1200px;
+			min-width: 960px;
 			margin: 0 auto;
 			justify-content: center;
 			gap: 20px;
@@ -771,6 +862,7 @@
 					display: flex;
 					align-items: center;
 					gap: 8px;
+					position: relative;
 					cursor: pointer;
 					padding: 4px 8px;
 					border-radius: 20px;
@@ -851,6 +943,7 @@
 		display: flex;
 		justify-content: space-between;
 		max-width: 1200px;
+		min-width: 960px;
 		margin: 0 auto;
 		padding: 106px 20px 0;
 		gap: 20px;
@@ -869,7 +962,7 @@
 
 		.main-content {
 			flex: 1;
-			min-width: 0;
+			min-width: 600px;
 			background: #fff;
 			border-radius: 4px;
 			padding: 20px;
@@ -881,6 +974,7 @@
 		.right-sidebar {
 			position: fixed;
 			width: 300px;
+			min-width: 280px;
 			top: 106px;
 			right: calc((100% - 1200px) / 2 + 30px);
 			bottom: 0;
@@ -1053,6 +1147,46 @@
 
 	.mp-content {
 		padding-top: calc(170rpx + var(--status-bar-height));
+		background: #f5f5f5;
+	}
+	// #endif
+
+	.user-settings {
+		position: fixed;
+		top: 60px;
+		right: calc((100% - 1200px) / 2 + 30px);
+		z-index: 1000;
+		background: #fff;
+		border-radius: 4px;
+		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+		
+		@media screen and (max-width: 1200px) {
+			right: 30px;
+		}
+	}
+
+	// 添加水平滚动条样式
+	// #ifdef H5
+	html {
+		overflow-x: auto;
+		min-width: 1000px;
+	}
+
+	body {
+		min-width: 1000px;
+	}
+
+	::-webkit-scrollbar {
+		width: 6px;
+		height: 6px;
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: #ddd;
+		border-radius: 3px;
+	}
+
+	::-webkit-scrollbar-track {
 		background: #f5f5f5;
 	}
 	// #endif
