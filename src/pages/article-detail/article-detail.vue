@@ -1,5 +1,5 @@
 <template>
-	<view class="container" :style="{ overflow: 'hidden' }">
+	<view class="container" :style="{ overflow: 'hidden' }" @touchstart="handleTouchStart" @touchend="handleTouchEnd" @touchmove="handleTouchMove">
 		<!-- 移除scroll-view，使用普通view来盛放内容，让页面自然滚动 -->
 		<view class="article-detail" id="article-detail">
 			<!-- 移除返回按钮，App和小程序有自带返回功能 -->
@@ -193,12 +193,11 @@
 			<button class="send-btn" :disabled="!data.commentContent.trim()" @click="submitComment">发送</button>
 		</view>
 
-		<!-- #ifdef H5 -->
-		<!-- 滚动到顶部按钮 -->
-		<view class="scroll-top-btn" :class="{'visible': data.showScrollTopBtn}" @click="scrollToTop">
-			<uni-icons type="top" size="22" color="#ffffff"></uni-icons>
+		<!-- 滚动到顶部按钮 - 改为始终显示 -->
+		<view class="scroll-top-btn-fixed" @click="scrollToTop">
+			<uni-icons type="top" size="24" color="#ffffff"></uni-icons>
+			<text class="back-to-top-text">顶部</text>
 		</view>
-		<!-- #endif -->
 	</view>
 </template>
 
@@ -1557,25 +1556,28 @@
 		loadMoreComments();
 	});
 
-	// 滚动到顶部
+	// 滚动到顶部 - 简化版本
 	const scrollToTop = () => {
-		// 使用uni-app API，去掉动画效果
-		uni.pageScrollTo({
-			scrollTop: 0,
-			duration: 0 // 设置为0，取消动画
+		console.log('点击滚动到顶部按钮');
+		
+		// 简单反馈
+		uni.showToast({
+			title: '返回顶部',
+			icon: 'none',
+			duration: 300
 		});
-
-		// #ifdef H5
-		// H5环境下使用立即滚动模式
-		window.scrollTo({
-			top: 0,
-			behavior: 'auto' // 使用auto而非smooth，立即滚动无动画
-		});
-
-		// 立即执行的兜底方案
-		document.body.scrollTop = 0; // For Safari
-		document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
-		// #endif
+		
+		try {
+			// 简单直接的滚动方法
+			uni.pageScrollTo({
+				scrollTop: 0,
+				duration: 120  // 使用较短的动画时间
+			});
+			
+			console.log('执行滚动到顶部');
+		} catch (error) {
+			console.error('滚动到顶部出错:', error);
+		}
 	};
 
 	// 用于处理下拉刷新的触摸事件
@@ -1777,6 +1779,16 @@
 				data.comments[commentIndex].replies[replyIndex].avatar = '/static/images/avatar.png';
 				console.log('[头像错误] 已为回复设置默认头像');
 			}
+		}
+	};
+
+	// 添加触摸移动处理函数
+	// 触摸移动事件
+	const handleTouchMove = (event) => {
+		// 当处于页面顶部时，允许下拉刷新行为
+		if (data.lastScrollTop <= 0) {
+			// 不阻止默认行为，允许下拉刷新
+			return;
 		}
 	};
 </script>
@@ -2723,48 +2735,37 @@
 		}
 	}
 
-	// 添加滚动到顶部按钮样式
-	.scroll-top-btn {
+	// 修改滚动到顶部按钮样式
+	.scroll-top-btn-fixed {
 		position: fixed;
 		right: 20px;
 		bottom: 120px;
-		width: 40px;
+		width: 80px;
 		height: 40px;
-		border-radius: 50%;
-		background-color: rgba(67, 97, 238, 0.8);
+		border-radius: 20px;
+		background-color: #4361ee;
 		color: white;
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		z-index: 999; // 提高z-index确保按钮在最上层
+		z-index: 999;
 		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-		transition: all 0.2s ease; // 减少过渡时间提高响应速度
-		opacity: 0;
-		pointer-events: none;
-		transform: translateY(20px);
-		will-change: opacity, transform;
-		animation-fill-mode: both;
-
-		&.visible {
-			opacity: 1;
-			pointer-events: auto;
-			transform: translateY(0);
+		
+		.back-to-top-text {
+			font-size: 14px;
+			margin-left: 4px;
+			color: white;
 		}
-
+		
 		&:active {
 			transform: scale(0.95);
-			background-color: rgba(55, 80, 200, 0.9); // 点击时颜色变化提供反馈
+			background-color: #3651d3;
 		}
-
-		// 增加触摸区域
-		&::before {
-			content: '';
-			position: absolute;
-			top: -10px;
-			left: -10px;
-			right: -10px;
-			bottom: -10px;
-		}
+		
+		// #ifdef APP-PLUS || MP-WEIXIN
+		// 在APP和小程序中调整位置
+		bottom: 160px;
+		// #endif
 	}
 
 	// 优化滑动触感
@@ -2800,7 +2801,7 @@
 	}
 
 	// 过渡动画优化
-	.scroll-top-btn {
+	.scroll-top-btn-fixed {
 		// 改进动画
 		will-change: opacity, transform;
 		animation-fill-mode: both;
