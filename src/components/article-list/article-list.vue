@@ -23,7 +23,15 @@
 							<text class="article-title">{{article.title}}</text>
 							
 							<!-- 文章简介 -->
-							<text class="article-summary">{{stripHtmlTags(article.summary, 60)}}{{article.summary ? '...' : ''}}</text>
+							<rich-text class="article-summary" :nodes="formatSummary(article.summary)"></rich-text>
+							
+							<!-- 文章标签 -->
+							<view class="article-tags" v-if="article.tags && article.tags.length > 0">
+								<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item"
+									@click.stop="handleTagClick(tag)">
+									#{{tag}}
+								</view>
+							</view>
 						</view>
 					</view>
 
@@ -95,8 +103,7 @@
 				<!-- 文章内容 -->
 				<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
 					<text class="article-title">{{article.title}}</text>
-					<text
-						class="article-summary">{{stripHtmlTags(article.summary, 100)}}{{article.summary ? '...全文' : ''}}</text>
+					<rich-text class="article-summary" :nodes="formatSummary(article.summary)"></rich-text>
 
 					<!-- 文章标签 -->
 					<view class="article-tags" v-if="article.tags && article.tags.length > 0">
@@ -124,7 +131,6 @@
 					<!-- 分享按钮 -->
 					<view class="action-item" @click.stop="handleShare(index)">
 						<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
-						<text v-if="!showManageOptions">分享</text>
 					</view>
 
 					<!-- 评论按钮 -->
@@ -889,15 +895,27 @@
 	 * 去除HTML标签，只保留纯文本内容，并限制文本长度
 	 * 用于处理可能包含HTML标签的文章摘要
 	 * @param {String} html - 可能包含HTML标签的文本
-	 * @param {Number} maxLength - 最大文本长度，默认为100个字符
+	 * @param {Number} maxLength - 最大文本长度，默认为25个字符
 	 * @return {String} 去除HTML标签后的纯文本，并限制长度
 	 */
-	const stripHtmlTags = (html, maxLength = 100) => {
+	const stripHtmlTags = (html, maxLength = 25) => {
 		if (!html) return '';
 		// 替换所有HTML标签为空字符串
 		const plainText = html.replace(/<\/?[^>]+(>|$)/g, '');
 		// 限制文本长度
 		return plainText.length > maxLength ? plainText.substring(0, maxLength) : plainText;
+	};
+
+	// 处理带有展开提示的文章摘要
+	const formatSummary = (html, maxLength = 25) => {
+		if (!html) return '';
+		// 替换所有HTML标签为空字符串
+		const plainText = html.replace(/<\/?[^>]+(>|$)/g, '');
+		// 限制文本长度并添加展开文本
+		if (plainText.length > maxLength) {
+			return `${plainText.substring(0, maxLength)}<span class="expand-text">...展开</span>`;
+		}
+		return plainText;
 	};
 
 	// 处理下拉刷新
@@ -1040,7 +1058,14 @@
 
 	// 处理标签点击
 	const handleTagClick = (tag) => {
+		console.log('点击标签:', tag);
+		// 发出标签点击事件
 		emit('tagClick', tag);
+		
+		// 导航到分类页面并选择该标签
+		uni.navigateTo({
+			url: `/pages/classification/classification?tag=${encodeURIComponent(tag)}`
+		});
 	};
 
 	// 处理分享
@@ -1529,18 +1554,39 @@
 							color: #666;
 							overflow: hidden;
 							text-overflow: ellipsis;
-							display: -webkit-box;
-							-webkit-line-clamp: 2;
-							-webkit-box-orient: vertical;
+							white-space: nowrap; /* 确保单行显示 */
 							line-height: 1.3;
 							flex: 1;
 							
 							// #ifdef H5
 							font-size: 28rpx; // H5环境下增大字体
-							-webkit-line-clamp: 3; // 显示更多行
-							line-height: 1.5;
 							// #endif
 						}
+						
+						// #ifdef H5
+						// 文章标签样式
+						.article-tags {
+							display: flex;
+							flex-wrap: wrap;
+							margin-top: 20rpx;
+							
+							.tag-item {
+								font-size: 24rpx;
+								color: #4361ee;
+								background-color: #f0f4ff;
+								padding: 6rpx 16rpx;
+								border-radius: 30rpx;
+								margin-right: 16rpx;
+								margin-bottom: 10rpx;
+								
+								&:hover {
+									background-color: #4361ee;
+									color: #fff;
+									cursor: pointer;
+								}
+							}
+						}
+						// #endif
 					}
 					
 					// 封面图片
@@ -1640,13 +1686,8 @@
 					display: block;
 					overflow: hidden;
 					text-overflow: ellipsis;
-					display: -webkit-box;
-					-webkit-line-clamp: 3;
-					/* 限制最多显示3行 */
-					-webkit-box-orient: vertical;
+					white-space: nowrap; /* 修改为单行显示 */
 					word-break: break-word;
-					max-height: 126rpx;
-					/* 3行文本的大致高度 (28rpx * 1.5 * 3) */
 				}
 
 				// 文章标签
@@ -1760,5 +1801,21 @@
 				}
 			}
 		}
+	}
+
+	// 添加展开文本的样式
+	.expand-text {
+		color: #4361ee;
+		font-weight: 500;
+		display: inline-block;
+		transition: all 0.3s ease;
+		cursor: pointer;
+		
+		// #ifdef H5
+		&:hover {
+			transform: scale(1.1);
+			text-shadow: 0 0 3px rgba(67, 97, 238, 0.3);
+		}
+		// #endif
 	}
 </style>
