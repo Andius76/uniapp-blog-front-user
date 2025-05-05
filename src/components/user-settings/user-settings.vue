@@ -56,8 +56,12 @@
               class="avatar-preview" 
               :src="processImageUrl(userInfo.avatar)" 
               mode="aspectFill"
+              :class="{'avatar-updated': isAvatarUpdated}"
             ></image>
-            <uni-icons type="right" size="18" color="#999"></uni-icons>
+            <view class="item-right">
+              <text v-if="isAvatarUpdated" class="success-text">更新成功</text>
+              <uni-icons type="right" size="18" color="#999"></uni-icons>
+            </view>
           </view>
         </view>
         
@@ -108,7 +112,7 @@
           <view 
             class="nickname-action-btn cancel" 
             :class="{ 'disabled': isProcessing }"
-            @click="cancelEditNickname"
+            @click="cancelEditNickname($event)"
           >
             取消
           </view>
@@ -139,7 +143,7 @@
           <view 
             class="logout-action-btn cancel" 
             :class="{ 'disabled': isProcessing }"
-            @click="cancelLogout"
+            @click="cancelLogout($event)"
           >
             取消
           </view>
@@ -202,7 +206,7 @@ const props = defineProps({
 });
 
 // 定义事件
-const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 'bio-change', 'logout']);
+const emit = defineEmits(['update:visible', 'avatar-change', 'nickname-change', 'bio-change', 'logout', 'before-avatar-select']);
 
 // 面板状态管理
 const isEditingNickname = ref(false);
@@ -212,6 +216,7 @@ const confirmPopup = ref(null);
 const hasUnsavedChanges = ref(false);
 const originalNickname = ref('');
 const isBackConfirming = ref(false);
+const isAvatarUpdated = ref(false); // 新增：标记头像是否刚刚更新成功
 
 // 滑动相关状态
 const touchStartX = ref(0);
@@ -293,16 +298,36 @@ watch(() => newNickname.value, (newVal) => {
   }
 });
 
+// 处理触摸相关的事件函数
+const handleTouchStart = (e) => {
+  // H5环境下忽略此操作，APP和小程序才执行
+  // #ifndef H5
+  if (!props.visible || gestureLocked.value) return;
+  
+  if (e.touches && e.touches.length > 0) {
+    touchStartX.value = e.touches[0].clientX;
+    touchStartY.value = e.touches[0].clientY;
+  }
+  // #endif
+};
+
 // 处理返回或关闭
-const handleBackOrClose = () => {
+const handleBackOrClose = (e) => {
+  // #ifdef H5
+  if (e) e.stopPropagation();
+  // #endif
+  
   if (isEditingNickname.value && hasUnsavedChanges.value) {
     // 如果有未保存的修改，显示确认弹窗
     showConfirmAbandonDialog();
   } else if (isEditingNickname.value) {
-    cancelEditNickname();
+    // 返回主设置页面
+    cancelEditNickname(e);
   } else if (isConfirmingLogout.value) {
-    cancelLogout();
+    // 返回主设置页面
+    cancelLogout(e);
   } else {
+    // 关闭整个设置面板
     closeSettings();
   }
 };
@@ -395,15 +420,25 @@ const getBaseUrl = () => {
 };
 
 // 修改头像
-const changeAvatar = () => {
+const changeAvatar = (e) => {
+  // H5环境下阻止事件冒泡
+  // #ifdef H5
+  if (e) e.stopPropagation();
+  // #endif
+  
+  // 重置状态
+  isAvatarUpdated.value = false;
+  
+  // 触发头像选择前事件，通知父组件正在进行特殊操作
+  emit('before-avatar-select');
+  
   uni.chooseImage({
-    count: 1, // 默认9
-    sizeType: ['compressed'], // 可以指定是原图还是压缩图，默认二者都有
-    sourceType: ['album', 'camera'], // 从相册选择或使用相机拍摄
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
     success: (res) => {
       const tempFilePaths = res.tempFilePaths;
       
-      // 这里可以添加图片上传到服务器的逻辑
       // 模拟上传成功后更新头像
       uni.showLoading({
         title: '上传中...'
@@ -414,17 +449,39 @@ const changeAvatar = () => {
         // 通知父组件头像已更改
         emit('avatar-change', tempFilePaths[0]);
         
+        // 设置头像更新成功状态
+        isAvatarUpdated.value = true;
+        
+        // 显示成功提示
         uni.showToast({
           title: '头像更新成功',
-          icon: 'success'
+          icon: 'success',
+          duration: 2000
         });
+        
+        // 3秒后重置状态
+        setTimeout(() => {
+          isAvatarUpdated.value = false;
+        }, 3000);
+        
+        // 成功后不关闭设置页面
       }, 1500);
+    },
+    fail: () => {
+      // 用户取消选择头像，通知父组件操作已结束
+      emit('avatar-change', props.userInfo.avatar);
+      console.log('用户取消选择头像');
     }
   });
 };
 
 // 显示昵称编辑界面
-const showNicknameEdit = () => {
+const showNicknameEdit = (e) => {
+  // H5环境下阻止事件冒泡
+  // #ifdef H5
+  if (e) e.stopPropagation();
+  // #endif
+  
   originalNickname.value = props.userInfo.nickname;
   newNickname.value = props.userInfo.nickname;
   isEditingNickname.value = true;
@@ -432,9 +489,15 @@ const showNicknameEdit = () => {
 };
 
 // 取消编辑昵称
-const cancelEditNickname = () => {
+const cancelEditNickname = (e) => {
+  // H5环境下阻止事件冒泡
+  // #ifdef H5
+  if (e) e.stopPropagation();
+  // #endif
+  
   isEditingNickname.value = false;
   hasUnsavedChanges.value = false;
+  // 返回主设置页面而不是关闭整个面板
 };
 
 // 处理输入框焦点
@@ -446,8 +509,10 @@ const handleInputBlur = () => {
   isInputFocused.value = false;
 };
 
-// 更新触摸移动处理
+// 处理触摸移动
 const handleTouchMove = (e) => {
+  // H5环境下忽略此操作，APP和小程序才执行
+  // #ifndef H5
   if (!props.visible || gestureLocked.value) return;
   
   if (!e.touches[0] || !touchStartX.value) return;
@@ -462,8 +527,6 @@ const handleTouchMove = (e) => {
   
   // 判断是否为水平滑动（水平位移大于垂直位移）
   if (Math.abs(diffX) > Math.abs(diffY)) {
-    // 在iOS设备上，从左边缘向右滑动通常是返回手势
-    // #ifdef APP-PLUS
     if (diffX > touchThreshold) {
       // 检查是否有未保存的更改
       if (isEditingNickname.value && hasUnsavedChanges.value) {
@@ -472,12 +535,12 @@ const handleTouchMove = (e) => {
         touchCurrentY.value = 0;
         return;
       } else if (isEditingNickname.value) {
-        cancelEditNickname();
+        cancelEditNickname(e);
         touchStartX.value = 0;
         touchCurrentY.value = 0;
         return;
       } else if (isConfirmingLogout.value) {
-        cancelLogout();
+        cancelLogout(e);
         touchStartX.value = 0;
         touchCurrentY.value = 0;
         return;
@@ -486,12 +549,14 @@ const handleTouchMove = (e) => {
         e.preventDefault();
       }
     }
-    // #endif
   }
+  // #endif
 };
 
-// 处理触摸结束事件
+// 处理触摸结束
 const handleTouchEnd = (e) => {
+  // H5环境下忽略此操作，APP和小程序才执行
+  // #ifndef H5
   if (!props.visible || gestureLocked.value) return;
   
   // 如果正在滑动，则关闭设置面板
@@ -503,6 +568,17 @@ const handleTouchEnd = (e) => {
   // 重置触摸起始点
   touchStartX.value = 0;
   touchStartY.value = 0;
+  // #endif
+};
+
+// 显示退出登录确认
+const showLogoutConfirm = (e) => {
+  // H5环境下阻止事件冒泡
+  // #ifdef H5
+  if (e) e.stopPropagation();
+  // #endif
+  
+  isConfirmingLogout.value = true;
 };
 
 // 更新昵称方法
@@ -546,14 +622,15 @@ const updateNickname = async () => {
   }
 };
 
-// 显示退出登录确认
-const showLogoutConfirm = () => {
-  isConfirmingLogout.value = true;
-};
-
 // 取消退出登录
-const cancelLogout = () => {
+const cancelLogout = (e) => {
+  // H5环境下阻止事件冒泡
+  // #ifdef H5
+  if (e) e.stopPropagation();
+  // #endif
+  
   isConfirmingLogout.value = false;
+  // 返回主设置页面而不是关闭整个面板
 };
 
 // 更新退出登录方法
@@ -678,6 +755,13 @@ onMounted(() => {
       panelWidth.value = res.windowWidth;
     }
   });
+  
+  // #ifdef H5
+  // 在H5环境下初始化panelVisible，确保设置面板在开始时正确显示
+  if (props.visible) {
+    panelVisible.value = true;
+  }
+  // #endif
 });
 
 // 组件卸载时
@@ -690,6 +774,11 @@ onUnmounted(() => {
 
 <style lang="scss">
 .user-settings-wrapper {
+  // #ifdef H5
+  // H5环境下强制禁止点击事件冒泡导致面板消失
+  pointer-events: auto !important;
+  // #endif
+  
   .mask {
     position: fixed;
     top: 0;
@@ -720,6 +809,14 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.1);
+    
+    // #ifdef H5
+    // H5环境下取消默认的滑入动画，改为直接显示
+    transform: none !important;
+    height: auto !important;
+    position: relative !important;
+    border-radius: 0 !important;
+    // #endif
     
     &.visible {
       transform: translateY(0);
@@ -815,10 +912,27 @@ onUnmounted(() => {
             margin-right: 15rpx;
             background-color: #eee;
             border: 2rpx solid #f0f0f0;
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.3s ease;
             
             &:active {
               transform: scale(0.95);
+            }
+            
+            &.avatar-updated {
+              border-color: #4361ee;
+              box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+              animation: avatar-pulse 1.5s infinite;
+            }
+          }
+          
+          .item-right {
+            display: flex;
+            align-items: center;
+            
+            .success-text {
+              font-size: 24rpx;
+              color: #4361ee;
+              margin-right: 8rpx;
             }
           }
           
@@ -1001,6 +1115,18 @@ onUnmounted(() => {
         color: #999;
       }
     }
+  }
+}
+
+@keyframes avatar-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(67, 97, 238, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(67, 97, 238, 0);
   }
 }
 </style> 

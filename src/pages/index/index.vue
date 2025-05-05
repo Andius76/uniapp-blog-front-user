@@ -137,12 +137,13 @@
 			</view>
 			<view class="settings-body">
 				<user-settings 
-					:visible="true"
+					:visible="showUserSettings"
 					:userInfo="userInfo"
 					@update:visible="handleVisibleChange"
 					@avatar-change="handleAvatarChange"
 					@nickname-change="handleNicknameChange"
 					@logout="handleLogout"
+					@before-avatar-select="handleBeforeAvatarSelect"
 				/>
 			</view>
 		</view>
@@ -693,6 +694,9 @@
 
 	const showUserSettings = ref(false);
 
+	// 添加一个变量，用于标记正在执行特殊操作（如选择头像），期间禁止关闭设置面板
+	const isInOperation = ref(false);
+
 	// 修改 user-info 的点击事件处理
 	const handleUserClick = (event) => {
 		if (event) {
@@ -722,6 +726,9 @@
 	};
 
 	const handleAvatarChange = (newAvatar) => {
+		// 标记操作完成
+		isInOperation.value = false;
+		
 		userInfo.avatar = newAvatar;
 		uni.setStorageSync('userInfo', {
 			...uni.getStorageSync('userInfo'),
@@ -756,7 +763,7 @@
 		// #ifdef H5
 		// 点击其他区域关闭设置面板
 		document.addEventListener('click', (event) => {
-			if (showUserSettings.value) {
+			if (showUserSettings.value && !isInOperation.value) {
 				const settingsPanel = document.querySelector('.user-settings-wrapper');
 				if (settingsPanel && !settingsPanel.contains(event.target)) {
 					showUserSettings.value = false;
@@ -775,6 +782,12 @@
 
 	const closeUserSettings = () => {
 		showUserSettings.value = false;
+	};
+
+	// 处理头像选择前的事件
+	const handleBeforeAvatarSelect = () => {
+		// 标记正在进行头像选择操作，阻止关闭面板
+		isInOperation.value = true;
 	};
 </script>
 
@@ -1230,11 +1243,12 @@
 		
 		.settings-body {
 			flex: 1;
-			overflow-y: auto;
+			overflow: hidden;
 			
 			:deep(.user-settings-wrapper) {
-				height: auto;
+				height: 100%;
 				background: transparent;
+				overflow: hidden;
 				
 				.mask {
 					display: none;
@@ -1246,15 +1260,25 @@
 					right: 0;
 					width: 100%;
 					height: auto;
+					max-height: 70vh;
 					box-shadow: none;
 					border-radius: 0;
+					transform: none !important;
+					transition: none !important;
+					
+					&.visible {
+						transform: none !important;
+					}
 					
 					.panel-header {
 						display: none;
 					}
 					
-					.panel-content {
+					.panel-content,
+					.nickname-edit-panel,
+					.logout-confirm-panel {
 						padding: 20px;
+						overflow-y: auto;
 						
 						.settings-item {
 							padding: 15px;
