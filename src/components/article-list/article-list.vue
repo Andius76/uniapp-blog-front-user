@@ -256,73 +256,85 @@
 			</scroll-view>
 		</template>
 		<template v-else>
-			<!-- 全局滚动模式 -->
-			<view class="mp-container mp-global">
-				<!-- 文章项循环 -->
-				<view v-for="(article, index) in articleList" :key="article.id" class="mp-item"
-					@click="handleArticleClick(article.id)">
-					<!-- 标题 -->
-					<text class="mp-title">{{article.title}}</text>
-					
-					<!-- 摘要 -->
-					<text class="mp-summary">{{formatArticleSummary(article.summary)}}</text>
-					
-					<!-- 图片区域 -->
-					<view class="mp-image" v-if="article.coverImage">
-						<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
-					</view>
-					
-					<!-- 底部操作栏 -->
-					<view class="mp-actions">
-						<!-- 分享按钮 -->
-						<view class="mp-action" @click.stop="handleShare(index)">
-							<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
-							<text>分享</text>
+			<!-- 修改全局滚动模式实现，添加scroll-view -->
+			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp-global" @scrolltolower="handleLoadMore" :refresher-enabled="true"
+				:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
+				refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
+				:show-scrollbar="false" :bounce="true" :enhanced="true" :scroll-with-animation="true"
+				@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
+				
+				<view class="mp-container mp-global">
+					<!-- 文章项循环 -->
+					<view v-for="(article, index) in articleList" :key="article.id" class="mp-item"
+						@click="handleArticleClick(article.id)">
+						<!-- 标题 -->
+						<text class="mp-title">{{article.title}}</text>
+						
+						<!-- 摘要 -->
+						<text class="mp-summary">{{formatArticleSummary(article.summary)}}</text>
+						
+						<!-- 图片区域 -->
+						<view class="mp-image" v-if="article.coverImage">
+							<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
 						</view>
 						
-						<!-- 评论按钮 -->
-						<view class="mp-action" @click.stop="handleComment(index)">
-							<uni-icons type="chat" size="16" color="#666"></uni-icons>
-							<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
-						</view>
-						
-						<!-- 点赞按钮 -->
-						<view class="mp-action" @click.stop="handleLike(index)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
-								:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-							<text :class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
-						</view>
-						
-						<!-- 编辑按钮（根据权限条件显示） -->
-						<view class="mp-action manage-btn"
-							v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
-							@click.stop="handleEdit(index)">
-							<uni-icons type="compose" size="16" color="#666"></uni-icons>
-							<text>编辑</text>
-						</view>
+						<!-- 底部操作栏 -->
+						<view class="mp-actions">
+							<!-- 分享按钮 -->
+							<view class="mp-action" @click.stop="handleShare(index)">
+								<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
+								<text>分享</text>
+							</view>
+							
+							<!-- 评论按钮 -->
+							<view class="mp-action" @click.stop="handleComment(index)">
+								<uni-icons type="chat" size="16" color="#666"></uni-icons>
+								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
+							</view>
+							
+							<!-- 点赞按钮 -->
+							<view class="mp-action" @click.stop="handleLike(index)">
+								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
+									:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
+								<text :class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+							</view>
+							
+							<!-- 编辑按钮（根据权限条件显示） -->
+							<view class="mp-action manage-btn"
+								v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
+								@click.stop="handleEdit(index)">
+								<uni-icons type="compose" size="16" color="#666"></uni-icons>
+								<text>编辑</text>
+							</view>
 
-						<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
-						<view class="mp-action manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
-							@click.stop="handleDelete(index)">
-							<uni-icons type="trash" size="16" color="#666"></uni-icons>
-							<text>删除</text>
+							<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
+							<view class="mp-action manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+								@click.stop="handleDelete(index)">
+								<uni-icons type="trash" size="16" color="#666"></uni-icons>
+								<text>删除</text>
+							</view>
+						</view>
+					</view>
+
+					<!-- 加载状态 -->
+					<view class="mp-loading">
+						<text v-if="isLoading && !isRefreshing">加载中...</text>
+						<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
+						<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
+
+						<!-- 无内容提示 -->
+						<view v-if="articleList.length === 0 && !isLoading" class="mp-no-content">
+							<uni-icons type="info" size="50" color="#ddd"></uni-icons>
+							<text>{{ emptyText }}</text>
 						</view>
 					</view>
 				</view>
-
-				<!-- 加载状态 -->
-				<view class="mp-loading">
-					<text v-if="isLoading && !isRefreshing">加载中...</text>
-					<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-					<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
-
-					<!-- 无内容提示 -->
-					<view v-if="articleList.length === 0 && !isLoading" class="mp-no-content">
-						<uni-icons type="info" size="50" color="#ddd"></uni-icons>
-						<text>{{ emptyText }}</text>
-					</view>
+				
+				<!-- 回到顶部按钮 -->
+				<view v-if="showBackTop" class="mp-back-top" @click="scrollToTop">
+					<uni-icons type="top" size="18" color="#fff"></uni-icons>
 				</view>
-			</view>
+			</scroll-view>
 		</template>
 		<!-- #endif -->
 	</view>
@@ -479,8 +491,13 @@
 		// #ifndef H5
 		try {
 			const query = uni.createSelectorQuery();
+			
+			// 根据是否使用全局滚动选择正确的选择器
+			const scrollId = props.useGlobalScroll ? '#article-list-scroll-mp-global' : '#article-list-scroll-mp';
+			console.log('文章列表: 使用选择器', scrollId);
+			
 			// 使用ID更精确地定位元素
-			query.select('#article-list-scroll-mp').boundingClientRect(data => {
+			query.select(scrollId).boundingClientRect(data => {
 				if (data) {
 					console.log('文章列表: 非H5环境找到scroll-view元素');
 					// 尝试使用选择器设置scrollTop
@@ -488,7 +505,7 @@
 						uni.pageScrollTo({
 							scrollTop: 0,
 							duration: 0,
-							selector: '#article-list-scroll-mp' // 使用选择器
+							selector: scrollId // 使用选择器
 						});
 						
 						// 同时更新Vue响应式数据
@@ -496,11 +513,19 @@
 						
 						// 隐藏回到顶部按钮
 						showBackTop.value = false;
+						
+						// 显示成功反馈
+						uni.showToast({
+							title: '已返回顶部',
+							icon: 'none',
+							duration: 300
+						});
 					}, 50);
 				} else {
 					console.warn('文章列表: 非H5环境未找到指定ID的scroll-view元素');
 					// 退回到使用类选择器
-					query.select('.article-scroll').boundingClientRect(data => {
+					
+					query.select('.mp-scroll-view').boundingClientRect(data => {
 						if (data) {
 							setTimeout(() => {
 								uni.pageScrollTo({

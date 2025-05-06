@@ -169,7 +169,7 @@
 					:show-edit-for-all-users="data.currentTab === 0"
 					:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
 					:height="'calc(100vh - 445rpx)'"
-					:use-global-scroll="true"
+					:use-global-scroll="false"
 					@article-click="viewArticleDetail"
 					@like="handleLike"
 					@share="handleShare"
