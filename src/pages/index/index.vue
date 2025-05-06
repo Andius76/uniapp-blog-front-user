@@ -5,7 +5,7 @@
 		<view class="header-fixed">
 			<view class="header-top">
 				<navigator url="/pages/index/index" class="logo">首页</navigator>
-				<navigator url="/pages/my/my" class="my-link">我的</navigator>
+				<view class="my-link" @click="navigateToMyPage">我的</view>
 				<!-- 搜索框 -->
 				<view class="search-bar">
 					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
@@ -36,6 +36,11 @@
 		<!-- APP和小程序的顶部布局 -->
 		<!-- #ifndef H5 -->
 		<view class="mp-header">
+			<!-- 添加顶部导航按钮 -->
+			<view class="mp-top-nav">
+				<view class="mp-logo" @click="refreshArticleList">首页</view>
+				<view class="mp-my-btn" @click="navigateToMyPage">我的</view>
+			</view>
 			<!-- 搜索框 -->
 			<view class="search-bar">
 				<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
@@ -1069,6 +1074,41 @@
 			scrollToTop();
 		}
 	};
+
+	/**
+	 * 导航到个人中心页面
+	 */
+	const navigateToMyPage = () => {
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			setTimeout(() => {
+				uni.navigateTo({
+					url: '/pages/login/login'
+				});
+			}, 1500);
+			return;
+		}
+		
+		// #ifdef H5
+		// H5环境下，在新窗口打开个人中心页面
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const myPageUrl = `${baseUrl}#/pages/my/my`;
+		window.open(myPageUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转
+		uni.navigateTo({
+			url: '/pages/my/my'
+		});
+		// #endif
+	};
 </script>
 
 <style lang="scss">
@@ -1428,6 +1468,27 @@
 		right: 0;
 		z-index: 100;
 
+		// 添加顶部导航栏样式
+		.mp-top-nav {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 20rpx 30rpx;
+			border-bottom: 1rpx solid #f0f0f0;
+			
+			.mp-logo {
+				font-size: 32rpx;
+				font-weight: bold;
+				color: #333;
+			}
+			
+			.mp-my-btn {
+				font-size: 28rpx;
+				color: #4361ee;
+				padding: 10rpx 20rpx;
+			}
+		}
+
 		.search-bar {
 			display: flex;
 			align-items: center;
@@ -1488,7 +1549,7 @@
 	}
 
 	.mp-content {
-		padding-top: calc(170rpx + var(--status-bar-height));
+		padding-top: calc(220rpx + var(--status-bar-height));
 		background: #f5f5f5;
 	}
 	// #endif
