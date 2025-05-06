@@ -1,8 +1,8 @@
 <template>
 	<view class="container">
 		<!-- #ifdef H5 -->
-		<!-- H5环境下的固定宽度布局 -->
-		<view class="fixed-width-container">
+		<!-- H5环境下的固定宽度布局，与首页文章列表区域宽度一致 -->
+		<view class="article-width-container">
 			<!-- 固定在顶部的用户信息和标签导航 -->
 			<view class="header-fixed">
 				<!-- 顶部用户信息区域 -->
@@ -77,6 +77,7 @@
 						:show-edit-for-all-users="data.currentTab === 0"
 						:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
 						:height="'calc(100vh - 445rpx)'"
+						:use-global-scroll="true"
 						@article-click="viewArticleDetail"
 						@like="handleLike"
 						@share="handleShare"
@@ -86,6 +87,9 @@
 					/>
 				</view>
 			</view>
+			
+			<!-- 使用通用的回到顶部组件 -->
+			<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
 		</view>
 		<!-- #endif -->
 		
@@ -165,6 +169,7 @@
 					:show-edit-for-all-users="data.currentTab === 0"
 					:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
 					:height="'calc(100vh - 445rpx)'"
+					:use-global-scroll="true"
 					@article-click="viewArticleDetail"
 					@like="handleLike"
 					@share="handleShare"
@@ -173,6 +178,9 @@
 					@delete="handleDeleteArticle"
 				/>
 			</view>
+			
+			<!-- 使用通用的回到顶部组件 -->
+			<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
 		</view>
 		<!-- #endif -->
 
@@ -242,6 +250,8 @@
 	import { onLoad, onShow, onHide, onBackPress, onPageShow } from '@dcloudio/uni-app';
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
+	// 导入回到顶部组件
+	import BackToTop from '@/components/back-to-top/back-to-top.vue';
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
@@ -344,6 +354,8 @@
 
 	// 添加articleListRef引用
 	const articleListRef = ref(null);
+	// 添加backToTopRef引用
+	const backToTopRef = ref(null);
 
 	/**
 	 * 获取基础URL
@@ -1415,18 +1427,83 @@
 	// 恢复原始手势设置
 	restoreBackGesture();
 	});
+
+	/**
+	 * 滚动到顶部
+	 */
+	const scrollToTop = () => {
+		// #ifdef H5
+		try {
+			// 使用原生window.scrollTo方法
+			window.scrollTo({
+				top: 0,
+				behavior: 'smooth'
+			});
+		} catch (e) {
+			console.error('滚动到顶部失败:', e);
+		}
+		// #endif
+		
+		// #ifndef H5
+		try {
+			// 非H5环境使用uni的API
+			uni.pageScrollTo({
+				scrollTop: 0,
+				duration: 300
+			});
+		} catch (e) {
+			console.error('滚动到顶部失败:', e);
+		}
+		// #endif
+		
+		// 如果文章列表组件存在，也调用其滚动到顶部方法
+		if (articleListRef.value && typeof articleListRef.value.scrollToTop === 'function') {
+			articleListRef.value.scrollToTop();
+		}
+	};
 </script>
 
 <style lang="scss">
-	/* H5环境下的固定宽度容器 */
+	/* H5环境下的容器，宽度与首页文章列表区域一致 */
 	/* #ifdef H5 */
-	.fixed-width-container {
-		max-width: 960px; /* 与首页内容区域宽度一致 */
+	.article-width-container {
+		min-width: 600px; /* 首页文章列表最小宽度 */
 		width: 100%;
+		max-width: 700px; /* 首页文章列表最大宽度估计值 */
 		margin: 0 auto; /* 居中显示 */
-		padding: 0; /* 移除内边距 */
+		padding: 20px; /* 与首页main-content一致 */
 		box-sizing: border-box;
-		background-color: #f5f5f5;
+		background-color: #fff; /* 与首页main-content一致 */
+		border-radius: 4px; /* 与首页main-content一致 */
+		min-height: 200px; /* 与首页main-content一致 */
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+	}
+	
+	/* H5环境下调整header样式 */
+	.article-width-container .header-fixed {
+		position: relative;
+		left: unset;
+		right: unset;
+		top: unset;
+		width: 100%;
+		box-shadow: none;
+		background-color: transparent;
+	}
+	
+	/* H5环境下调整用户信息区域 */
+	.article-width-container .user-top-container {
+		position: relative;
+		top: unset;
+		z-index: 1;
+		box-shadow: none;
+		background-color: transparent;
+		margin-bottom: 15px;
+	}
+	
+	/* H5环境下调整内容区域 */
+	.article-width-container .content-area {
+		padding: 0;
+		width: 100%;
 	}
 	/* #endif */
 
@@ -1456,16 +1533,6 @@
 		background-color: #f5f5f5;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-		
-		/* #ifdef H5 */
-		/* H5环境下调整header-fixed不需要独立定位，因为已在fixed-width-container内 */
-		position: relative;
-		left: unset;
-		right: unset;
-		width: 100%;
-		max-width: 960px; /* 与容器宽度一致 */
-		box-shadow: none; /* 移除阴影，防止重叠 */
-		/* #endif */
 	}
 
 	// 内容区域样式
