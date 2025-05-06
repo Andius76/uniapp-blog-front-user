@@ -1464,6 +1464,12 @@
 </script>
 
 <style lang="scss">
+	/* 整体容器背景色 */
+	.container {
+		background-color: #f5f5f5; /* 与首页背景一致 */
+		min-height: 100vh; /* 确保背景色填满整个视口高度 */
+	}
+	
 	/* H5环境下的容器，宽度与首页文章列表区域一致 */
 	/* #ifdef H5 */
 	.article-width-container {
