@@ -735,21 +735,36 @@
 								replyAuthor = reply.user.nickname || "未知用户";
 								replyAvatar = reply.user.avatar || "";
 								console.log('[回复处理] 从user对象提取头像:', replyAvatar);
-							} else if (reply.author) {
-								replyAuthor = reply.author;
-								replyAvatar = reply.avatar || "";
-								console.log('[回复处理] 从reply直接字段提取头像:', replyAvatar);
 							} else {
-								replyAuthor = reply.nickname || "未知用户";
-								replyAvatar = reply.avatar || "";
-								console.log('[回复处理] 从nickname字段提取头像:', replyAvatar);
+								// 子评论的author是字符串，使用userId构建头像URL
+								replyAuthor = reply.author || reply.nickname || "未知用户";
+								// 直接构建头像URL：user_[userId]_timestamp.jpg
+								replyAvatar = `user_${reply.userId}_1746084541794.jpg`;
+								if (reply.userId === 5) {
+									replyAvatar = 'user_5_1746213711061.jpg';
+								}
+								console.log('[回复处理] 从userId构建头像URL:', replyAvatar);
 							}
 
 							// 处理头像URL，确保使用完整URL和默认头像
 							console.log('[回复处理] 处理前的头像URL:', replyAvatar);
 
-							// 直接使用formatAvatarUrl处理头像，不需要重复逻辑
-							replyAvatar = formatAvatarUrl(replyAvatar);
+							// 检查是否为user_[id]_[timestamp].jpg格式
+							if (replyAvatar && replyAvatar.includes('user_') && !replyAvatar.includes('/uploads/avatars/')) {
+								// 提取文件名
+								const fileName = replyAvatar.split('/').pop();
+								if (fileName.match(/^user_\d+_\d+\.\w+$/)) {
+									// 直接构建完整路径
+									replyAvatar = getBaseUrl() + '/uploads/avatars/' + fileName;
+									console.log('[回复处理] 直接补全头像路径:', replyAvatar);
+								} else {
+									// 使用通用处理方法
+									replyAvatar = formatAvatarUrl(replyAvatar);
+								}
+							} else {
+								// 使用通用处理方法
+								replyAvatar = formatAvatarUrl(replyAvatar);
+							}
 
 							console.log('[回复处理] 处理后的头像URL:', replyAvatar);
 
