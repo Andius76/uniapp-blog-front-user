@@ -193,11 +193,8 @@
 			<button class="send-btn" :disabled="!data.commentContent.trim()" @click="submitComment">发送</button>
 		</view>
 
-		<!-- 滚动到顶部按钮 - 改为始终显示 -->
-		<view class="scroll-top-btn-fixed" @click="scrollToTop">
-			<uni-icons type="top" size="24" color="#ffffff"></uni-icons>
-			<text class="back-to-top-text">顶部</text>
-		</view>
+		<!-- 使用通用的回到顶部组件，确保点击后隐藏并立即滚动到顶部 -->
+		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" />
 	</view>
 </template>
 
@@ -205,7 +202,8 @@
 	import {
 		reactive,
 		onMounted,
-		onUnmounted
+		onUnmounted,
+		ref
 	} from 'vue';
 	import {
 		onLoad,
@@ -220,6 +218,11 @@
 		commentArticle,
 		likeComment
 	} from '@/api/article';
+	// 导入回到顶部组件
+	import BackToTop from '@/components/back-to-top/back-to-top.vue';
+
+	// 添加组件引用
+	const backToTopRef = ref(null);
 
 	const data = reactive({
 		loading: true, // 是否正在加载文章
@@ -1556,27 +1559,16 @@
 		loadMoreComments();
 	});
 
-	// 滚动到顶部 - 简化版本
+	// 修改滚动到顶部函数，使用组件方法
 	const scrollToTop = () => {
-		console.log('点击滚动到顶部按钮');
-		
-		// 简单反馈
-		uni.showToast({
-			title: '返回顶部',
-			icon: 'none',
-			duration: 300
-		});
-		
-		try {
-			// 简单直接的滚动方法
+		if (backToTopRef.value) {
+			backToTopRef.value.scrollToTop();
+		} else {
+			// 备用方法 - 立即滚动无缓冲
 			uni.pageScrollTo({
 				scrollTop: 0,
-				duration: 120  // 使用较短的动画时间
+				duration: 0 // 设置为0实现立即滚动
 			});
-			
-			console.log('执行滚动到顶部');
-		} catch (error) {
-			console.error('滚动到顶部出错:', error);
 		}
 	};
 
@@ -2731,71 +2723,6 @@
 
 			&.visible {
 				opacity: 1;
-			}
-		}
-	}
-
-	// 修改滚动到顶部按钮样式
-	.scroll-top-btn-fixed {
-		position: fixed;
-		right: 20px;
-		bottom: 120px;
-		width: 80px;
-		height: 40px;
-		border-radius: 20px;
-		background-color: #4361ee;
-		color: white;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		z-index: 999;
-		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-		
-		.back-to-top-text {
-			font-size: 14px;
-			margin-left: 4px;
-			color: white;
-		}
-		
-		&:active {
-			transform: scale(0.95);
-			background-color: #3651d3;
-		}
-		
-		// #ifdef APP-PLUS || MP-WEIXIN
-		// 在APP和小程序中调整位置
-		bottom: 160px;
-		// #endif
-	}
-
-	// 优化滑动触感
-	@supports (-webkit-overflow-scrolling: touch) {
-		.article-detail {
-			touch-action: pan-y;
-			scroll-snap-type: y proximity;
-
-			// 平滑滚动过渡
-			&>* {
-				scroll-snap-align: start;
-			}
-
-			// 滑动终点定义
-			.article-header {
-				scroll-snap-align: start;
-				scroll-margin-top: 20px;
-			}
-
-			.tag-section {
-				scroll-snap-align: start;
-			}
-
-			.comment-section {
-				scroll-snap-align: start;
-				scroll-margin-top: 20px;
-			}
-
-			.action-bar {
-				scroll-snap-align: end;
 			}
 		}
 	}

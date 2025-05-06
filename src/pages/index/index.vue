@@ -148,6 +148,9 @@
 			</view>
 		</view>
 		<!-- #endif -->
+
+		<!-- 使用通用的回到顶部组件，明确配置点击后隐藏并立即滚动到顶部 -->
+		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" />
 	</view>
 </template>
 
@@ -158,7 +161,8 @@
 		ref,
 		nextTick,
 		watch,
-		onBeforeMount
+		onBeforeMount,
+		onUnmounted
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
@@ -169,9 +173,12 @@
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
 	import UserSettings from '@/components/user-settings/user-settings.vue';
+	// 导入回到顶部组件
+	import BackToTop from '@/components/back-to-top/back-to-top.vue';
 
 	// 添加引用
 	const articleListRef = ref(null);
+	const backToTopRef = ref(null);
 	
 	// 添加全局防抖标记，使用闭包确保跨页面刷新时重置
 	const globalLoadingLock = (() => {
@@ -285,6 +292,11 @@
 		await loadUserData();
 		// 使用统一的数据加载入口
 		await loadArticleData();
+	});
+
+	// 组件卸载时清理监听器
+	onUnmounted(() => {
+		// 清理工作已经在BackToTop组件中处理
 	});
 
 	// 页面显示时刷新数据
@@ -930,6 +942,21 @@
 			}
 		} catch (error) {
 			console.error('获取用户数据失败', error);
+		}
+	};
+
+	/**
+	 * 滚动到顶部 - 通过组件引用调用
+	 */
+	const scrollToTop = () => {
+		if (backToTopRef.value) {
+			backToTopRef.value.scrollToTop();
+		} else {
+			// 备用方法 - 立即滚动无缓冲
+			uni.pageScrollTo({
+				scrollTop: 0,
+				duration: 0 // 设置为0实现立即滚动
+			});
 		}
 	};
 </script>
