@@ -1,5 +1,96 @@
 <template>
 	<view class="container">
+		<!-- #ifdef H5 -->
+		<!-- H5环境下的固定宽度布局 -->
+		<view class="fixed-width-container">
+			<!-- 固定在顶部的用户信息和标签导航 -->
+			<view class="header-fixed">
+				<!-- 顶部用户信息区域 -->
+				<view class="user-top-container">
+					<!-- 原有用户信息区域内容 -->
+					<view class="user-header">
+						<view class="user-info">
+							<image class="avatar" :src="formatAvatarUrl(data.userInfo.avatar)"
+								mode="aspectFill" @click="uploadAvatar"></image>
+							<view class="user-detail">
+								<text class="nickname">{{ data.userInfo.nickname }}</text>
+								<text class="email">{{ data.userInfo.email }}</text>
+							</view>
+						</view>
+						<view class="user-actions">
+							<view class="action-btn" @click="navigateTo('/pages/creation-center/creation-center')">
+								创作中心
+							</view>
+							<view @click="navigateTo('/pages/settings/settings')">
+								<uni-icons type="gear" size="24" color="#333"></uni-icons>
+							</view>
+						</view>
+					</view>
+
+					<!-- 用户数据统计区域 -->
+					<view class="user-stats">
+						<view class="stat-item" @click="handleFollowsClick">
+							<text class="stat-num">{{ data.userInfo.followCount }}</text>
+							<text class="stat-label">关注</text>
+						</view>
+						<view class="stat-divider">|</view>
+						<view class="stat-item" @click="navigateTo('/pages/followers/followers')">
+							<text class="stat-num">{{ data.userInfo.followerCount }}</text>
+							<text class="stat-label">粉丝</text>
+						</view>
+						<view class="stat-divider">|</view>
+						<view class="stat-item" @click="navigateTo('/pages/collection/collection')">
+							<text class="stat-num">{{ data.userInfo.collectionCount }}</text>
+							<text class="stat-label">收藏</text>
+						</view>
+					</view>
+
+					<!-- 个人简介区域 -->
+					<view class="user-bio">
+						<view class="bio-content">
+							<uni-icons type="person" size="20" color="#666"></uni-icons>
+							<text class="bio-text">个人简介：{{ data.userInfo.bio || DEFAULT_BIO }}</text>
+						</view>
+						<view class="edit-profile-btn" @click="toggleBioEdit">
+							编辑资料
+						</view>
+					</view>
+
+					<!-- 标签页导航，使用首页的导航样式 -->
+					<view class="nav-menu">
+						<view v-for="(tab, index) in data.tabs" :key="index" class="nav-item"
+							:class="{ active: data.currentTab === index }" @click="switchTab(index)">
+							{{ tab.name }}
+						</view>
+					</view>
+				</view>
+
+				<!-- 内容区域 -->
+				<view class="content-area">
+					<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
+					<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
+						ref="articleListRef"
+						:key="data.currentTab" 
+						:list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
+						:userId="data.userInfo.id"
+						:show-manage-options="true"
+						:show-edit-for-all-users="data.currentTab === 0"
+						:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
+						:height="'calc(100vh - 445rpx)'"
+						@article-click="viewArticleDetail"
+						@like="handleLike"
+						@share="handleShare"
+						@comment="handleComment"
+						@edit="handleEditArticle"
+						@delete="handleDeleteArticle"
+					/>
+				</view>
+			</view>
+		</view>
+		<!-- #endif -->
+		
+		<!-- #ifndef H5 -->
+		<!-- 非H5环境下保持原样 -->
 		<!-- 固定在顶部的用户信息和标签导航 -->
 		<view class="header-fixed">
 			<!-- 顶部用户信息区域 -->
@@ -62,7 +153,7 @@
 				</view>
 			</view>
 
-			<!-- 内容区域，使用首页的内容区样式 -->
+			<!-- 内容区域 -->
 			<view class="content-area">
 				<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
 				<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
@@ -83,6 +174,7 @@
 				/>
 			</view>
 		</view>
+		<!-- #endif -->
 
 		<!-- 用户设置组件 -->
 		<view v-if="data.showUserSettings" class="settings-overlay">
@@ -1326,6 +1418,18 @@
 </script>
 
 <style lang="scss">
+	/* H5环境下的固定宽度容器 */
+	/* #ifdef H5 */
+	.fixed-width-container {
+		max-width: 960px; /* 与首页内容区域宽度一致 */
+		width: 100%;
+		margin: 0 auto; /* 居中显示 */
+		padding: 0; /* 移除内边距 */
+		box-sizing: border-box;
+		background-color: #f5f5f5;
+	}
+	/* #endif */
+
 	.user-top-container {
 		position: sticky;
 		top: 0;
@@ -1343,7 +1447,7 @@
 		}
 	}
 
-	// 移除原header-fixed的样式
+	// header-fixed样式
 	.header-fixed {
 		position: fixed;
 		top: 0;
@@ -1352,295 +1456,166 @@
 		background-color: #f5f5f5;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		
+		/* #ifdef H5 */
+		/* H5环境下调整header-fixed不需要独立定位，因为已在fixed-width-container内 */
+		position: relative;
+		left: unset;
+		right: unset;
+		width: 100%;
+		max-width: 960px; /* 与容器宽度一致 */
+		box-shadow: none; /* 移除阴影，防止重叠 */
+		/* #endif */
+	}
 
-		// 用户头部信息
-		.user-header {
+	// 内容区域样式
+	.content-area {
+		padding: 0 20rpx;
+		width: 100%;
+		box-sizing: border-box;
+	}
+
+	// 用户头部信息
+	.user-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 30rpx;
+		background-color: #fff;
+
+		.user-info {
 			display: flex;
-			justify-content: space-between;
 			align-items: center;
-			padding: 30rpx;
-			background-color: #fff;
 
-			.user-info {
-				display: flex;
-				align-items: center;
-
-				.avatar {
-					width: 120rpx;
-					height: 120rpx;
-					border-radius: 50%;
-					margin-right: 20rpx;
-					background-color: #eee;
-				}
-
-				.nickname {
-					font-size: 34rpx;
-					font-weight: bold;
-					color: #333;
-				}
-			}
-
-			.user-actions {
-				display: flex;
-				align-items: center;
-
-				.action-btn {
-					display: flex;
-					align-items: center;
-					margin-right: 50rpx;
-				}
-			}
-		}
-
-		// 用户统计数据
-		.user-stats {
-			display: flex;
-			justify-content: space-around;
-			padding: 20rpx 0;
-			background-color: #fff;
-			border-top: 1rpx solid #f0f0f0;
-
-			.stat-item {
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-
-				.stat-num {
-					font-size: 32rpx;
-					color: #333;
-					font-weight: 500;
-				}
-
-				.stat-label {
-					font-size: 24rpx;
-					color: #666;
-					margin-top: 6rpx;
-				}
-			}
-
-			.stat-divider {
-				color: #ddd;
-				font-size: 24rpx;
-				align-self: center;
-			}
-		}
-
-		// 个人简介
-		.user-bio {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			padding: 20rpx 30rpx;
-			background-color: #fff;
-			margin-top: 2rpx;
-			height: 100rpx;
-
-			.bio-content {
-				display: flex;
-				align-items: center;
-				flex: 1;
+			.avatar {
+				width: 120rpx;
+				height: 120rpx;
+				border-radius: 50%;
 				margin-right: 20rpx;
-				overflow: hidden;
-
-				.bio-text {
-					font-size: 26rpx;
-					color: #666;
-					margin-left: 10rpx;
-					white-space: nowrap;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					max-width: 500rpx;
-				}
+				background-color: #eee;
 			}
 
-			.edit-profile-btn {
-				background-color: #f8f8f8;
-				color: #666;
-				font-size: 24rpx;
-				padding: 10rpx 30rpx;
-				border-radius: 30rpx;
-				border: 1rpx solid #eee;
-				flex-shrink: 0;
+			.nickname {
+				font-size: 34rpx;
+				font-weight: bold;
+				color: #333;
 			}
 		}
 
-		// 导航菜单，使用首页的样式
-		.nav-menu {
+		.user-actions {
 			display: flex;
-			padding: 10rpx 30rpx 5rpx;
-			background-color: #fff;
-			margin-top: 2rpx;
+			align-items: center;
 
-			.nav-item {
-				padding: 10rpx 24rpx;
-				margin: 0 15rpx;
-				font-size: 30rpx;
-				color: #666;
-				position: relative;
-
-				&.active {
-					color: #4361ee;
-					font-weight: bold;
-
-					&::after {
-						content: '';
-						position: absolute;
-						bottom: -6rpx;
-						left: 50%;
-						transform: translateX(-50%);
-						width: 30rpx;
-						height: 6rpx;
-						background-color: #4361ee;
-						border-radius: 3rpx;
-					}
-				}
+			.action-btn {
+				display: flex;
+				align-items: center;
+				margin-right: 50rpx;
 			}
 		}
 	}
 
-	// 内容区域，使用首页的样式
-	.content-area {
-		padding: 0 20rpx 0 20rpx;
-		flex: 1;
+	// 用户统计数据
+	.user-stats {
+		display: flex;
+		justify-content: space-around;
+		padding: 20rpx 0;
+		background-color: #fff;
+		border-top: 1rpx solid #f0f0f0;
 
-		.article-list {
-			height: calc(100vh - 445rpx);
-
-			// 自定义下拉刷新样式
-			&::before {
-				content: '';
-				width: 100%;
-				height: 80rpx;
-				position: absolute;
-				top: 0;
-				left: 0;
-				background-color: transparent;
-			}
-		}
-
-		// 文章卡片
-		.article-card {
-			background-color: #fff;
-			border-radius: 20rpx;
-			padding: 30rpx;
-			margin-top: 5rpx;
-			margin-bottom: 20rpx;
-			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-
-			// 用户信息
-			.user-info {
-				display: flex;
-				align-items: center;
-				margin-bottom: 20rpx;
-
-				.avatar {
-					width: 80rpx;
-					height: 80rpx;
-					border-radius: 50%;
-					margin-right: 20rpx;
-					background-color: #eee;
-				}
-
-				.nickname {
-					flex: 1;
-					font-size: 28rpx;
-					color: #333;
-					font-weight: 500;
-				}
-			}
-
-			// 文章内容
-			.article-content {
-				margin-bottom: 20rpx;
-
-				.article-title {
-					font-size: 32rpx;
-					font-weight: bold;
-					color: #333;
-					margin-bottom: 10rpx;
-					display: block;
-				}
-
-				.article-summary {
-					font-size: 28rpx;
-					color: #666;
-					margin-bottom: 20rpx;
-					line-height: 1.5;
-					display: block;
-				}
-
-				// 文章图片
-				.article-image {
-					width: 100%;
-					height: 300rpx;
-					border-radius: 10rpx;
-					overflow: hidden;
-					margin-bottom: 20rpx;
-
-					.single-image {
-						width: 100%;
-						height: 100%;
-						background-color: #eee;
-					}
-				}
-			}
-
-			// 文章操作按钮
-			.article-actions {
-				display: flex;
-				justify-content: space-around;
-				border-top: 2rpx solid #f0f0f0;
-				padding-top: 20rpx;
-				flex-wrap: wrap;
-
-				.action-item {
-					display: flex;
-					align-items: center;
-					padding: 0 10rpx;
-					margin-bottom: 10rpx;
-
-					.uni-icons {
-						margin-right: 10rpx;
-					}
-
-					text {
-						font-size: 24rpx;
-						color: #666;
-
-						&.liked {
-							color: #ff6b6b;
-						}
-
-						&.collected {
-							color: #ffc107;
-						}
-					}
-				}
-			}
-		}
-
-		// 无内容提示
-		.no-content {
+		.stat-item {
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			justify-content: center;
-			padding: 100rpx 0;
 
-			text {
-				font-size: 28rpx;
-				color: #999;
-				margin-top: 20rpx;
+			.stat-num {
+				font-size: 32rpx;
+				color: #333;
+				font-weight: 500;
+			}
+
+			.stat-label {
+				font-size: 24rpx;
+				color: #666;
+				margin-top: 6rpx;
 			}
 		}
 
-		// 加载状态
-		.loading-state {
-			text-align: center;
+		.stat-divider {
+			color: #ddd;
 			font-size: 24rpx;
-			color: #999;
-			margin: 20rpx 0;
-			padding: 20rpx 0;
+			align-self: center;
+		}
+	}
+
+	// 个人简介
+	.user-bio {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20rpx 30rpx;
+		background-color: #fff;
+		margin-top: 2rpx;
+		height: 100rpx;
+
+		.bio-content {
+			display: flex;
+			align-items: center;
+			flex: 1;
+			margin-right: 20rpx;
+			overflow: hidden;
+
+			.bio-text {
+				font-size: 26rpx;
+				color: #666;
+				margin-left: 10rpx;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				max-width: 500rpx;
+			}
+		}
+
+		.edit-profile-btn {
+			background-color: #f8f8f8;
+			color: #666;
+			font-size: 24rpx;
+			padding: 10rpx 30rpx;
+			border-radius: 30rpx;
+			border: 1rpx solid #eee;
+			flex-shrink: 0;
+		}
+	}
+
+	// 导航菜单，使用首页的样式
+	.nav-menu {
+		display: flex;
+		padding: 10rpx 30rpx 5rpx;
+		background-color: #fff;
+		margin-top: 2rpx;
+
+		.nav-item {
+			padding: 10rpx 24rpx;
+			margin: 0 15rpx;
+			font-size: 30rpx;
+			color: #666;
+			position: relative;
+
+			&.active {
+				color: #4361ee;
+				font-weight: bold;
+
+				&::after {
+					content: '';
+					position: absolute;
+					bottom: -6rpx;
+					left: 50%;
+					transform: translateX(-50%);
+					width: 30rpx;
+					height: 6rpx;
+					background-color: #4361ee;
+					border-radius: 3rpx;
+				}
+			}
 		}
 	}
 
