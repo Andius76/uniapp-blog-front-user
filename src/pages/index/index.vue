@@ -569,6 +569,14 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleComment = (article) => {
+		// 因为在页面index里，评论点击应该是在当前页面就处理完成
+		// 避免导航到两个地方的问题，这里只调用viewArticleDetail
+		viewArticleDetail(article.id);
+		
+		// 不再执行下面的代码，防止双重导航
+		return;
+		
+		/* 注释掉原来的代码，避免双重导航
 		// #ifdef H5
 		// H5环境下，在新窗口打开文章详情页
 		const currentUrl = window.location.href;
@@ -583,6 +591,7 @@
 			url: `/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`
 		});
 		// #endif
+		*/
 	};
 
 	/**
@@ -1371,9 +1380,18 @@
 
 	// 全局禁用滚动条
 	::-webkit-scrollbar {
-		width: 0;
-		height: 0;
-		display: none;
+		width: 6px;
+		height: 6px;
+	}
+
+	// 添加全局滚动条样式
+	::-webkit-scrollbar-thumb {
+		background: #ddd;
+		border-radius: 3px;
+	}
+	
+	::-webkit-scrollbar-track {
+		background: #f5f5f5;
 	}
 
 	// 响应式布局

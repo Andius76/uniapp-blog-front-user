@@ -102,10 +102,35 @@ const scrollToTop = () => {
 		emit('click');
 		
 		// 如果没有父组件处理，则默认使用uni-app API滚动整个页面
+		// #ifdef H5
+		// 尝试查找包含文章列表的滚动容器
+		const articleScrollView = document.getElementById('article-list-scroll-h5');
+		if (articleScrollView) {
+			console.log('回到顶部组件: H5环境找到文章列表scroll-view');
+			articleScrollView.scrollTop = 0;
+		} else {
+			// 如果找不到指定ID的元素，尝试通过类名查找
+			const scrollViews = document.querySelectorAll('.article-scroll');
+			if (scrollViews && scrollViews.length > 0) {
+				console.log('回到顶部组件: H5环境通过类名找到滚动元素');
+				scrollViews.forEach(sv => sv.scrollTop = 0);
+			} else {
+				// 如果仍然找不到，使用页面滚动
+				window.scrollTo({
+					top: 0,
+					behavior: props.duration > 0 ? 'smooth' : 'auto'
+				});
+			}
+		}
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境，使用uni API
 		uni.pageScrollTo({
 			scrollTop: 0,
 			duration: props.duration
 		});
+		// #endif
 		
 		// 点击后隐藏按钮
 		if (props.hideAfterClick) {
@@ -115,6 +140,11 @@ const scrollToTop = () => {
 		console.log('回到顶部组件: 执行滚动到顶部, duration:', props.duration);
 	} catch (error) {
 		console.error('回到顶部组件: 滚动到顶部出错:', error);
+		// 出错时尝试使用最基本的方法
+		uni.pageScrollTo({
+			scrollTop: 0,
+			duration: 0
+		});
 	}
 };
 
