@@ -2,13 +2,99 @@
 	<view class="article-list-container">
 		<!-- H5模式下显示网格布局 -->
 		<!-- #ifdef H5 -->
-		<scroll-view scroll-y class="article-scroll" id="article-list-scroll-h5" @scrolltolower="handleLoadMore" :refresher-enabled="true"
-			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
-			refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
-			:show-scrollbar="true" :enable-flex="true" :bounce="true" :enhanced="true" :scroll-with-animation="true"
-			@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
-			<!-- 网格布局文章列表 -->
-			<view class="article-grid">
+		<template v-if="!props.useGlobalScroll">
+			<scroll-view scroll-y class="article-scroll" id="article-list-scroll-h5" @scrolltolower="handleLoadMore" :refresher-enabled="true"
+				:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
+				refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
+				:show-scrollbar="true" :enable-flex="true" :bounce="true" :enhanced="true" :scroll-with-animation="true"
+				@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
+				<!-- 网格布局文章列表 -->
+				<view class="article-grid">
+					<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
+						<!-- 文章内容 -->
+						<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
+							<!-- 封面图片 - 仅当有封面时才显示 -->
+							<view class="article-image" v-if="article.coverImage">
+								<image :src="article.coverImage" mode="aspectFill" class="grid-image"
+									@error="handleImageError(index)"></image>
+							</view>
+							
+							<!-- 文章标题和简介 -->
+							<view class="article-info">
+								<text class="article-title">{{article.title}}</text>
+								
+								<!-- 文章简介 -->
+								<rich-text class="article-summary" :nodes="formatSummary(article.summary)"></rich-text>
+								
+								<!-- 文章标签 -->
+								<view class="article-tags" v-if="article.tags && article.tags.length > 0">
+									<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item"
+										@click.stop="handleTagClick(tag)">
+										#{{tag}}
+									</view>
+								</view>
+							</view>
+						</view>
+
+						<!-- 文章操作按钮 -->
+						<view class="article-actions">
+							<!-- 分享按钮 -->
+							<view class="action-item" @click.stop="handleShare(index)">
+								<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
+							</view>
+
+							<!-- 评论按钮 -->
+							<view class="action-item" @click.stop="handleComment(index)">
+								<uni-icons type="chat" size="20" color="#000"></uni-icons>
+								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
+							</view>
+
+							<!-- 点赞按钮 -->
+							<view class="action-item" @click.stop="handleLike(index)">
+								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
+									:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
+								<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+							</view>
+
+							<!-- 编辑按钮（根据权限条件显示） -->
+							<view class="action-item manage-btn"
+								v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
+								@click.stop="handleEdit(index)">
+								<uni-icons type="compose" size="20" color="#000"></uni-icons>
+							</view>
+
+							<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
+							<view class="action-item manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+								@click.stop="handleDelete(index)">
+								<uni-icons type="trash" size="20" color="#000"></uni-icons>
+							</view>
+						</view>
+					</view>
+				</view>
+
+				<!-- 加载状态 -->
+				<view class="loading-state">
+					<text v-if="isLoading && !isRefreshing">加载中...</text>
+					<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
+					<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
+
+					<!-- 无内容提示 -->
+					<view v-if="articleList.length === 0 && !isLoading" class="no-content">
+						<uni-icons type="info" size="50" color="#ddd"></uni-icons>
+						<text>{{ emptyText }}</text>
+					</view>
+				</view>
+				
+				<!-- 回到顶部按钮 -->
+				<view v-if="showBackTop" class="back-to-top" @click="scrollToTop">
+					<uni-icons type="top" size="20" color="#fff"></uni-icons>
+				</view>
+			</scroll-view>
+		</template>
+		<template v-else>
+			<!-- 全局滚动模式 -->
+			<view class="article-grid global-scroll">
+				<!-- 网格布局文章列表 -->
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
 					<!-- 文章内容 -->
 					<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
@@ -83,97 +169,7 @@
 					<text>{{ emptyText }}</text>
 				</view>
 			</view>
-			
-			<!-- 回到顶部按钮 -->
-			<view v-if="showBackTop" class="back-to-top" @click="scrollToTop">
-				<uni-icons type="top" size="20" color="#fff"></uni-icons>
-			</view>
-		</scroll-view>
-		<!-- #endif -->
-		
-		<!-- 非H5模式下保持原有垂直列表布局 -->
-		<!-- #ifndef H5 -->
-		<scroll-view scroll-y class="article-scroll" id="article-list-scroll-mp" @scrolltolower="handleLoadMore" :refresher-enabled="true"
-			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
-			refresher-background="#f5f5f5" :show-scrollbar="true" :enable-flex="true" :bounce="true" :enhanced="true"
-			:scroll-with-animation="true" @touchstart="handleTouchStart" @touchmove="handleTouchMove"
-			@touchend="handleTouchEnd">
-			<!-- 文章列表循环 -->
-			<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
-				<!-- 文章内容 -->
-				<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
-					<text class="article-title">{{article.title}}</text>
-					<rich-text class="article-summary" :nodes="formatSummary(article.summary)"></rich-text>
-
-					<!-- 文章标签 -->
-					<view class="article-tags" v-if="article.tags && article.tags.length > 0">
-						<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item"
-							@click.stop="handleTagClick(tag)">
-							#{{tag}}
-						</view>
-					</view>
-
-					<!-- 封面图片 - 只在有封面图片时显示 -->
-					<view class="article-image" v-if="article.coverImage">
-						<image :src="article.coverImage" mode="aspectFill" class="single-image"
-							@error="handleImageError(index)" :style="{ 'object-fit': 'cover' }"></image>
-					</view>
-
-					<!-- 多图布局 - 仅在没有coverImage但有images时显示 -->
-					<view class="image-grid" v-if="!article.coverImage && article.images && article.images.length > 0">
-						<image v-for="(img, imgIndex) in article.images.slice(0, 3)" :key="imgIndex" :src="img"
-							mode="aspectFill" class="grid-image"></image>
-					</view>
-				</view>
-
-				<!-- 文章操作按钮 -->
-				<view class="article-actions">
-					<!-- 分享按钮 -->
-					<view class="action-item" @click.stop="handleShare(index)">
-						<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
-					</view>
-
-					<!-- 评论按钮 -->
-					<view class="action-item" @click.stop="handleComment(index)">
-						<uni-icons type="chat" size="20" color="#000"></uni-icons>
-						<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
-					</view>
-
-					<!-- 点赞按钮 -->
-					<view class="action-item" @click.stop="handleLike(index)">
-						<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
-							:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
-						<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
-					</view>
-
-					<!-- 编辑按钮（根据权限条件显示） -->
-					<view class="action-item manage-btn"
-						v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
-						@click.stop="handleEdit(index)">
-						<uni-icons type="compose" size="20" color="#000"></uni-icons>
-					</view>
-
-					<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
-					<view class="action-item manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
-						@click.stop="handleDelete(index)">
-						<uni-icons type="trash" size="20" color="#000"></uni-icons>
-					</view>
-				</view>
-			</view>
-
-			<!-- 加载状态 -->
-			<view class="loading-state">
-				<text v-if="isLoading && !isRefreshing">加载中...</text>
-				<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-				<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
-
-				<!-- 无内容提示 -->
-				<view v-if="articleList.length === 0 && !isLoading" class="no-content">
-					<uni-icons type="info" size="50" color="#ddd"></uni-icons>
-					<text>{{ emptyText }}</text>
-				</view>
-			</view>
-		</scroll-view>
+		</template>
 		<!-- #endif -->
 	</view>
 </template>
@@ -234,6 +230,11 @@
 		height: {
 			type: String,
 			default: 'calc(100vh - 165rpx)'
+		},
+		// 是否使用全局滚动
+		useGlobalScroll: {
+			type: Boolean,
+			default: false
 		}
 	});
 
@@ -2054,6 +2055,20 @@
 					font-size: 28rpx;
 					color: #999;
 					margin-top: 20rpx;
+				}
+			}
+		}
+
+		// 全局滚动模式的样式
+		.global-scroll {
+			width: 100%;
+			min-height: 200px;
+			
+			.article-grid-item {
+				margin-bottom: 40rpx;
+				
+				&:last-child {
+					margin-bottom: 60rpx;
 				}
 			}
 		}

@@ -54,8 +54,8 @@
 		<!-- 内容区域 -->
 		<!-- #ifdef H5 -->
 		<view class="content-area">
-			<!-- 左侧空白区域 - 点击时滚动文章列表 -->
-			<view class="left-sidebar" @click.stop="scrollToTop"></view>
+			<!-- 左侧空白区域 -->
+			<view class="left-sidebar"></view>
 
 			<!-- 中间文章列表区域 -->
 			<view class="main-content">
@@ -63,7 +63,7 @@
 					ref="articleListRef"
 					:key="data.currentNav"
 					:list-type="getListType()"
-					:height="getListHeight()"
+					:use-global-scroll="true"
 					:empty-text="'暂无文章内容'"
 					@article-click="viewArticleDetail"
 					@like="handleLike"
@@ -73,8 +73,8 @@
 				/>
 			</view>
 
-			<!-- 右侧创作中心区域 - 点击空白处滚动文章列表 -->
-			<view class="right-sidebar" @click.stop="handleSidebarClick">
+			<!-- 右侧创作中心区域 -->
+			<view class="right-sidebar">
 				<view class="creator-center">
 					<view class="creator-header">
 						<uni-icons type="compose" size="24" />
@@ -985,7 +985,19 @@
 	const scrollToTop = () => {
 		console.log('首页: 执行滚动到顶部方法');
 		
-		// 直接调用文章列表组件的滚动到顶部方法
+		// #ifdef H5
+		// 对于H5环境，先尝试全局滚动
+		if (window) {
+			console.log('首页: 执行全局滚动');
+			window.scrollTo({
+				top: 0,
+				behavior: 'smooth'
+			});
+			return;
+		}
+		// #endif
+		
+		// 如果不是H5环境或window不可用，尝试组件内部滚动
 		if (articleListRef.value) {
 			console.log('首页: 通过文章列表组件引用执行滚动');
 			articleListRef.value.scrollToTop();
@@ -1052,28 +1064,23 @@
 <style lang="scss">
 	page {
 		background-color: #f5f5f5;
-		height: 100vh;
-		overflow: hidden;
+		min-height: 100vh;
 	}
 
 	// #ifdef H5
-	.uni-page-wrapper {
-		min-height: 100% !important;
-		height: auto !important;
-	}
-
+	.uni-page-wrapper,
 	.uni-page-body {
 		height: auto !important;
-		min-height: 100%;
+		min-height: 100vh;
 	}
 	// #endif
 
 	.container {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
-		overflow: hidden;
+		min-height: 100vh;
 		min-width: 1000px;
+		overflow: visible;
 	}
 
 	// 顶部导航栏
@@ -1240,138 +1247,118 @@
 		max-width: 1200px;
 		min-width: 960px;
 		margin: 0 auto;
-		padding: 106px 20px 0;
-		gap: 20px;
+		padding: 106px 20px 20px;
+		gap: 0;
 		position: relative;
-		height: 100%;
-		overflow: hidden;
+		min-height: calc(100vh - 106px);
 
 		.left-sidebar {
-			position: fixed;
-			width: 110px;
+			position: sticky;
 			top: 106px;
-			bottom: 0;
+			width: 110px;
+			height: calc(100vh - 106px);
 			background: transparent;
-			overflow: hidden;
 		}
 
 		.main-content {
 			flex: 1;
 			min-width: 600px;
 			background: #fff;
-			border-radius: 4px;
+			border-radius: 4px 0 0 4px;
 			padding: 20px;
 			margin-left: 130px;
-			margin-right: 340px;
-			overflow: hidden;
+			margin-right: 0;
+			min-height: 200px;
 		}
 
 		.right-sidebar {
-			position: fixed;
+			position: sticky;
+			top: 106px;
 			width: 300px;
 			min-width: 280px;
-			top: 106px;
-			right: calc((100% - 1200px) / 2 + 50px);
-			bottom: 0;
+			height: fit-content;
 			background: transparent;
-			overflow: hidden;
-			z-index: 10;
-
+			margin-left: 0;
+			padding-top: 0;
+			
 			.creator-center {
+				position: sticky;
+				top: 106px;
 				background: #fff;
-				border-radius: 4px;
-				padding: 20px;
-				margin-bottom: 20px;
+				border-radius: 0 4px 4px 0;
 				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-
+				
 				.creator-header {
 					display: flex;
 					align-items: center;
-					gap: 10px;
-					margin-bottom: 15px;
-					font-size: 16px;
-					font-weight: bold;
+					padding: 20px;
+					border-bottom: 1px solid #f0f0f0;
+					
+					text {
+						font-size: 16px;
+						font-weight: bold;
+						color: #333;
+						margin-left: 10px;
+					}
 				}
-
+				
 				.write-btn {
-					width: 100%;
-					height: 40px;
 					display: flex;
 					align-items: center;
 					justify-content: center;
-					gap: 8px;
+					margin: 10px 20px 0 20px;
+					height: 40px;
 					background: #4361ee;
 					color: #fff;
 					border-radius: 4px;
 					font-size: 14px;
+					transition: all 0.3s;
+					&:hover {
+						background: #3651d4;
+						transform: translateY(-2px);
+						box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
+					}
+					
+					text {
+						margin-left: 8px;
+					}
 				}
 			}
-
+			
 			.user-stats {
+				position: sticky;
+				top: 286px;
 				background: #fff;
-				border-radius: 4px;
-				padding: 20px;
+				border-radius: 0 4px 4px 0;
+				margin-bottom: 20px;
 				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-
+				padding: 20px;
+				
 				.stat-item {
 					display: flex;
 					align-items: center;
-					gap: 10px;
-					padding: 12px 0;
-					border-bottom: 1px solid #f0f0f0;
+					padding: 15px 0;
 					cursor: pointer;
-					transition: all 0.2s ease;
-					position: relative;
-					overflow: hidden;
-
-					&:last-child {
-						border-bottom: none;
-					}
-
-					text {
-						color: #666;
-						font-size: 14px;
-						transition: color 0.2s ease;
-					}
-
-					.count {
-						margin-left: auto;
-						color: #4361ee;
-						font-weight: bold;
-						background-color: rgba(67, 97, 238, 0.1);
-						padding: 2px 10px;
-						border-radius: 12px;
-						min-width: 25px;
-						text-align: center;
-						transition: all 0.2s ease;
+					transition: all 0.3s;
+					
+					&:not(:last-child) {
+						border-bottom: 1px solid #f0f0f0;
 					}
 					
 					&:hover {
-						background-color: #f8f9fc;
-						padding-left: 5px;
-						
-						text {
-							color: #4361ee;
-						}
-						
-						.count {
-							background-color: rgba(67, 97, 238, 0.2);
-							transform: scale(1.05);
-						}
-						
-						&::after {
-							content: '';
-							position: absolute;
-							left: 0;
-							top: 0;
-							height: 100%;
-							width: 3px;
-							background-color: #4361ee;
-						}
+						background: #f8f9fa;
+						padding-left: 10px;
 					}
 					
-					&:active {
-						background-color: #eef0fc;
+					text {
+						font-size: 14px;
+						color: #333;
+						margin-left: 10px;
+						
+						&.count {
+							margin-left: auto;
+							color: #666;
+						}
 					}
 				}
 			}
@@ -1614,26 +1601,31 @@
 	// 添加水平滚动条样式
 	// #ifdef H5
 	html {
+		overflow-y: scroll;
 		overflow-x: auto;
 		min-width: 1000px;
+		
+		&::-webkit-scrollbar {
+			width: 6px;
+			height: 6px;
+		}
+
+		&::-webkit-scrollbar-thumb {
+			background: #ddd;
+			border-radius: 3px;
+			
+			&:hover {
+				background: #bbb;
+			}
+		}
+
+		&::-webkit-scrollbar-track {
+			background: #f5f5f5;
+		}
 	}
 
 	body {
 		min-width: 1000px;
-	}
-
-	::-webkit-scrollbar {
-		width: 6px;
-		height: 6px;
-	}
-
-	::-webkit-scrollbar-thumb {
-		background: #ddd;
-		border-radius: 3px;
-	}
-
-	::-webkit-scrollbar-track {
-		background: #f5f5f5;
 	}
 	// #endif
 </style>
