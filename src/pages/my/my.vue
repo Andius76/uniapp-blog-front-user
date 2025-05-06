@@ -65,13 +65,13 @@
 			<!-- 内容区域，使用首页的内容区样式 -->
 			<view class="content-area">
 				<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
-				<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender"
+				<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
 					ref="articleListRef"
 					:key="data.currentTab" 
 					:list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
 					:userId="data.userInfo.id"
 					:show-manage-options="true"
-					:show-edit-for-all-users="true"
+					:show-edit-for-all-users="data.currentTab === 0"
 					:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
 					:height="'calc(100vh - 445rpx)'"
 					@article-click="viewArticleDetail"
@@ -85,9 +85,18 @@
 		</view>
 
 		<!-- 用户设置组件 -->
-		<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo" :initialView="data.settingsInitialView"
-			@update:visible="data.showUserSettings = $event" @avatar-change="handleAvatarChange"
-			@nickname-change="handleNicknameChange" @bio-change="handleBioChange" @logout="handleLogout" />
+		<view v-if="data.showUserSettings" class="settings-overlay">
+			<UserSettings 
+				:visible="data.showUserSettings" 
+				:userInfo="data.userInfo" 
+				:initialView="data.settingsInitialView"
+				@update:visible="data.showUserSettings = $event" 
+				@avatar-change="handleAvatarChange"
+				@nickname-change="handleNicknameChange" 
+				@bio-change="handleBioChange" 
+				@logout="handleLogout" 
+			/>
+		</view>
 	</view>
 	
 	<!-- 使用原生方法实现的弹窗 -->
@@ -1791,5 +1800,18 @@
 				}
 			}
 		}
+	}
+
+	.settings-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 999;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 </style>

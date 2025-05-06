@@ -508,11 +508,16 @@
 				apiPath = `/api/article/user/${currentUserId}/articles`;
 				params.type = 'posts';
 				console.log(`加载当前用户(${currentUserId})的文章`);
+			} else if (props.listType === 'like' && props.userId) {
+				// 获取用户点赞的文章
+				apiPath = `/api/article/user/${props.userId}/articles`;
+				params.type = 'likes';
+				console.log(`加载用户(${props.userId})的点赞文章`);
 			} else if (props.userId) {
 				// 获取指定用户的文章
 				apiPath = `/api/article/user/${props.userId}/articles`;
-				params.type = props.listType === 'like' ? 'likes' : 'posts';
-				console.log(`加载用户(${props.userId})的${params.type}类型文章`);
+				params.type = 'posts';
+				console.log(`加载用户(${props.userId})的文章`);
 			} else if (props.listType === 'collection') {
 				// 获取收藏的文章
 				apiPath = '/api/article/collections';
@@ -1108,9 +1113,12 @@
 				}
 				apiPath = `/api/article/user/${currentUserId}/articles`;
 				requestParams.type = 'posts';
+			} else if (props.listType === 'like' && props.userId) {
+				apiPath = `/api/article/user/${props.userId}/articles`;
+				requestParams.type = 'likes';
 			} else if (props.userId) {
 				apiPath = `/api/article/user/${props.userId}/articles`;
-				requestParams.type = props.listType === 'like' ? 'likes' : 'posts';
+				requestParams.type = 'posts';
 			} else if (props.listType === 'collection') {
 				apiPath = '/api/article/collections';
 			} else if (props.listType === 'follow') {
