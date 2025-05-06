@@ -1495,6 +1495,12 @@
 			flex: 1;
 			margin: 0 2px;
 			
+			/* 图标上移并放大 */
+			.uni-icons {
+				margin-top: -4px;
+				transform: scale(1.2); /* 图标放大1.2倍 */
+			}
+			
 			/* 默认悬停效果 */
 			&:hover {
 				/* 移除背景颜色变化 */
