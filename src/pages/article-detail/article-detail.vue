@@ -347,38 +347,37 @@
 			return '/static/images/avatar.png';
 		}
 
-		// 特别处理avatars目录下的头像
-		if (url.includes('avatars') || url.startsWith('user_')) {
-			// 确保路径以/uploads/avatars开头
-			if (url.startsWith('user_')) {
-				url = '/uploads/avatars/' + url;
-			} else if (!url.includes('/uploads/')) {
-				if (url.startsWith('/avatars/')) {
-					url = '/uploads' + url;
-				} else if (url.startsWith('/')) {
-					url = '/uploads/avatars' + url;
-				} else {
-					url = '/uploads/avatars/' + url;
-				}
-			}
-			console.log('[头像处理] 补全头像路径:', url);
-		}
-
-		// 如果已经是完整URL（包含http）
-		if (url.startsWith('http')) {
-			// 检查并修复双斜杠问题
-			if (url.includes('//uploads')) {
-				url = url.replace('//uploads', '/uploads');
-				console.log('[头像处理] 修复双斜杠问题，结果:', url);
-			}
-			console.log('[头像处理] 返回完整URL:', url);
+		// 如果已经是完整的URL（包含http或https），直接返回
+		if (url.startsWith('http://') || url.startsWith('https://')) {
+			console.log('[头像处理] 已是完整URL，直接返回:', url);
 			return url;
 		}
 
-		// 如果是静态资源路径
-		if (url.startsWith('/static')) {
-			console.log('[头像处理] 返回静态资源路径:', url);
+		// 如果是静态资源路径，直接返回
+		if (url.startsWith('/static/')) {
+			console.log('[头像处理] 静态资源路径，直接返回:', url);
 			return url;
+		}
+
+		// 处理用户头像文件格式：user_[id]_[timestamp].jpg
+		if (url.includes('user_')) {
+			// 提取文件名
+			const fileName = url.includes('/') ? url.split('/').pop() : url;
+			if (fileName.match(/^user_\d+_\d+\.\w+$/)) {
+				// 构建完整路径
+				const fullUrl = getBaseUrl() + '/uploads/avatars/' + fileName;
+				console.log('[头像处理] 构建用户头像完整路径:', fullUrl);
+				return fullUrl;
+			}
+		}
+
+		// 处理avatars目录下的头像
+		if (url.includes('avatars/')) {
+			// 提取文件名
+			const fileName = url.split('avatars/').pop();
+			const fullUrl = getBaseUrl() + '/uploads/avatars/' + fileName;
+			console.log('[头像处理] 构建avatars目录头像完整路径:', fullUrl);
+			return fullUrl;
 		}
 
 		// 其他情况：添加基础URL前缀
@@ -386,9 +385,9 @@
 		if (url.startsWith('/')) {
 			fullUrl = getBaseUrl() + url;
 		} else {
-			fullUrl = getBaseUrl() + '/' + url;
+			fullUrl = getBaseUrl() + '/uploads/avatars/' + url;
 		}
-		console.log('[头像处理] 构建完整URL:', fullUrl);
+		console.log('[头像处理] 构建其他情况完整URL:', fullUrl);
 		return fullUrl;
 	};
 
@@ -749,23 +748,8 @@
 							// 处理头像URL，确保使用完整URL和默认头像
 							console.log('[回复处理] 处理前的头像URL:', replyAvatar);
 
-							// 检查是否为用户头像文件格式：user_[id]_[timestamp].jpg
-							if (replyAvatar && replyAvatar.includes('user_') && !replyAvatar
-								.includes('/uploads/avatars/')) {
-								// 提取文件名
-								const fileName = replyAvatar.split('/').pop();
-								if (fileName.match(/^user_\d+_\d+\.\w+$/)) {
-									// 直接构建完整路径
-									replyAvatar = getBaseUrl() + '/uploads/avatars/' + fileName;
-									console.log('[回复处理] 直接补全头像路径:', replyAvatar);
-								} else {
-									// 使用通用处理方法
-									replyAvatar = formatAvatarUrl(replyAvatar);
-								}
-							} else {
-								// 使用通用处理方法
-								replyAvatar = formatAvatarUrl(replyAvatar);
-							}
+							// 直接使用formatAvatarUrl处理头像，不需要重复逻辑
+							replyAvatar = formatAvatarUrl(replyAvatar);
 
 							console.log('[回复处理] 处理后的头像URL:', replyAvatar);
 
