@@ -5,7 +5,7 @@
 		<view class="header-fixed">
 			<view class="header-top">
 				<navigator url="/pages/index/index" class="logo">首页</navigator>
-				<view class="my-link" @click="navigateToMyPage">我的</view>
+				<view class="my-link hover-effect" hover-class="my-link-active" @click="navigateToMyPage">我的</view>
 				<!-- 搜索框 -->
 				<view class="search-bar">
 					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
@@ -38,8 +38,8 @@
 		<view class="mp-header">
 			<!-- 添加顶部导航按钮 -->
 			<view class="mp-top-nav">
-				<view class="mp-logo" @click="refreshArticleList">首页</view>
-				<view class="mp-my-btn" @click="navigateToMyPage">我的</view>
+				<view class="mp-logo" hover-class="mp-nav-active" @click="refreshArticleList">首页</view>
+				<view class="mp-my-btn" hover-class="mp-nav-active" @click="navigateToMyPage">我的</view>
 			</view>
 			<!-- 搜索框 -->
 			<view class="search-bar">
@@ -93,17 +93,17 @@
 
 				<!-- 用户数据统计 -->
 				<view class="user-stats">
-					<view class="stat-item" @click="navigateToCollection">
+					<view class="stat-item animated-stat" @click="navigateToCollection">
 						<uni-icons type="star" size="20" />
 						<text>我的收藏</text>
 						<text class="count">{{ userInfo.collectionCount || 0 }}</text>
 					</view>
-					<view class="stat-item" @click="navigateToFollows">
+					<view class="stat-item animated-stat" @click="navigateToFollows">
 						<uni-icons type="heart" size="20" />
 						<text>我的关注</text>
 						<text class="count">{{ userInfo.followCount || 0 }}</text>
 					</view>
-					<view class="stat-item" @click="navigateToFollowers">
+					<view class="stat-item animated-stat" @click="navigateToFollowers">
 						<uni-icons type="person" size="20" />
 						<text>我的粉丝</text>
 						<text class="count">{{ userInfo.followerCount || 0 }}</text>
@@ -1389,7 +1389,7 @@
 					align-items: center;
 					padding: 15px 0;
 					cursor: pointer;
-					transition: all 0.3s;
+					transition: all 0.5s ease;
 					
 					&:not(:last-child) {
 						border-bottom: 1px solid #f0f0f0;
@@ -1408,6 +1408,35 @@
 						&.count {
 							margin-left: auto;
 							color: #666;
+						}
+					}
+					
+					&.animated-stat {
+						position: relative;
+						padding-left: 15px;
+						
+						&::before {
+							content: '';
+							position: absolute;
+							left: 0;
+							top: 50%;
+							transform: translateY(-50%) scaleY(0);
+							width: 3px;
+							height: 70%;
+							background-color: #4361ee;
+							transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+							transform-origin: center center;
+							border-radius: 2px;
+						}
+						
+						&:hover::before {
+							transform: translateY(-50%) scaleY(1);
+						}
+						
+						&:active::before {
+							background-color: #3651d4;
+							transform: translateY(-50%) scaleY(1.1);
+							transition: all 0.3s ease;
 						}
 					}
 				}
@@ -1699,4 +1728,114 @@
 		min-width: 1000px;
 	}
 	// #endif
+
+	// 添加"我的"链接悬停和点击动画效果
+	.my-link {
+		font-size: 16px;
+		color: #666;
+		padding: 0 15px;
+		white-space: nowrap;
+		position: relative;
+		transition: all 0.5s ease;
+		
+		&.hover-effect {
+			cursor: pointer;
+			
+			&::after {
+				content: '';
+				position: absolute;
+				bottom: -8px;
+				left: 50%;
+				transform: translateX(-50%) scaleX(0);
+				width: 20px;
+				height: 2px;
+				background-color: #4361ee;
+				transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+			
+			&:hover {
+				color: #4361ee;
+				
+				&::after {
+					transform: translateX(-50%) scaleX(1);
+				}
+			}
+		}
+	}
+
+	.my-link-active {
+		transform: scale(0.95);
+		color: #4361ee !important;
+		font-weight: bold;
+	}
+
+	// APP和小程序样式增强
+	// #ifndef H5
+	.mp-header {
+		.mp-top-nav {
+			.mp-logo, .mp-my-btn {
+				position: relative;
+				transition: all 0.2s ease;
+				border-radius: 8rpx;
+				padding: 10rpx 20rpx;
+				
+				&::after {
+					content: '';
+					position: absolute;
+					bottom: -4rpx;
+					left: 50%;
+					transform: translateX(-50%) scaleX(0);
+					width: 40rpx;
+					height: 4rpx;
+					background-color: #4361ee;
+					transition: transform 0.3s ease;
+				}
+				
+				&:hover {
+					color: #4361ee;
+				}
+			}
+			
+			.mp-my-btn {
+				position: relative;
+				overflow: hidden;
+				border-radius: 30rpx;
+				
+				&::before {
+					content: '';
+					position: absolute;
+					top: 50%;
+					left: 50%;
+					width: 100%;
+					height: 100%;
+					background: rgba(67, 97, 238, 0.1);
+					border-radius: 30rpx;
+					transform: translate(-50%, -50%) scale(0);
+					transition: transform 0.3s ease;
+				}
+				
+				&:hover::before {
+					transform: translate(-50%, -50%) scale(1);
+				}
+			}
+		}
+	}
+
+	.mp-nav-active {
+		transform: scale(0.9);
+		color: #4361ee !important;
+		font-weight: bold;
+	}
+	// #endif
+
+	// 添加禁用时的样式
+	.my-link.disabled, .mp-my-btn.disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		
+		&:hover {
+			transform: none;
+			color: #666;
+		}
+	}
 </style>
