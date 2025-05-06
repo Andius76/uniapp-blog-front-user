@@ -569,10 +569,20 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleComment = (article) => {
-		// 跳转到文章详情页并显示评论部分
+		// #ifdef H5
+		// H5环境下，在新窗口打开文章详情页
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`;
+		window.open(detailUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转到文章详情页
 		uni.navigateTo({
-			url: `/pages/article-detail/article-detail?id=${article.id}&showComments=true`
+			url: `/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`
 		});
+		// #endif
 	};
 
 	/**

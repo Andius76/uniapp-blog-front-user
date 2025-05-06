@@ -1181,22 +1181,32 @@
 	const handleComment = (index) => {
 		const article = articleList.value[index];
 		
-		// #ifdef H5
-		// H5环境下，在新窗口打开文章评论页面
-		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`;
-		window.open(detailUrl, '_blank');
-		// #endif
-		
-		// #ifndef H5
-		// 非H5环境下，跳转到文章详情页并显示评论区
-		uni.navigateTo({
-			url: `/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`
-		});
-		// #endif
-		
+		// 首先触发评论事件，让父组件决定如何处理
 		emit('comment', article);
+		
+		// 获取当前页面路径
+		const pages = getCurrentPages();
+		const currentPage = pages[pages.length - 1];
+		const currentPath = currentPage?.route || '';
+		
+		// 排除首页和其他专门处理了评论事件的页面
+		// 只有在非index、非my页面中才执行默认导航
+		if (!currentPath.includes('pages/index/') && !currentPath.includes('pages/my/')) {
+			// #ifdef H5
+			// H5环境下，在新窗口打开文章评论页面
+			const currentUrl = window.location.href;
+			const baseUrl = currentUrl.split('#')[0];
+			const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`;
+			window.open(detailUrl, '_blank');
+			// #endif
+			
+			// #ifndef H5
+			// 非H5环境下，跳转到文章详情页并显示评论区
+			uni.navigateTo({
+				url: `/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`
+			});
+			// #endif
+		}
 	};
 
 	// 处理收藏
