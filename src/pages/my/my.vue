@@ -1468,21 +1468,116 @@
 	.container {
 		background-color: #f5f5f5; /* 与首页背景一致 */
 		min-height: 100vh; /* 确保背景色填满整个视口高度 */
+		min-width: 1000px; /* 与首页容器一致 */
 	}
+	
+	/* 文章列表底部功能栏样式定制 */
+	/* #ifdef H5 */
+	.article-width-container :deep(.article-actions) {
+		/* 整体样式优化 */
+		border-top: 1px solid #eaeaea;
+		padding: 6px 0;
+		/* 使用flex布局实现均匀水平排布 */
+		display: flex;
+		justify-content: space-around;
+		align-items: center;
+		
+		/* 操作按钮样式 */
+		.action-item {
+			padding: 6px 15px;
+			border-radius: 4px;
+			transition: all 0.3s ease;
+			cursor: pointer;
+			/* 居中显示内容 */
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex: 1;
+			margin: 0 2px;
+			
+			/* 默认悬停效果 */
+			&:hover {
+				/* 移除背景颜色变化 */
+				/* background-color: #f0f4ff; */
+				
+				/* 文本和图标变蓝色 */
+				color: #4361ee !important;
+				
+				/* 图标变蓝色 */
+				.uni-icons {
+					color: #4361ee !important;
+				}
+			}
+			
+			/* 点赞按钮悬停特殊样式 - 使用nth-child(3)定位点赞按钮 */
+			&:nth-child(3):hover {
+				/* 移除背景颜色变化 */
+				/* background-color: #fff0f0 !important; */
+				
+				/* 文本和图标变红色 */
+				color: #ff6b6b !important;
+				
+				/* 图标变红色 */
+				.uni-icons {
+					color: #ff6b6b !important;
+				}
+			}
+			
+			/* 删除按钮悬停特殊样式 */
+			&:nth-last-child(1):hover {
+				/* 移除背景颜色变化 */
+				/* background-color: #fff0f0 !important; */
+				
+				/* 文本和图标变红色 */
+				color: #ff4d4f !important;
+				
+				/* 图标变红色 */
+				.uni-icons {
+					color: #ff4d4f !important;
+				}
+			}
+			
+			/* 编辑按钮悬停特殊样式 */
+			&:nth-last-child(2):hover {
+				/* 移除背景颜色变化 */
+				/* background-color: #f0f4ff !important; */
+				
+				/* 文本和图标变蓝色 */
+				color: #4361ee !important;
+				
+				/* 图标变蓝色 */
+				.uni-icons {
+					color: #4361ee !important;
+				}
+			}
+			
+			/* 已点赞状态 */
+			.liked {
+				color: #ff6b6b !important;
+			}
+			
+			/* 图标和文本的间距 */
+			.uni-icons + text {
+				margin-left: 5px;
+			}
+		}
+	}
+	/* #endif */
 	
 	/* H5环境下的容器，宽度与首页文章列表区域一致 */
 	/* #ifdef H5 */
 	.article-width-container {
 		min-width: 600px; /* 首页文章列表最小宽度 */
 		width: 100%;
-		max-width: 700px; /* 首页文章列表最大宽度估计值 */
+		max-width: 700px; /* 首页文章列表最大宽度 */
 		margin: 0 auto; /* 居中显示 */
 		padding: 20px; /* 与首页main-content一致 */
 		box-sizing: border-box;
 		background-color: #fff; /* 与首页main-content一致 */
 		border-radius: 4px; /* 与首页main-content一致 */
 		min-height: 200px; /* 与首页main-content一致 */
-		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); /* 与首页相同的阴影效果 */
+		margin-top: 20px; /* 顶部间距 */
 	}
 	
 	/* H5环境下调整header样式 */
@@ -1510,6 +1605,35 @@
 	.article-width-container .content-area {
 		padding: 0;
 		width: 100%;
+	}
+
+	/* 添加水平滚动条样式，与首页保持一致 */
+	html {
+		overflow-y: scroll;
+		overflow-x: auto;
+		min-width: 1000px;
+		
+		&::-webkit-scrollbar {
+			width: 6px;
+			height: 6px;
+		}
+
+		&::-webkit-scrollbar-thumb {
+			background: #ddd;
+			border-radius: 3px;
+			
+			&:hover {
+				background: #bbb;
+			}
+		}
+
+		&::-webkit-scrollbar-track {
+			background: #f5f5f5;
+		}
+	}
+
+	body {
+		min-width: 1000px;
 	}
 	/* #endif */
 
