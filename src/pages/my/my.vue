@@ -1,6 +1,6 @@
 <template>
+	<!-- #ifdef H5 -->
 	<view class="container">
-		<!-- #ifdef H5 -->
 		<!-- H5环境下的固定宽度布局，与首页文章列表区域宽度一致 -->
 		<view class="article-width-container">
 			<!-- 固定在顶部的用户信息和标签导航 -->
@@ -10,8 +10,8 @@
 					<!-- 原有用户信息区域内容 -->
 					<view class="user-header">
 						<view class="user-info">
-							<image class="avatar" :src="formatAvatarUrl(data.userInfo.avatar)"
-								mode="aspectFill" @click="uploadAvatar"></image>
+							<image class="avatar" :src="formatAvatarUrl(data.userInfo.avatar)" mode="aspectFill"
+								@click="uploadAvatar"></image>
 							<view class="user-detail">
 								<text class="nickname">{{ data.userInfo.nickname }}</text>
 								<text class="email">{{ data.userInfo.email }}</text>
@@ -69,165 +69,169 @@
 				<view class="content-area">
 					<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
 					<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
-						ref="articleListRef"
-						:key="data.currentTab" 
-						:list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
-						:userId="data.userInfo.id"
-						:show-manage-options="true"
-						:show-edit-for-all-users="data.currentTab === 0"
-						:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
-						:height="'calc(100vh - 445rpx)'"
-						:use-global-scroll="true"
-						@article-click="viewArticleDetail"
-						@like="handleLike"
-						@share="handleShare"
-						@comment="handleComment"
-						@edit="handleEditArticle"
-						@delete="handleDeleteArticle"
-					/>
+						ref="articleListRef" :key="data.currentTab"
+						:list-type="data.currentTab === 0 ? 'myPosts' : 'like'" :userId="data.userInfo.id"
+						:show-manage-options="true" :show-edit-for-all-users="data.currentTab === 0"
+						:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'" :height="'calc(100vh - 445rpx)'"
+						:use-global-scroll="true" @article-click="viewArticleDetail" @like="handleLike"
+						@share="handleShare" @comment="handleComment" @edit="handleEditArticle"
+						@delete="handleDeleteArticle" />
 				</view>
 			</view>
-			
+
 			<!-- 使用通用的回到顶部组件 -->
-			<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
+			<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0"
+				@click="scrollToTop" />
 		</view>
-		<!-- #endif -->
-		
-		<!-- #ifndef H5 -->
-		<!-- 非H5环境下保持原样 -->
-		<!-- 固定在顶部的用户信息和标签导航 -->
-		<view class="header-fixed">
-			<!-- 顶部用户信息区域 -->
-			<view class="user-top-container">
-				<!-- 原有用户信息区域内容 -->
-				<view class="user-header">
-					<view class="user-info">
-						<image class="avatar" :src="formatAvatarUrl(data.userInfo.avatar)"
-							mode="aspectFill" @click="uploadAvatar"></image>
-						<view class="user-detail">
-							<text class="nickname">{{ data.userInfo.nickname }}</text>
-							<text class="email">{{ data.userInfo.email }}</text>
-						</view>
-					</view>
-					<view class="user-actions">
-						<view class="action-btn" @click="navigateTo('/pages/creation-center/creation-center')">
-							创作中心
-						</view>
-						<view @click="navigateTo('/pages/settings/settings')">
-							<uni-icons type="gear" size="24" color="#333"></uni-icons>
-						</view>
-					</view>
-				</view>
-
-				<!-- 用户数据统计区域 -->
-				<view class="user-stats">
-					<view class="stat-item" @click="handleFollowsClick">
-						<text class="stat-num">{{ data.userInfo.followCount }}</text>
-						<text class="stat-label">关注</text>
-					</view>
-					<view class="stat-divider">|</view>
-					<view class="stat-item" @click="navigateTo('/pages/followers/followers')">
-						<text class="stat-num">{{ data.userInfo.followerCount }}</text>
-						<text class="stat-label">粉丝</text>
-					</view>
-					<view class="stat-divider">|</view>
-					<view class="stat-item" @click="navigateTo('/pages/collection/collection')">
-						<text class="stat-num">{{ data.userInfo.collectionCount }}</text>
-						<text class="stat-label">收藏</text>
-					</view>
-				</view>
-
-				<!-- 个人简介区域 -->
-				<view class="user-bio">
-					<view class="bio-content">
-						<uni-icons type="person" size="20" color="#666"></uni-icons>
-						<text class="bio-text">个人简介：{{ data.userInfo.bio || DEFAULT_BIO }}</text>
-					</view>
-					<view class="edit-profile-btn" @click="toggleBioEdit">
-						编辑资料
-					</view>
-				</view>
-
-				<!-- 标签页导航，使用首页的导航样式 -->
-				<view class="nav-menu">
-					<view v-for="(tab, index) in data.tabs" :key="index" class="nav-item"
-						:class="{ active: data.currentTab === index }" @click="switchTab(index)">
-						{{ tab.name }}
-					</view>
-				</view>
-			</view>
-
-			<!-- 内容区域 -->
-			<view class="content-area">
-				<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
-				<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
-					ref="articleListRef"
-					:key="data.currentTab" 
-					:list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
-					:userId="data.userInfo.id"
-					:show-manage-options="true"
-					:show-edit-for-all-users="data.currentTab === 0"
-					:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'"
-					:height="'calc(100vh - 445rpx)'"
-					:use-global-scroll="false"
-					@article-click="viewArticleDetail"
-					@like="handleLike"
-					@share="handleShare"
-					@comment="handleComment"
-					@edit="handleEditArticle"
-					@delete="handleDeleteArticle"
-				/>
-			</view>
-			
-			<!-- 使用通用的回到顶部组件 -->
-			<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
-		</view>
-		<!-- #endif -->
 
 		<!-- 用户设置组件 -->
 		<view v-if="data.showUserSettings" class="settings-overlay">
-			<UserSettings 
-				:visible="data.showUserSettings" 
-				:userInfo="data.userInfo" 
-				:initialView="data.settingsInitialView"
-				@update:visible="data.showUserSettings = $event" 
-				@avatar-change="handleAvatarChange"
-				@nickname-change="handleNicknameChange" 
-				@bio-change="handleBioChange" 
-				@logout="handleLogout" 
-			/>
+			<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo"
+				:initialView="data.settingsInitialView" @update:visible="data.showUserSettings = $event"
+				@avatar-change="handleAvatarChange" @nickname-change="handleNicknameChange"
+				@bio-change="handleBioChange" @logout="handleLogout" />
 		</view>
-	</view>
-	
-	<!-- 使用原生方法实现的弹窗 -->
-	<view v-if="data.showBioPopup" class="native-popup-container" @click.self="closeBioPopup">
-		<view class="native-popup-mask" @click.stop></view>
-		<view class="native-popup-body" @click.stop>
-			<view class="bio-edit-popup">
-				<view class="popup-header">
-					<text class="popup-title">编辑个人简介</text>
-					<view class="popup-close" @click="closeBioPopup">
-						<uni-icons type="close" size="22" color="#666"></uni-icons>
+
+		<!-- 使用原生方法实现的弹窗 -->
+		<view v-if="data.showBioPopup" class="native-popup-container" @click.self="closeBioPopup">
+			<view class="native-popup-mask" @click.stop></view>
+			<view class="native-popup-body" @click.stop>
+				<view class="bio-edit-popup">
+					<view class="popup-header">
+						<text class="popup-title">编辑个人简介</text>
+						<view class="popup-close" @click="closeBioPopup">
+							<uni-icons type="close" size="22" color="#666"></uni-icons>
+						</view>
 					</view>
-				</view>
-				<view class="popup-content">
-					<textarea 
-						class="bio-textarea" 
-						v-model="data.editingBio" 
-						placeholder="请输入您的个人简介..."
-						maxlength="200"
-					></textarea>
-					<view class="char-counter">
-						<text>{{ data.editingBio.length }}/200</text>
+					<view class="popup-content">
+						<textarea class="bio-textarea" v-model="data.editingBio" placeholder="请输入您的个人简介..."
+							maxlength="200"></textarea>
+						<view class="char-counter">
+							<text>{{ data.editingBio.length }}/200</text>
+						</view>
 					</view>
-				</view>
-				<view class="popup-footer">
-					<button class="btn-cancel" @click="closeBioPopup">取消</button>
-					<button class="btn-save" @click="saveUserBio">保存</button>
+					<view class="popup-footer">
+						<button class="btn-cancel" @click="closeBioPopup">取消</button>
+						<button class="btn-save" @click="saveUserBio">保存</button>
+					</view>
 				</view>
 			</view>
 		</view>
 	</view>
+	<!-- #endif -->
+
+	<!-- #ifndef H5 -->
+	<!-- 非H5环境下使用header-fixed作为根容器，移除多余的container层 -->
+	<view class="header-fixed">
+		<!-- 顶部用户信息区域 -->
+		<view class="user-top-container">
+			<!-- 原有用户信息区域内容 -->
+			<view class="user-header">
+				<view class="user-info">
+					<image class="avatar" :src="formatAvatarUrl(data.userInfo.avatar)" mode="aspectFill"
+						@click="uploadAvatar"></image>
+					<view class="user-detail">
+						<text class="nickname">{{ data.userInfo.nickname }}</text>
+						<text class="email">{{ data.userInfo.email }}</text>
+					</view>
+				</view>
+				<view class="user-actions">
+					<view class="action-btn" @click="navigateTo('/pages/creation-center/creation-center')">
+						创作中心
+					</view>
+					<view @click="navigateTo('/pages/settings/settings')">
+						<uni-icons type="gear" size="24" color="#333"></uni-icons>
+					</view>
+				</view>
+			</view>
+
+			<!-- 用户数据统计区域 -->
+			<view class="user-stats">
+				<view class="stat-item" @click="handleFollowsClick">
+					<text class="stat-num">{{ data.userInfo.followCount }}</text>
+					<text class="stat-label">关注</text>
+				</view>
+				<view class="stat-divider">|</view>
+				<view class="stat-item" @click="navigateTo('/pages/followers/followers')">
+					<text class="stat-num">{{ data.userInfo.followerCount }}</text>
+					<text class="stat-label">粉丝</text>
+				</view>
+				<view class="stat-divider">|</view>
+				<view class="stat-item" @click="navigateTo('/pages/collection/collection')">
+					<text class="stat-num">{{ data.userInfo.collectionCount }}</text>
+					<text class="stat-label">收藏</text>
+				</view>
+			</view>
+
+			<!-- 个人简介区域 -->
+			<view class="user-bio">
+				<view class="bio-content">
+					<uni-icons type="person" size="20" color="#666"></uni-icons>
+					<text class="bio-text">个人简介：{{ data.userInfo.bio || DEFAULT_BIO }}</text>
+				</view>
+				<view class="edit-profile-btn" @click="toggleBioEdit">
+					编辑资料
+				</view>
+			</view>
+
+			<!-- 标签页导航，使用首页的导航样式 -->
+			<view class="nav-menu">
+				<view v-for="(tab, index) in data.tabs" :key="index" class="nav-item"
+					:class="{ active: data.currentTab === index }" @click="switchTab(index)">
+					{{ tab.name }}
+				</view>
+			</view>
+		</view>
+
+		<!-- 内容区域 -->
+		<view class="content-area">
+			<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
+			<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
+				ref="articleListRef" :key="data.currentTab" :list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
+				:userId="data.userInfo.id" :show-manage-options="true" :show-edit-for-all-users="data.currentTab === 0"
+				:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'" :height="'calc(100vh - 445rpx)'"
+				:use-global-scroll="false" @article-click="viewArticleDetail" @like="handleLike" @share="handleShare"
+				@comment="handleComment" @edit="handleEditArticle" @delete="handleDeleteArticle" />
+		</view>
+
+		<!-- 使用通用的回到顶部组件 -->
+		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
+
+		<!-- 用户设置组件 -->
+		<view v-if="data.showUserSettings" class="settings-overlay">
+			<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo"
+				:initialView="data.settingsInitialView" @update:visible="data.showUserSettings = $event"
+				@avatar-change="handleAvatarChange" @nickname-change="handleNicknameChange"
+				@bio-change="handleBioChange" @logout="handleLogout" />
+		</view>
+
+		<!-- 使用原生方法实现的弹窗 -->
+		<view v-if="data.showBioPopup" class="native-popup-container" @click.self="closeBioPopup">
+			<view class="native-popup-mask" @click.stop></view>
+			<view class="native-popup-body" @click.stop>
+				<view class="bio-edit-popup">
+					<view class="popup-header">
+						<text class="popup-title">编辑个人简介</text>
+						<view class="popup-close" @click="closeBioPopup">
+							<uni-icons type="close" size="22" color="#666"></uni-icons>
+						</view>
+					</view>
+					<view class="popup-content">
+						<textarea class="bio-textarea" v-model="data.editingBio" placeholder="请输入您的个人简介..."
+							maxlength="200"></textarea>
+						<view class="char-counter">
+							<text>{{ data.editingBio.length }}/200</text>
+						</view>
+					</view>
+					<view class="popup-footer">
+						<button class="btn-cancel" @click="closeBioPopup">取消</button>
+						<button class="btn-save" @click="saveUserBio">保存</button>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+	<!-- #endif -->
 </template>
 
 <script setup>
@@ -245,9 +249,22 @@
 	// 导入用户设置组件
 	import UserSettings from '@/components/user-settings/user-settings.vue';
 	// 导入API接口
-	import { getUserInfo, updateUserProfile, uploadUserAvatar } from '@/api/user';
-	import { deleteArticle, getArticleDetail } from '@/api/article';
-	import { onLoad, onShow, onHide, onBackPress, onPageShow } from '@dcloudio/uni-app';
+	import {
+		getUserInfo,
+		updateUserProfile,
+		uploadUserAvatar
+	} from '@/api/user';
+	import {
+		deleteArticle,
+		getArticleDetail
+	} from '@/api/article';
+	import {
+		onLoad,
+		onShow,
+		onHide,
+		onBackPress,
+		onPageShow
+	} from '@dcloudio/uni-app';
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
 	// 导入回到顶部组件
@@ -255,7 +272,7 @@
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
-	
+
 	// 添加返回拦截状态控制
 	const isBackGestureLocked = ref(false);
 	// 存储当前页面的webview对象
@@ -272,7 +289,7 @@
 	const globalLoadingLock = (() => {
 		let isLocked = false;
 		let lockTimer = null;
-		
+
 		// 设置锁定方法
 		const lock = (duration = 3000) => {
 			if (lockTimer) clearTimeout(lockTimer);
@@ -283,10 +300,10 @@
 			}, duration);
 			return true;
 		};
-		
+
 		// 检查是否锁定
 		const isActive = () => isLocked;
-		
+
 		// 解除锁定
 		const unlock = () => {
 			isLocked = false;
@@ -295,12 +312,12 @@
 				lockTimer = null;
 			}
 		};
-		
+
 		// 重置
 		const reset = () => {
 			unlock();
 		};
-		
+
 		return {
 			lock,
 			isActive,
@@ -341,13 +358,13 @@
 		// 修改为使用原生弹窗的状态控制
 		showBioPopup: false,
 		editingBio: '',
-		
+
 		// 添加一个标志，用于防止重复刷新
 		isRefreshing: false,
-		
+
 		// 添加最近请求时间戳，用于限制频率
 		lastRequestTime: 0,
-		
+
 		// 添加控制ArticleList渲染的标志
 		preventArticleListRender: true,
 	});
@@ -377,15 +394,15 @@
 	// 处理图片URL格式
 	const formatAvatarUrl = (url) => {
 		if (!url) return '/static/images/avatar.png';
-		
+
 		// 移除URL中可能存在的多余空格
 		url = url.trim();
-		
+
 		// 确保不是null或undefined
 		if (url === 'null' || url === 'undefined') {
 			return '/static/images/avatar.png';
 		}
-		
+
 		// 完整URL处理：如果已经是完整URL（包含http）则不处理
 		if (url.startsWith('http')) {
 			// 检查并修复双斜杠问题
@@ -418,30 +435,30 @@
 			console.log('全局加载锁激活中，跳过加载');
 			return;
 		}
-		
+
 		// 设置加载锁，防止重复加载
 		globalLoadingLock.lock(3000);
-		
+
 		// 设置首次加载标志
 		isFirstLoad.value = true;
-		
+
 		// 设置刷新状态
 		data.isRefreshing = true;
-		
+
 		// 记录请求时间
 		data.lastRequestTime = Date.now();
-		
+
 		// 防止ArticleList渲染
 		data.preventArticleListRender = true;
-		
+
 		console.log('=== 开始统一加载用户数据和文章 ===');
-		
+
 		try {
 			// 显示加载提示
 			uni.showLoading({
 				title: '加载中...'
 			});
-			
+
 			// 1. 获取用户信息
 			const userResponse = await getUserInfo();
 			if (userResponse.code === 200) {
@@ -451,7 +468,7 @@
 					followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
 					collectionCount: processedUserInfo.collectionCount || 0,
 				};
-				
+
 				// 更新本地存储
 				uni.setStorageSync('userInfo', {
 					id: data.userInfo.id,
@@ -460,22 +477,22 @@
 					email: data.userInfo.email
 				});
 			}
-			
+
 			// 2. 等待DOM更新，确保引用有效
 			await nextTick();
-			
+
 			// 3. 延迟加载文章列表，确保组件已经完全挂载
 			setTimeout(() => {
 				// 允许ArticleList渲染
 				data.preventArticleListRender = false;
-				
+
 				// 4. 等待下一个DOM更新周期，文章列表组件会自动加载
 				nextTick(() => {
 					console.log('文章列表组件已渲染，将自动加载数据');
-					
+
 					// 隐藏加载提示
 					uni.hideLoading();
-				
+
 					// 延迟重置刷新状态
 					setTimeout(() => {
 						data.isRefreshing = false;
@@ -491,7 +508,7 @@
 				icon: 'none'
 			});
 			uni.hideLoading();
-			
+
 			// 出错时也要重置状态
 			data.isRefreshing = false;
 			isFirstLoad.value = false;
@@ -511,7 +528,7 @@
 	onMounted(async () => {
 		// 使用统一的数据加载入口
 		await loadUserDataAndArticles();
-		
+
 		// 初始化webview (只保留与数据加载无关的操作)
 		// #ifdef APP-PLUS
 		setTimeout(() => {
@@ -532,16 +549,16 @@
 				title: '请先登录',
 				icon: 'none'
 			});
-			
+
 			setTimeout(() => {
 				uni.redirectTo({
 					url: `/pages/login/login?redirect=${encodeURIComponent('/pages/my/my')}`
 				});
 			}, 1500);
-			
+
 			return false;
 		}
-		
+
 		// onLoad中不再重复加载数据
 		console.log('页面onLoad，不重复加载数据');
 	});
@@ -553,14 +570,14 @@
 			console.log('首次加载或全局锁定中，onShow跳过文章列表刷新');
 			return;
 		}
-		
+
 		// 检查请求频率限制 - 如果距离上次请求不足1秒，则跳过刷新
 		const now = Date.now();
 		if (now - data.lastRequestTime < 1000) {
 			console.log('请求过于频繁，跳过本次刷新');
 			return;
 		}
-		
+
 		// 如果从设置页面返回，确保临时锁定手势
 		if (data.showUserSettings === false && isBackGestureLocked.value) {
 			console.log('页面显示，保持手势锁定');
@@ -574,20 +591,20 @@
 
 		// 每次页面显示时刷新用户信息，确保关注数量等数据最新
 		refreshUserInfo();
-		
+
 		// 防止重复刷新文章列表 - 使用频率限制而不是标志位
 		if (articleListRef.value) {
 			// 记录本次请求时间
 			data.lastRequestTime = now;
-			
+
 			// 检查组件上的加载状态 - 如果组件有自己的加载状态属性，可以进一步阻止重复加载
 			// 这里需要根据实际的ArticleList组件实现来调整
 			const isComponentLoading = articleListRef.value.isLoading || articleListRef.value.loading || false;
-			
+
 			if (!isComponentLoading && !data.isRefreshing) {
 				// 设置刷新状态为true，防止短时间内重复刷新
 				data.isRefreshing = true;
-				
+
 				console.log('检测到页面显示，刷新文章列表');
 				// 设置一个小延迟，避免可能的竞态条件
 				setTimeout(() => {
@@ -597,7 +614,7 @@
 						articleListRef.value.loadArticles();
 					}, 50);
 				}, 50);
-				
+
 				// 2秒后重置刷新状态，允许下次刷新
 				setTimeout(() => {
 					data.isRefreshing = false;
@@ -622,37 +639,38 @@
 		if (refreshTimeoutId) {
 			clearTimeout(refreshTimeoutId);
 		}
-		
+
 		// 设置300ms的节流延迟，确保不会在页面切换时频繁请求
 		refreshTimeoutId = setTimeout(async () => {
 			try {
 				// 无需显示loading，静默刷新
 				const response = await getUserInfo();
-				
+
 				if (response.code === 200) {
 					// 处理空的个人简介，使用默认值
 					if (!response.data.bio) {
 						response.data.bio = DEFAULT_BIO;
 					}
-					
+
 					// 处理头像URL
 					const processedUserInfo = processUserInfo(response.data);
-					
+
 					// 适配后端返回的字段名称
 					const userData = {
 						...processedUserInfo,
 						// 后端返回fansCount，前端使用followerCount
-						followerCount: processedUserInfo.fansCount || processedUserInfo.followerCount || 0,
+						followerCount: processedUserInfo.fansCount || processedUserInfo
+							.followerCount || 0,
 						// 后端没有收藏数，默认为0
 						collectionCount: processedUserInfo.collectionCount || 0,
 					};
-					
+
 					// 检查关注数是否发生变化，有变化再更新UI
 					const hasFollowCountChanged = data.userInfo.followCount !== userData.followCount;
-					
+
 					// 更新用户完整信息
 					data.userInfo = userData;
-					
+
 					// 更新本地存储
 					uni.setStorageSync('userInfo', {
 						id: userData.id,
@@ -660,7 +678,7 @@
 						avatar: userData.avatar,
 						email: userData.email
 					});
-					
+
 					// 如果关注数量变化，在控制台输出日志方便调试
 					if (hasFollowCountChanged) {
 						console.log('关注数量已更新:', userData.followCount);
@@ -690,15 +708,17 @@
 	 */
 	const processUserInfo = (userInfo) => {
 		// 深拷贝，避免直接修改原对象
-		const processedInfo = { ...userInfo };
-		
+		const processedInfo = {
+			...userInfo
+		};
+
 		// 处理头像URL
 		if (processedInfo.avatar) {
 			// 如果已经是完整的URL，直接使用
 			if (processedInfo.avatar.startsWith('http')) {
 				return processedInfo;
 			}
-			
+
 			// 如果是相对路径，需要拼接基础URL
 			if (processedInfo.avatar.startsWith('/')) {
 				processedInfo.avatar = formatAvatarUrl(processedInfo.avatar);
@@ -711,12 +731,12 @@
 			// #ifdef APP-PLUS
 			processedInfo.avatar = '/static/images/avatar.png';
 			// #endif
-			
+
 			// #ifdef H5 || MP-WEIXIN
 			processedInfo.avatar = '/static/images/avatar.png';
 			// #endif
 		}
-		
+
 		return processedInfo;
 	};
 
@@ -726,15 +746,17 @@
 	 */
 	const handleAvatarChange = async (newAvatar) => {
 		try {
-			uni.showLoading({ title: '更新中...' });
-			
+			uni.showLoading({
+				title: '更新中...'
+			});
+
 			// 调用上传头像API
 			const response = await uploadUserAvatar(newAvatar);
-			
+
 			if (response.code === 200) {
 				// 更新本地用户信息
 				data.userInfo.avatar = response.data.avatarUrl;
-				
+
 				uni.showToast({
 					title: '头像更新成功',
 					icon: 'success'
@@ -759,15 +781,19 @@
 	 */
 	const handleNicknameChange = async (newNickname) => {
 		try {
-			uni.showLoading({ title: '更新中...' });
-			
+			uni.showLoading({
+				title: '更新中...'
+			});
+
 			// 调用更新用户资料API
-			const response = await updateUserProfile({ nickname: newNickname });
-			
+			const response = await updateUserProfile({
+				nickname: newNickname
+			});
+
 			if (response.code === 200) {
 				// 更新本地用户信息
 				data.userInfo.nickname = newNickname;
-				
+
 				uni.showToast({
 					title: '昵称更新成功',
 					icon: 'success'
@@ -792,18 +818,22 @@
 	 */
 	const handleBioChange = async (newBio) => {
 		try {
-			uni.showLoading({ title: '更新中...' });
-			
+			uni.showLoading({
+				title: '更新中...'
+			});
+
 			// 如果用户提交空简介，则使用默认值
 			const bioToSubmit = newBio.trim() ? newBio : DEFAULT_BIO;
-			
+
 			// 调用更新用户资料API
-			const response = await updateUserProfile({ bio: bioToSubmit });
-			
+			const response = await updateUserProfile({
+				bio: bioToSubmit
+			});
+
 			if (response.code === 200) {
 				// 更新本地用户信息
 				data.userInfo.bio = bioToSubmit;
-				
+
 				uni.showToast({
 					title: '个人简介更新成功',
 					icon: 'success'
@@ -930,7 +960,7 @@
 		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
 		window.open(detailUrl, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，正常跳转
 		navigateTo(`/pages/article-detail/article-detail?id=${articleId}`);
@@ -1005,7 +1035,7 @@
 							}
 						});
 						// #endif
-						
+
 						// #ifdef H5 || MP-WEIXIN
 						uni.showToast({
 							title: '已复制链接，请手动分享',
@@ -1019,7 +1049,7 @@
 						});
 						// #endif
 						break;
-						
+
 					case 1: // 复制链接
 						uni.setClipboardData({
 							data: `${getBaseUrl()}/article/${article.id}`,
@@ -1031,14 +1061,14 @@
 							}
 						});
 						break;
-						
+
 					case 2: // 生成分享图
 						uni.showToast({
 							title: '分享图生成中...',
 							icon: 'loading',
 							duration: 2000
 						});
-						
+
 						setTimeout(() => {
 							uni.showToast({
 								title: '分享图已生成',
@@ -1057,7 +1087,7 @@
 	 */
 	const handleEditArticle = (article) => {
 		console.log('编辑文章', article);
-		
+
 		// 确保用户已登录
 		const token = uni.getStorageSync('token');
 		if (!token) {
@@ -1067,7 +1097,7 @@
 			});
 			return;
 		}
-		
+
 		// 移除作者限制检查，允许任何已登录用户编辑文章
 		/* 
 		// 确保是当前用户的文章
@@ -1079,18 +1109,18 @@
 			return;
 		}
 		*/
-		
+
 		// 显示编辑中的加载提示
 		uni.showLoading({
 			title: '准备编辑...',
 			mask: true
 		});
-		
+
 		// 获取完整的文章内容（如果需要）
 		getArticleDetail(article.id)
 			.then(res => {
 				uni.hideLoading();
-				
+
 				if (res.code === 200) {
 					// 准备文章数据 - 确保所有必要的字段都存在
 					const articleData = {
@@ -1107,7 +1137,7 @@
 						mode: 'edit', // 显式标记为编辑模式
 						originalData: JSON.stringify(res.data) // 保存原始数据用于比较变更
 					};
-					
+
 					// 处理封面图片URL
 					if (articleData.coverImage && !articleData.coverImage.startsWith('http')) {
 						// 获取基础URL
@@ -1115,29 +1145,29 @@
 							// #ifdef APP-PLUS
 							return 'http://10.9.57.7:8080'; // 安卓模拟器访问本机服务器的地址
 							// #endif
-							
+
 							// #ifdef H5
 							return 'http://localhost:8080';
 							// #endif
-							
+
 							// #ifdef MP-WEIXIN
 							return 'http://localhost:8080';
 							// #endif
 						})();
-						
+
 						if (articleData.coverImage.startsWith('/')) {
 							articleData.coverImage = baseUrl + articleData.coverImage;
 						} else {
 							articleData.coverImage = baseUrl + '/' + articleData.coverImage;
 						}
 					}
-					
+
 					// 记录日志用于调试
 					console.log('准备编辑文章数据:', articleData);
-					
+
 					// 使用encodeURIComponent包装数据
 					const encodedData = encodeURIComponent(JSON.stringify(articleData));
-					
+
 					// 跳转到编辑页面
 					uni.navigateTo({
 						url: `/pages/publish/publish?mode=edit&articleData=${encodedData}`,
@@ -1159,7 +1189,7 @@
 			.catch(err => {
 				console.error('准备编辑文章失败:', err);
 				uni.hideLoading();
-				
+
 				// 使用可用的数据尝试编辑
 				const fallbackData = {
 					id: article.id,
@@ -1171,15 +1201,15 @@
 					mode: 'edit',
 					isSimpleData: true // 标记为简化数据
 				};
-				
+
 				const encodedData = encodeURIComponent(JSON.stringify(fallbackData));
-				
+
 				uni.showToast({
 					title: '获取完整内容失败，使用简略内容',
 					icon: 'none',
 					duration: 2000
 				});
-				
+
 				setTimeout(() => {
 					uni.navigateTo({
 						url: `/pages/publish/publish?mode=edit&articleData=${encodedData}`,
@@ -1206,18 +1236,18 @@
 			title: '正在删除...',
 			mask: true
 		});
-		
+
 		// 调用删除API
 		try {
 			const response = await deleteArticle(article.id);
-			
+
 			if (response.code === 200) {
 				// 显示成功提示
 				uni.showToast({
 					title: '文章已删除',
 					icon: 'success'
 				});
-				
+
 				// 不立即重新加载，而是先直接从列表中移除该文章
 				if (articleListRef.value) {
 					// 获取内部文章列表并移除当前文章
@@ -1226,7 +1256,7 @@
 					if (index !== -1) {
 						articleList.splice(index, 1);
 					}
-					
+
 					// 延迟刷新整个列表
 					setTimeout(() => {
 						articleListRef.value.resetList();
@@ -1278,10 +1308,10 @@
 	const saveUserBio = async () => {
 		// 如果是空字符串，则使用默认个人简介
 		const bioValue = data.editingBio.trim() || DEFAULT_BIO;
-		
+
 		// 调用API保存个人简介
 		await handleBioChange(bioValue);
-		
+
 		// 关闭弹窗
 		closeBioPopup();
 	};
@@ -1296,12 +1326,12 @@
 			if (!currentWebview) {
 				currentWebview = plus.webview.currentWebview();
 			}
-			
+
 			// 保存原始配置（如果还没保存）
 			if (!originalGestureConfig && currentWebview) {
 				originalGestureConfig = currentWebview.getStyle().popGesture;
 			}
-			
+
 			// 设置返回手势为none（禁用）
 			if (currentWebview) {
 				currentWebview.setStyle({
@@ -1344,12 +1374,12 @@
 	const temporaryLockBackGesture = (duration = 800) => {
 		isBackGestureLocked.value = true;
 		disableBackGesture();
-		
+
 		// 清除之前的定时器
 		if (lockTimeoutId) {
 			clearTimeout(lockTimeoutId);
 		}
-		
+
 		// 设置新的定时器
 		lockTimeoutId = setTimeout(() => {
 			isBackGestureLocked.value = false;
@@ -1378,13 +1408,13 @@
 		if (isBackGestureLocked.value) {
 			return true; // 拦截返回
 		}
-		
+
 		// 如果设置面板正在显示，则关闭它而不是退出页面
 		if (data.showUserSettings) {
 			data.showUserSettings = false;
 			return true; // 拦截返回
 		}
-		
+
 		// 默认不拦截
 		return false;
 	});
@@ -1406,7 +1436,7 @@
 		// 其他平台使用普通跳转
 		navigateTo('/pages/follows/follows');
 	};
-	
+
 	// 添加清理操作
 	onUnmounted(() => {
 		// 清理定时器
@@ -1414,18 +1444,18 @@
 			clearTimeout(lockTimeoutId);
 			lockTimeoutId = null;
 		}
-		
-	// 清理刷新定时器
-	if (refreshTimeoutId) {
-		clearTimeout(refreshTimeoutId);
-		refreshTimeoutId = null;
-	}
-	
-	// 重置全局加载锁
-	globalLoadingLock.reset();
-	
-	// 恢复原始手势设置
-	restoreBackGesture();
+
+		// 清理刷新定时器
+		if (refreshTimeoutId) {
+			clearTimeout(refreshTimeoutId);
+			refreshTimeoutId = null;
+		}
+
+		// 重置全局加载锁
+		globalLoadingLock.reset();
+
+		// 恢复原始手势设置
+		restoreBackGesture();
 	});
 
 	/**
@@ -1443,7 +1473,7 @@
 			console.error('滚动到顶部失败:', e);
 		}
 		// #endif
-		
+
 		// #ifndef H5
 		try {
 			// 非H5环境使用uni的API
@@ -1455,7 +1485,7 @@
 			console.error('滚动到顶部失败:', e);
 		}
 		// #endif
-		
+
 		// 如果文章列表组件存在，也调用其滚动到顶部方法
 		if (articleListRef.value && typeof articleListRef.value.scrollToTop === 'function') {
 			articleListRef.value.scrollToTop();
@@ -1466,11 +1496,14 @@
 <style lang="scss">
 	/* 整体容器背景色 */
 	.container {
-		background-color: #f5f5f5; /* 与首页背景一致 */
-		min-height: 100vh; /* 确保背景色填满整个视口高度 */
-		min-width: 1000px; /* 与首页容器一致 */
+		background-color: #f5f5f5;
+		/* 与首页背景一致 */
+		min-height: 100vh;
+		/* 确保背景色填满整个视口高度 */
+		min-width: 1000px;
+		/* 与首页容器一致 */
 	}
-	
+
 	/* 文章列表底部功能栏样式定制 */
 	/* #ifdef H5 */
 	.article-width-container :deep(.article-actions) {
@@ -1481,7 +1514,7 @@
 		display: flex;
 		justify-content: space-around;
 		align-items: center;
-		
+
 		/* 操作按钮样式 */
 		.action-item {
 			padding: 6px 15px;
@@ -1494,98 +1527,109 @@
 			justify-content: center;
 			flex: 1;
 			margin: 0 2px;
-			
+
 			/* 图标上移并放大 */
 			.uni-icons {
 				margin-top: -4px;
-				transform: scale(1.2); /* 图标放大1.2倍 */
+				transform: scale(1.2);
+				/* 图标放大1.2倍 */
 			}
-			
+
 			/* 默认悬停效果 */
 			&:hover {
 				/* 移除背景颜色变化 */
 				/* background-color: #f0f4ff; */
-				
+
 				/* 文本和图标变蓝色 */
 				color: #4361ee !important;
-				
+
 				/* 图标变蓝色 */
 				.uni-icons {
 					color: #4361ee !important;
 				}
 			}
-			
+
 			/* 点赞按钮悬停特殊样式 - 使用nth-child(3)定位点赞按钮 */
 			&:nth-child(3):hover {
 				/* 移除背景颜色变化 */
 				/* background-color: #fff0f0 !important; */
-				
+
 				/* 文本和图标变红色 */
 				color: #ff6b6b !important;
-				
+
 				/* 图标变红色 */
 				.uni-icons {
 					color: #ff6b6b !important;
 				}
 			}
-			
+
 			/* 删除按钮悬停特殊样式 */
 			&:nth-last-child(1):hover {
 				/* 移除背景颜色变化 */
 				/* background-color: #fff0f0 !important; */
-				
+
 				/* 文本和图标变红色 */
 				color: #ff4d4f !important;
-				
+
 				/* 图标变红色 */
 				.uni-icons {
 					color: #ff4d4f !important;
 				}
 			}
-			
+
 			/* 编辑按钮悬停特殊样式 */
 			&:nth-last-child(2):hover {
 				/* 移除背景颜色变化 */
 				/* background-color: #f0f4ff !important; */
-				
+
 				/* 文本和图标变蓝色 */
 				color: #4361ee !important;
-				
+
 				/* 图标变蓝色 */
 				.uni-icons {
 					color: #4361ee !important;
 				}
 			}
-			
+
 			/* 已点赞状态 */
 			.liked {
 				color: #ff6b6b !important;
 			}
-			
+
 			/* 图标和文本的间距 */
-			.uni-icons + text {
+			.uni-icons+text {
 				margin-left: 5px;
 			}
 		}
 	}
+
 	/* #endif */
-	
+
 	/* H5环境下的容器，宽度与首页文章列表区域一致 */
 	/* #ifdef H5 */
 	.article-width-container {
-		min-width: 600px; /* 首页文章列表最小宽度 */
+		min-width: 600px;
+		/* 首页文章列表最小宽度 */
 		width: 100%;
-		max-width: 700px; /* 首页文章列表最大宽度 */
-		margin: 0 auto; /* 居中显示 */
-		padding: 20px; /* 与首页main-content一致 */
+		max-width: 700px;
+		/* 首页文章列表最大宽度 */
+		margin: 0 auto;
+		/* 居中显示 */
+		padding: 20px;
+		/* 与首页main-content一致 */
 		box-sizing: border-box;
-		background-color: #fff; /* 与首页main-content一致 */
-		border-radius: 4px; /* 与首页main-content一致 */
-		min-height: 200px; /* 与首页main-content一致 */
-		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); /* 与首页相同的阴影效果 */
-		margin-top: 20px; /* 顶部间距 */
+		background-color: #fff;
+		/* 与首页main-content一致 */
+		border-radius: 4px;
+		/* 与首页main-content一致 */
+		min-height: 200px;
+		/* 与首页main-content一致 */
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+		/* 与首页相同的阴影效果 */
+		margin-top: 20px;
+		/* 顶部间距 */
 	}
-	
+
 	/* H5环境下调整header样式 */
 	.article-width-container .header-fixed {
 		position: relative;
@@ -1596,7 +1640,7 @@
 		box-shadow: none;
 		background-color: transparent;
 	}
-	
+
 	/* H5环境下调整用户信息区域 */
 	.article-width-container .user-top-container {
 		position: relative;
@@ -1606,7 +1650,7 @@
 		background-color: transparent;
 		margin-bottom: 15px;
 	}
-	
+
 	/* H5环境下调整内容区域 */
 	.article-width-container .content-area {
 		padding: 0;
@@ -1618,7 +1662,7 @@
 		overflow-y: scroll;
 		overflow-x: auto;
 		min-width: 1000px;
-		
+
 		&::-webkit-scrollbar {
 			width: 6px;
 			height: 6px;
@@ -1627,7 +1671,7 @@
 		&::-webkit-scrollbar-thumb {
 			background: #ddd;
 			border-radius: 3px;
-			
+
 			&:hover {
 				background: #bbb;
 			}
@@ -1641,6 +1685,7 @@
 	body {
 		min-width: 1000px;
 	}
+
 	/* #endif */
 
 	.user-top-container {
@@ -1673,7 +1718,7 @@
 
 	// 内容区域样式
 	.content-area {
-		padding: 0 20rpx;
+		padding: 0 10rpx;
 		width: 100%;
 		box-sizing: border-box;
 	}
@@ -1873,7 +1918,7 @@
 		justify-content: center;
 		align-items: center;
 		z-index: 9999;
-		
+
 		.native-popup-mask {
 			position: absolute;
 			top: 0;
@@ -1883,59 +1928,65 @@
 			background-color: rgba(0, 0, 0, 0.5);
 			animation: fadeIn 0.3s ease;
 		}
-		
+
 		.native-popup-body {
 			position: relative;
 			z-index: 10000;
 			animation: scaleIn 0.3s ease;
 		}
 	}
-	
+
 	/* 弹窗动画 */
 	@keyframes fadeIn {
-		from { opacity: 0; }
-		to { opacity: 1; }
+		from {
+			opacity: 0;
+		}
+
+		to {
+			opacity: 1;
+		}
 	}
-	
+
 	@keyframes scaleIn {
-		from { 
+		from {
 			transform: scale(0.8);
 			opacity: 0;
 		}
-		to { 
+
+		to {
 			transform: scale(1);
 			opacity: 1;
 		}
 	}
-	
+
 	/* 编辑个人简介弹窗样式 */
 	.bio-edit-popup {
 		width: 650rpx;
 		background-color: #fff;
 		border-radius: 16rpx;
 		overflow: hidden;
-		
+
 		.popup-header {
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
 			padding: 30rpx;
 			border-bottom: 1rpx solid #eee;
-			
+
 			.popup-title {
 				font-size: 32rpx;
 				font-weight: bold;
 				color: #333;
 			}
-			
+
 			.popup-close {
 				padding: 10rpx;
 			}
 		}
-		
+
 		.popup-content {
 			padding: 30rpx;
-			
+
 			.bio-textarea {
 				width: 100%;
 				height: 240rpx;
@@ -1946,7 +1997,7 @@
 				font-size: 28rpx;
 				color: #333;
 			}
-			
+
 			.char-counter {
 				text-align: right;
 				font-size: 24rpx;
@@ -1954,11 +2005,11 @@
 				margin-top: 10rpx;
 			}
 		}
-		
+
 		.popup-footer {
 			display: flex;
 			border-top: 1rpx solid #eee;
-			
+
 			button {
 				flex: 1;
 				margin: 0;
@@ -1966,12 +2017,12 @@
 				line-height: 90rpx;
 				font-size: 32rpx;
 				border-radius: 0;
-				
+
 				&.btn-cancel {
 					background-color: #f5f5f5;
 					color: #666;
 				}
-				
+
 				&.btn-save {
 					background-color: #4361ee;
 					color: #fff;
