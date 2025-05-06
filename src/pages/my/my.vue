@@ -189,8 +189,8 @@
 			<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
 				ref="articleListRef" :key="data.currentTab" :list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
 				:userId="data.userInfo.id" :show-manage-options="true" :show-edit-for-all-users="data.currentTab === 0"
-				:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'" :height="'calc(100vh - 445rpx)'"
-				:use-global-scroll="false" @article-click="viewArticleDetail" @like="handleLike" @share="handleShare"
+				:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'" :height="'calc(100vh - 350rpx)'"
+				:use-global-scroll="false" @article-click="viewArticleDetail" @like="handleLike" @share="h0andleShare"
 				@comment="handleComment" @edit="handleEditArticle" @delete="handleDeleteArticle" />
 		</view>
 

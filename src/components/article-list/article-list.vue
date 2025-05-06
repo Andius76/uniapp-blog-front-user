@@ -239,7 +239,8 @@
 					<view class="mp-loading">
 						<text v-if="isLoading && !isRefreshing">加载中...</text>
 						<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-						<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
+						<!-- 删除底部向下滑动提示，避免固定显示在底部导航栏上方 -->
+						<!--<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>-->
 
 						<!-- 无内容提示 -->
 						<view v-if="articleList.length === 0 && !isLoading" class="mp-no-content">
@@ -320,7 +321,8 @@
 					<view class="mp-loading">
 						<text v-if="isLoading && !isRefreshing">加载中...</text>
 						<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-						<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
+						<!-- 删除底部向下滑动提示，避免固定显示在底部导航栏上方 -->
+						<!--<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>-->
 
 						<!-- 无内容提示 -->
 						<view v-if="articleList.length === 0 && !isLoading" class="mp-no-content">
@@ -2204,6 +2206,8 @@
 	.mp-scroll-view {
 		width: 100%;
 		box-sizing: border-box;
+		/* 为整个滚动区域添加底部安全距离 */
+		padding-bottom: 0; /* 移除底部padding */
 	}
 
 	.mp-container {
@@ -2213,7 +2217,8 @@
 	}
 
 	.mp-global {
-		padding-bottom: 160rpx;
+		/* 全局滚动模式下添加更大的底部安全距离 */
+		padding-bottom: 0; /* 移除底部padding，避免显示固定提示 */
 	}
 
 	/* 文章卡片样式 */
@@ -2309,7 +2314,8 @@
 		text-align: center;
 		font-size: 24rpx;
 		color: #999;
-		padding: 20rpx 0 60rpx;
+		/* 减少底部padding，确保在底部导航栏上方完全不可见 */
+		padding: 20rpx 0 30rpx; 
 		width: 100%;
 	}
 
