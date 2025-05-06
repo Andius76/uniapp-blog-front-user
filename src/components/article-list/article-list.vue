@@ -178,67 +178,52 @@
 			<scroll-view scroll-y class="article-scroll" id="article-list-scroll-mp" @scrolltolower="handleLoadMore" :refresher-enabled="true"
 				:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
 				refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
-				:show-scrollbar="true" :enable-flex="true" :bounce="true" :enhanced="true" :scroll-with-animation="true"
+				:show-scrollbar="false" :bounce="true" :enhanced="true" :scroll-with-animation="true"
 				@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
 				
-				<view class="article-grid">
-					<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
-						<!-- 文章内容 -->
-						<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
-							<!-- 封面图片 - 仅当有封面时才显示 -->
-							<view class="article-image" v-if="article.coverImage">
-								<image :src="article.coverImage" mode="aspectFill" class="grid-image"
-									@error="handleImageError(index)"></image>
+				<!-- 文章列表卡片布局 -->
+				<view class="mp-article-list">
+					<view v-for="(article, index) in articleList" :key="article.id" class="mp-article-item"
+						@click="handleArticleClick(article.id)">
+						<!-- 文章内容区域 -->
+						<view class="mp-article-content">
+							<!-- 标题 -->
+							<text class="mp-article-title">{{article.title}}</text>
+							
+							<!-- 摘要 -->
+							<text class="mp-article-summary">{{formatArticleSummary(article.summary)}}</text>
+							
+							<!-- 图片区域 - 单图模式 -->
+							<view class="mp-article-image" v-if="article.coverImage && (!article.images || article.images.length <= 1)">
+								<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
 							</view>
 							
-							<!-- 文章标题和简介 -->
-							<view class="article-info">
-								<text class="article-title">{{article.title}}</text>
-								
-								<!-- 文章简介 -->
-								<rich-text class="article-summary" :nodes="formatSummary(article.summary)"></rich-text>
-								
-								<!-- 文章标签 -->
-								<view class="article-tags" v-if="article.tags && article.tags.length > 0">
-									<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item"
-										@click.stop="handleTagClick(tag)">
-										#{{tag}}
-									</view>
-								</view>
+							<!-- 图片区域 - 多图模式 -->
+							<view class="mp-article-multi-image" v-else-if="article.images && article.images.length > 1">
+								<image v-for="(img, imgIndex) in article.images.slice(0, 3)" :key="imgIndex" 
+									:src="img" mode="aspectFill"></image>
 							</view>
 						</view>
-
-						<!-- 文章操作按钮 -->
-						<view class="article-actions">
+						
+						<!-- 底部操作栏 -->
+						<view class="mp-article-actions">
 							<!-- 分享按钮 -->
-							<view class="action-item" @click.stop="handleShare(index)">
-								<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
+							<view class="mp-action-item" @click.stop="handleShare(index)">
+								<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
+								<text>分享</text>
 							</view>
-
+							
 							<!-- 评论按钮 -->
-							<view class="action-item" @click.stop="handleComment(index)">
-								<uni-icons type="chat" size="20" color="#000"></uni-icons>
+							<view class="mp-action-item" @click.stop="handleComment(index)">
+								<uni-icons type="chat" size="16" color="#666"></uni-icons>
 								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
 							</view>
-
+							
 							<!-- 点赞按钮 -->
-							<view class="action-item" @click.stop="handleLike(index)">
-								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
-									:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
+							<view class="mp-action-item" @click.stop="handleLike(index)">
+								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
+									:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
 								<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
-							</view>
-
-							<!-- 编辑按钮（根据权限条件显示） -->
-							<view class="action-item manage-btn"
-								v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
-								@click.stop="handleEdit(index)">
-								<uni-icons type="compose" size="20" color="#000"></uni-icons>
-							</view>
-
-							<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
-							<view class="action-item manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
-								@click.stop="handleDelete(index)">
-								<uni-icons type="trash" size="20" color="#000"></uni-icons>
 							</view>
 						</view>
 					</view>
@@ -258,87 +243,70 @@
 				</view>
 				
 				<!-- 回到顶部按钮 -->
-				<view v-if="showBackTop" class="back-to-top" @click="scrollToTop">
-					<uni-icons type="top" size="20" color="#fff"></uni-icons>
+				<view v-if="showBackTop" class="back-to-top mp-back-to-top" @click="scrollToTop">
+					<uni-icons type="top" size="18" color="#fff"></uni-icons>
 				</view>
 			</scroll-view>
 		</template>
 		<template v-else>
 			<!-- 全局滚动模式 -->
-			<view class="article-grid global-scroll">
-				<!-- 网格布局文章列表 -->
-				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
-					<!-- 文章内容 -->
-					<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
-						<!-- 封面图片 - 仅当有封面时才显示 -->
-						<view class="article-image" v-if="article.coverImage">
-							<image :src="article.coverImage" mode="aspectFill" class="grid-image"
-								@error="handleImageError(index)"></image>
+			<view class="mp-article-list global-scroll">
+				<view v-for="(article, index) in articleList" :key="article.id" class="mp-article-item"
+					@click="handleArticleClick(article.id)">
+					<!-- 文章内容区域 -->
+					<view class="mp-article-content">
+						<!-- 标题 -->
+						<text class="mp-article-title">{{article.title}}</text>
+						
+						<!-- 摘要 -->
+						<text class="mp-article-summary">{{formatArticleSummary(article.summary)}}</text>
+						
+						<!-- 图片区域 - 单图模式 -->
+						<view class="mp-article-image" v-if="article.coverImage && (!article.images || article.images.length <= 1)">
+							<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
 						</view>
 						
-						<!-- 文章标题和简介 -->
-						<view class="article-info">
-							<text class="article-title">{{article.title}}</text>
-							
-							<!-- 文章简介 -->
-							<rich-text class="article-summary" :nodes="formatSummary(article.summary)"></rich-text>
-							
-							<!-- 文章标签 -->
-							<view class="article-tags" v-if="article.tags && article.tags.length > 0">
-								<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item"
-									@click.stop="handleTagClick(tag)">
-									#{{tag}}
-								</view>
-							</view>
+						<!-- 图片区域 - 多图模式 -->
+						<view class="mp-article-multi-image" v-else-if="article.images && article.images.length > 1">
+							<image v-for="(img, imgIndex) in article.images.slice(0, 3)" :key="imgIndex" 
+								:src="img" mode="aspectFill"></image>
 						</view>
 					</view>
-
-					<!-- 文章操作按钮 -->
-					<view class="article-actions">
+					
+					<!-- 底部操作栏 -->
+					<view class="mp-article-actions">
 						<!-- 分享按钮 -->
-						<view class="action-item" @click.stop="handleShare(index)">
-							<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
+						<view class="mp-action-item" @click.stop="handleShare(index)">
+							<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
+							<text>分享</text>
 						</view>
-
+						
 						<!-- 评论按钮 -->
-						<view class="action-item" @click.stop="handleComment(index)">
-							<uni-icons type="chat" size="20" color="#000"></uni-icons>
+						<view class="mp-action-item" @click.stop="handleComment(index)">
+							<uni-icons type="chat" size="16" color="#666"></uni-icons>
 							<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
 						</view>
-
+						
 						<!-- 点赞按钮 -->
-						<view class="action-item" @click.stop="handleLike(index)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
-								:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
+						<view class="mp-action-item" @click.stop="handleLike(index)">
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
+								:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
 							<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
-						</view>
-
-						<!-- 编辑按钮（根据权限条件显示） -->
-						<view class="action-item manage-btn"
-							v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
-							@click.stop="handleEdit(index)">
-							<uni-icons type="compose" size="20" color="#000"></uni-icons>
-						</view>
-
-						<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
-						<view class="action-item manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
-							@click.stop="handleDelete(index)">
-							<uni-icons type="trash" size="20" color="#000"></uni-icons>
 						</view>
 					</view>
 				</view>
-			</view>
 
-			<!-- 加载状态 -->
-			<view class="loading-state">
-				<text v-if="isLoading && !isRefreshing">加载中...</text>
-				<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-				<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
+				<!-- 加载状态 -->
+				<view class="loading-state">
+					<text v-if="isLoading && !isRefreshing">加载中...</text>
+					<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
+					<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
 
-				<!-- 无内容提示 -->
-				<view v-if="articleList.length === 0 && !isLoading" class="no-content">
-					<uni-icons type="info" size="50" color="#ddd"></uni-icons>
-					<text>{{ emptyText }}</text>
+					<!-- 无内容提示 -->
+					<view v-if="articleList.length === 0 && !isLoading" class="no-content">
+						<uni-icons type="info" size="50" color="#ddd"></uni-icons>
+						<text>{{ emptyText }}</text>
+					</view>
 				</view>
 			</view>
 		</template>
@@ -1784,15 +1752,39 @@
 			articleList.value[index].isCollected = updatedData.isCollected;
 		}
 	};
+
+	// 添加文章摘要格式化方法
+	const formatArticleSummary = (summary) => {
+		if (!summary) return '暂无摘要';
+		
+		// 去除HTML标签
+		let plainText = summary.replace(/<\/?[^>]+(>|$)/g, '');
+		
+		// 限制长度
+		const maxLength = 50;
+		if (plainText.length > maxLength) {
+			plainText = plainText.substring(0, maxLength) + '...全文';
+		} else {
+			plainText += '...全文';
+		}
+		
+		return plainText;
+	};
 </script>
 
 <style lang="scss">
 	.article-list-container {
 		width: 100%;
+		box-sizing: border-box;
+		position: relative;
+		overflow: hidden; // 防止内容溢出
 		
 		// 优化滚动区域样式
 		.article-scroll {
 			height: v-bind(height);
+			width: 100%;
+			box-sizing: border-box;
+			overflow: hidden;
 			// 修改滚动条样式
 			scrollbar-width: thin;
 			-ms-overflow-style: scrollbar;
@@ -2265,15 +2257,11 @@
 
 		// 全局滚动模式的样式
 		.global-scroll {
-			width: 100%;
-			min-height: 200px;
-			
-			.article-grid-item {
-				margin-bottom: 40rpx;
-				
-				&:last-child {
-					margin-bottom: 60rpx;
-				}
+			&.mp-article-list {
+				width: 100%;
+				padding: 10rpx 10rpx 160rpx; // 减小左右内边距
+				box-sizing: border-box;
+				overflow: hidden;
 			}
 		}
 	}
@@ -2292,5 +2280,137 @@
 			text-shadow: 0 0 3px rgba(67, 97, 238, 0.3);
 		}
 		// #endif
+	}
+
+	// 针对微信小程序和APP的回到顶部按钮样式调整
+	.mp-back-to-top {
+		bottom: 120rpx;
+		right: 20rpx;
+		width: 70rpx;
+		height: 70rpx;
+	}
+
+	// 小程序/App文章列表样式
+	.mp-article-list {
+		padding: 10rpx; // 减小内边距，防止溢出
+		box-sizing: border-box;
+		width: 100%;
+		overflow: hidden; // 防止内容溢出
+		
+		.mp-article-item {
+			width: 100%;
+			box-sizing: border-box;
+			margin-left: 0;
+			margin-right: 0;
+			padding-left: 0;
+			padding-right: 0;
+			background-color: #ffffff;
+			border-radius: 12rpx;
+			margin-bottom: 30rpx;
+			box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.08);
+			overflow: hidden;
+		}
+		
+		.mp-article-content {
+			width: 100%;
+			box-sizing: border-box;
+			padding: 15rpx; // 减小内边距
+			display: flex;
+			flex-direction: column;
+			position: relative;
+		}
+		
+		.mp-article-title {
+			font-size: 32rpx;
+			font-weight: 600;
+			color: #333;
+			margin-bottom: 15rpx;
+			line-height: 1.4;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+			width: 100%;
+			box-sizing: border-box;
+		}
+		
+		.mp-article-summary {
+			font-size: 26rpx;
+			color: #666;
+			line-height: 1.5;
+			margin-bottom: 20rpx;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			display: -webkit-box;
+			-webkit-line-clamp: 2; // 允许显示2行
+			-webkit-box-orient: vertical;
+			width: 100%;
+			box-sizing: border-box;
+			word-break: break-all; // 允许在任意字符间断行
+			white-space: normal; // 确保可以换行
+		}
+		
+		// 单图布局
+		.mp-article-image {
+			width: 100%;
+			height: 300rpx;
+			border-radius: 8rpx;
+			
+			overflow: hidden;
+			margin-bottom: 15rpx;
+			background-color: #f5f5f5;
+			box-sizing: border-box;
+			
+			image {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+		}
+		
+		// 多图布局
+		.mp-article-multi-image {
+			width: 100%;
+			height: 180rpx;
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 15rpx;
+			box-sizing: border-box;
+			
+			image {
+				width: 32%;
+				height: 100%;
+				border-radius: 8rpx;
+				background-color: #f5f5f5;
+			}
+		}
+		
+		.mp-article-actions {
+			display: flex;
+			height: 80rpx;
+			border-top: 1rpx solid #f2f2f2;
+			background-color: #fafafa;
+			padding: 0 20rpx;
+			align-items: center;
+			width: 100%;
+			box-sizing: border-box;
+		}
+		
+		.mp-action-item {
+			display: flex;
+			align-items: center;
+			margin-right: 40rpx;
+			
+			text {
+				font-size: 24rpx;
+				color: #666;
+				margin-left: 6rpx;
+				
+				&.liked {
+					color: #ff6b6b;
+				}
+			}
+		}
 	}
 </style>
