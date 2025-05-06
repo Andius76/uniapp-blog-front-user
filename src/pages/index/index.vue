@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<view class="container" @click="handleContainerClick">
 		<!-- 顶部导航栏 -->
 		<!-- #ifdef H5 -->
 		<view class="header-fixed">
@@ -17,7 +17,7 @@
 						<uni-icons type="notification" size="24" />
 					</view>
 					<view class="user-info" @click.stop="handleUserClick">
-						<image class="avatar" :src="userInfo.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+						<image class="avatar" :src="formatAvatarUrl(userInfo.avatar)" mode="aspectFill"></image>
 						<text class="nickname">{{ userInfo.nickname || '未登录' }}</text>
 					</view>
 				</view>
@@ -54,8 +54,8 @@
 		<!-- 内容区域 -->
 		<!-- #ifdef H5 -->
 		<view class="content-area">
-			<!-- 左侧空白区域 -->
-			<view class="left-sidebar"></view>
+			<!-- 左侧空白区域 - 点击时滚动文章列表 -->
+			<view class="left-sidebar" @click.stop="scrollToTop"></view>
 
 			<!-- 中间文章列表区域 -->
 			<view class="main-content">
@@ -73,8 +73,8 @@
 				/>
 			</view>
 
-			<!-- 右侧创作中心区域 -->
-			<view class="right-sidebar">
+			<!-- 右侧创作中心区域 - 点击空白处滚动文章列表 -->
+			<view class="right-sidebar" @click.stop="handleSidebarClick">
 				<view class="creator-center">
 					<view class="creator-header">
 						<uni-icons type="compose" size="24" />
@@ -150,7 +150,7 @@
 		<!-- #endif -->
 
 		<!-- 使用通用的回到顶部组件，明确配置点击后隐藏并立即滚动到顶部 -->
-		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" />
+		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
 	</view>
 </template>
 
@@ -741,7 +741,12 @@
 		// 更新最新的用户信息
 		const latestUserInfo = uni.getStorageSync('userInfo');
 		if (latestUserInfo) {
-			userInfo.avatar = latestUserInfo.avatar || '';
+			// 确保处理头像URL
+			if (latestUserInfo.avatar) {
+				userInfo.avatar = formatAvatarUrl(latestUserInfo.avatar);
+			} else {
+				userInfo.avatar = '';
+			}
 			userInfo.nickname = latestUserInfo.nickname || '';
 			userInfo.email = latestUserInfo.email || '';
 			userInfo.collectionCount = latestUserInfo.collectionCount || 0;
@@ -759,10 +764,15 @@
 		// 标记操作完成
 		isInOperation.value = false;
 		
-		userInfo.avatar = newAvatar;
+		// 处理头像URL
+		const formattedAvatar = formatAvatarUrl(newAvatar);
+		userInfo.avatar = formattedAvatar;
+		
+		// 更新本地存储
+		const currentUserInfo = uni.getStorageSync('userInfo') || {};
 		uni.setStorageSync('userInfo', {
-			...uni.getStorageSync('userInfo'),
-			avatar: newAvatar
+			...currentUserInfo,
+			avatar: newAvatar  // 保存原始URL，因为formatAvatarUrl已经加了baseUrl
 		});
 	};
 
@@ -927,6 +937,11 @@
 			const res = await getUserInfo();
 			
 			if (res.code === 200 && res.data) {
+				// 处理头像URL
+				if (res.data.avatar) {
+					res.data.avatar = formatAvatarUrl(res.data.avatar);
+				}
+				
 				// 更新本地存储
 				uni.setStorageSync('userInfo', res.data);
 				
@@ -946,17 +961,71 @@
 	};
 
 	/**
-	 * 滚动到顶部 - 通过组件引用调用
+	 * 滚动到顶部 - 控制文章列表滚动
 	 */
 	const scrollToTop = () => {
-		if (backToTopRef.value) {
-			backToTopRef.value.scrollToTop();
-		} else {
-			// 备用方法 - 立即滚动无缓冲
-			uni.pageScrollTo({
-				scrollTop: 0,
-				duration: 0 // 设置为0实现立即滚动
-			});
+		console.log('首页: 执行滚动到顶部方法');
+		
+		// 直接调用文章列表组件的滚动到顶部方法
+		if (articleListRef.value) {
+			console.log('首页: 通过文章列表组件引用执行滚动');
+			articleListRef.value.scrollToTop();
+			return;
+		}
+		
+		console.warn('首页: 文章列表组件引用不可用，尝试备用方案');
+		
+		// #ifdef H5
+		// 备用方案1: 尝试直接操作DOM - H5环境
+		const scrollViewH5 = document.getElementById('article-list-scroll-h5');
+		if (scrollViewH5) {
+			console.log('首页: 直接操作H5 DOM元素滚动');
+			scrollViewH5.scrollTop = 0;
+			return;
+		}
+		
+		// 再尝试通过类名查找
+		const scrollViewByClass = document.querySelector('.article-scroll');
+		if (scrollViewByClass) {
+			console.log('首页: 通过类名找到滚动元素');
+			scrollViewByClass.scrollTop = 0;
+			return;
+		}
+		// #endif
+		
+		// 备用方案2: 使用uni-app API
+		console.log('首页: 使用uni-app通用API尝试滚动');
+		uni.pageScrollTo({
+			scrollTop: 0,
+			duration: 0
+		});
+	};
+
+	/**
+	 * 处理容器点击事件
+	 * 当点击在页面空白区域时，滚动文章列表到顶部
+	 */
+	const handleContainerClick = (event) => {
+		// 只有在点击容器本身而不是其子元素时才触发
+		if (event.target === event.currentTarget) {
+			console.log('首页: 点击页面容器空白区域');
+			scrollToTop();
+		}
+	};
+	
+	/**
+	 * 处理右侧栏点击事件
+	 * 在右侧栏的空白区域点击时滚动文章列表到顶部
+	 */
+	const handleSidebarClick = (event) => {
+		// 获取点击的元素
+		const target = event.target;
+		
+		// 检查是否点击在右侧栏的空白区域
+		// 不是点击在右侧栏的具体交互元素上
+		if (target.classList.contains('right-sidebar')) {
+			console.log('首页: 点击右侧栏空白区域');
+			scrollToTop();
 		}
 	};
 </script>

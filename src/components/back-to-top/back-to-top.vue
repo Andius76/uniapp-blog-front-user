@@ -72,6 +72,9 @@ const props = defineProps({
 	}
 });
 
+// 定义事件
+const emit = defineEmits(['click']);
+
 // 状态管理
 const scrollTop = ref(0);
 const visible = ref(false);
@@ -95,7 +98,10 @@ const scrollToTop = () => {
 	});
 	
 	try {
-		// 使用uni-app API滚动到顶部，使用传入的duration参数
+		// 发出点击事件，让父组件处理具体的滚动逻辑
+		emit('click');
+		
+		// 如果没有父组件处理，则默认使用uni-app API滚动整个页面
 		uni.pageScrollTo({
 			scrollTop: 0,
 			duration: props.duration

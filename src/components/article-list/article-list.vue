@@ -2,7 +2,7 @@
 	<view class="article-list-container">
 		<!-- H5模式下显示网格布局 -->
 		<!-- #ifdef H5 -->
-		<scroll-view scroll-y class="article-scroll" @scrolltolower="handleLoadMore" :refresher-enabled="true"
+		<scroll-view scroll-y class="article-scroll" id="article-list-scroll-h5" @scrolltolower="handleLoadMore" :refresher-enabled="true"
 			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
 			refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
 			:show-scrollbar="false" :enable-flex="true" :bounce="true" :enhanced="true" :scroll-with-animation="true"
@@ -93,7 +93,7 @@
 		
 		<!-- 非H5模式下保持原有垂直列表布局 -->
 		<!-- #ifndef H5 -->
-		<scroll-view scroll-y class="article-scroll" @scrolltolower="handleLoadMore" :refresher-enabled="true"
+		<scroll-view scroll-y class="article-scroll" id="article-list-scroll-mp" @scrolltolower="handleLoadMore" :refresher-enabled="true"
 			:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
 			refresher-background="#f5f5f5" :show-scrollbar="false" :enable-flex="true" :bounce="true" :enhanced="true"
 			:scroll-with-animation="true" @touchstart="handleTouchStart" @touchmove="handleTouchMove"
@@ -280,12 +280,62 @@
 	
 	// 回到顶部
 	const scrollToTop = () => {
-		scrollTop.value = 0; // 设置滚动位置为0
+		console.log('文章列表: 执行滚动到顶部方法');
 		
-		// 延迟隐藏按钮，保证动画流畅
-		setTimeout(() => {
-			showBackTop.value = false;
-		}, 300);
+		// 直接操作scroll-view的滚动
+		// #ifdef H5
+		// 使用ID更精确地定位元素
+		const scrollView = document.getElementById('article-list-scroll-h5');
+		if (scrollView) {
+			console.log('文章列表: H5环境找到scroll-view元素，设置scrollTop为0');
+			scrollView.scrollTop = 0;
+		} else {
+			console.warn('文章列表: H5环境未找到scroll-view元素');
+			// 尝试通过类名查找
+			const scrollViewByClass = document.querySelector('.article-scroll');
+			if (scrollViewByClass) {
+				scrollViewByClass.scrollTop = 0;
+			}
+		}
+		// #endif
+		
+		// 在非H5环境使用uni的API
+		// #ifndef H5
+		const query = uni.createSelectorQuery();
+		// 使用ID更精确地定位元素
+		query.select('#article-list-scroll-mp').boundingClientRect(data => {
+			if (data) {
+				console.log('文章列表: 非H5环境找到scroll-view元素');
+				// 尝试使用选择器设置scrollTop
+				setTimeout(() => {
+					uni.pageScrollTo({
+						scrollTop: 0,
+						duration: 0,
+						selector: '#article-list-scroll-mp' // 使用选择器
+					});
+				}, 50);
+			} else {
+				console.warn('文章列表: 非H5环境未找到指定ID的scroll-view元素');
+				// 退回到使用类选择器
+				query.select('.article-scroll').boundingClientRect(data => {
+					if (data) {
+						setTimeout(() => {
+							uni.pageScrollTo({
+								scrollTop: 0,
+								duration: 0
+							});
+						}, 50);
+					}
+				}).exec();
+			}
+		}).exec();
+		// #endif
+		
+		// 同时更新Vue响应式数据
+		scrollTop.value = 0;
+		
+		// 隐藏回到顶部按钮
+		showBackTop.value = false;
 	};
 
 	// 获取当前登录用户信息
