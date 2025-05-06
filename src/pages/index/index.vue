@@ -839,10 +839,20 @@
 			return;
 		}
 		
-		// 跳转到消息页面
+		// #ifdef H5
+		// H5环境下，在新窗口打开消息页面
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const messageUrl = `${baseUrl}#/pages/message/message`;
+		window.open(messageUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转到消息页面
 		uni.navigateTo({
 			url: '/pages/message/message'
 		});
+		// #endif
 	};
 
 	// 添加全局点击事件监听，点击其他区域关闭设置面板
