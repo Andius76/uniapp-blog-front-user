@@ -172,138 +172,152 @@
 		</template>
 		<!-- #endif -->
 		
-		<!-- App和小程序模式 -->
+		<!-- 小程序和App模式 -->
 		<!-- #ifndef H5 -->
 		<template v-if="!props.useGlobalScroll">
-			<scroll-view scroll-y class="article-scroll" id="article-list-scroll-mp" @scrolltolower="handleLoadMore" :refresher-enabled="true"
+			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp" @scrolltolower="handleLoadMore" :refresher-enabled="true"
 				:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
 				refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
 				:show-scrollbar="false" :bounce="true" :enhanced="true" :scroll-with-animation="true"
 				@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
 				
-				<!-- 文章列表卡片布局 -->
-				<view class="mp-article-list">
-					<view v-for="(article, index) in articleList" :key="article.id" class="mp-article-item"
+				<!-- 文章列表容器 -->
+				<view class="mp-container">
+					<!-- 文章项循环 -->
+					<view v-for="(article, index) in articleList" :key="article.id" class="mp-item"
 						@click="handleArticleClick(article.id)">
-						<!-- 文章内容区域 -->
-						<view class="mp-article-content">
-							<!-- 标题 -->
-							<text class="mp-article-title">{{article.title}}</text>
-							
-							<!-- 摘要 -->
-							<text class="mp-article-summary">{{formatArticleSummary(article.summary)}}</text>
-							
-							<!-- 图片区域 - 单图模式 -->
-							<view class="mp-article-image" v-if="article.coverImage && (!article.images || article.images.length <= 1)">
-								<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
-							</view>
-							
-							<!-- 图片区域 - 多图模式 -->
-							<view class="mp-article-multi-image" v-else-if="article.images && article.images.length > 1">
-								<image v-for="(img, imgIndex) in article.images.slice(0, 3)" :key="imgIndex" 
-									:src="img" mode="aspectFill"></image>
-							</view>
+						<!-- 标题 -->
+						<text class="mp-title">{{article.title}}</text>
+						
+						<!-- 摘要 -->
+						<text class="mp-summary">{{formatArticleSummary(article.summary)}}</text>
+						
+						<!-- 图片区域 -->
+						<view class="mp-image" v-if="article.coverImage">
+							<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
 						</view>
 						
 						<!-- 底部操作栏 -->
-						<view class="mp-article-actions">
+						<view class="mp-actions">
 							<!-- 分享按钮 -->
-							<view class="mp-action-item" @click.stop="handleShare(index)">
+							<view class="mp-action" @click.stop="handleShare(index)">
 								<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
 								<text>分享</text>
 							</view>
 							
 							<!-- 评论按钮 -->
-							<view class="mp-action-item" @click.stop="handleComment(index)">
+							<view class="mp-action" @click.stop="handleComment(index)">
 								<uni-icons type="chat" size="16" color="#666"></uni-icons>
 								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
 							</view>
 							
 							<!-- 点赞按钮 -->
-							<view class="mp-action-item" @click.stop="handleLike(index)">
+							<view class="mp-action" @click.stop="handleLike(index)">
 								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
 									:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-								<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+								<text :class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+							</view>
+							
+							<!-- 编辑按钮（根据权限条件显示） -->
+							<view class="mp-action manage-btn"
+								v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
+								@click.stop="handleEdit(index)">
+								<uni-icons type="compose" size="16" color="#666"></uni-icons>
+								<text>编辑</text>
+							</view>
+
+							<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
+							<view class="mp-action manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+								@click.stop="handleDelete(index)">
+								<uni-icons type="trash" size="16" color="#666"></uni-icons>
+								<text>删除</text>
 							</view>
 						</view>
 					</view>
-				</view>
 
-				<!-- 加载状态 -->
-				<view class="loading-state">
-					<text v-if="isLoading && !isRefreshing">加载中...</text>
-					<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-					<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
+					<!-- 加载状态 -->
+					<view class="mp-loading">
+						<text v-if="isLoading && !isRefreshing">加载中...</text>
+						<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
+						<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
 
-					<!-- 无内容提示 -->
-					<view v-if="articleList.length === 0 && !isLoading" class="no-content">
-						<uni-icons type="info" size="50" color="#ddd"></uni-icons>
-						<text>{{ emptyText }}</text>
+						<!-- 无内容提示 -->
+						<view v-if="articleList.length === 0 && !isLoading" class="mp-no-content">
+							<uni-icons type="info" size="50" color="#ddd"></uni-icons>
+							<text>{{ emptyText }}</text>
+						</view>
 					</view>
 				</view>
 				
 				<!-- 回到顶部按钮 -->
-				<view v-if="showBackTop" class="back-to-top mp-back-to-top" @click="scrollToTop">
+				<view v-if="showBackTop" class="mp-back-top" @click="scrollToTop">
 					<uni-icons type="top" size="18" color="#fff"></uni-icons>
 				</view>
 			</scroll-view>
 		</template>
 		<template v-else>
 			<!-- 全局滚动模式 -->
-			<view class="mp-article-list global-scroll">
-				<view v-for="(article, index) in articleList" :key="article.id" class="mp-article-item"
+			<view class="mp-container mp-global">
+				<!-- 文章项循环 -->
+				<view v-for="(article, index) in articleList" :key="article.id" class="mp-item"
 					@click="handleArticleClick(article.id)">
-					<!-- 文章内容区域 -->
-					<view class="mp-article-content">
-						<!-- 标题 -->
-						<text class="mp-article-title">{{article.title}}</text>
-						
-						<!-- 摘要 -->
-						<text class="mp-article-summary">{{formatArticleSummary(article.summary)}}</text>
-						
-						<!-- 图片区域 - 单图模式 -->
-						<view class="mp-article-image" v-if="article.coverImage && (!article.images || article.images.length <= 1)">
-							<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
-						</view>
-						
-						<!-- 图片区域 - 多图模式 -->
-						<view class="mp-article-multi-image" v-else-if="article.images && article.images.length > 1">
-							<image v-for="(img, imgIndex) in article.images.slice(0, 3)" :key="imgIndex" 
-								:src="img" mode="aspectFill"></image>
-						</view>
+					<!-- 标题 -->
+					<text class="mp-title">{{article.title}}</text>
+					
+					<!-- 摘要 -->
+					<text class="mp-summary">{{formatArticleSummary(article.summary)}}</text>
+					
+					<!-- 图片区域 -->
+					<view class="mp-image" v-if="article.coverImage">
+						<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
 					</view>
 					
 					<!-- 底部操作栏 -->
-					<view class="mp-article-actions">
+					<view class="mp-actions">
 						<!-- 分享按钮 -->
-						<view class="mp-action-item" @click.stop="handleShare(index)">
+						<view class="mp-action" @click.stop="handleShare(index)">
 							<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
 							<text>分享</text>
 						</view>
 						
 						<!-- 评论按钮 -->
-						<view class="mp-action-item" @click.stop="handleComment(index)">
+						<view class="mp-action" @click.stop="handleComment(index)">
 							<uni-icons type="chat" size="16" color="#666"></uni-icons>
 							<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
 						</view>
 						
 						<!-- 点赞按钮 -->
-						<view class="mp-action-item" @click.stop="handleLike(index)">
+						<view class="mp-action" @click.stop="handleLike(index)">
 							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
 								:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-							<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+							<text :class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+						</view>
+						
+						<!-- 编辑按钮（根据权限条件显示） -->
+						<view class="mp-action manage-btn"
+							v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
+							@click.stop="handleEdit(index)">
+							<uni-icons type="compose" size="16" color="#666"></uni-icons>
+							<text>编辑</text>
+						</view>
+
+						<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
+						<view class="mp-action manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+							@click.stop="handleDelete(index)">
+							<uni-icons type="trash" size="16" color="#666"></uni-icons>
+							<text>删除</text>
 						</view>
 					</view>
 				</view>
 
 				<!-- 加载状态 -->
-				<view class="loading-state">
+				<view class="mp-loading">
 					<text v-if="isLoading && !isRefreshing">加载中...</text>
 					<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
 					<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>
 
 					<!-- 无内容提示 -->
-					<view v-if="articleList.length === 0 && !isLoading" class="no-content">
+					<view v-if="articleList.length === 0 && !isLoading" class="mp-no-content">
 						<uni-icons type="info" size="50" color="#ddd"></uni-icons>
 						<text>{{ emptyText }}</text>
 					</view>
@@ -1773,8 +1787,10 @@
 </script>
 
 <style lang="scss">
+	// 正确设置容器样式，确保适应所有平台
 	.article-list-container {
-		width: 100%;
+		width: 100%; 
+		max-width: 100%;
 		box-sizing: border-box;
 		position: relative;
 		overflow: hidden; // 防止内容溢出
@@ -1783,6 +1799,7 @@
 		.article-scroll {
 			height: v-bind(height);
 			width: 100%;
+			max-width: 100%;
 			box-sizing: border-box;
 			overflow: hidden;
 			// 修改滚动条样式
@@ -2110,122 +2127,6 @@
 			}
 		}
 
-		// 文章卡片 - 用于非H5模式
-		.article-card {
-			background-color: #fff;
-			border-radius: 12rpx;
-			padding: 20rpx;
-			margin: 20rpx;
-			margin-bottom: 20rpx;
-			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-
-			// 文章内容
-			.article-content {
-				margin-bottom: 20rpx;
-
-				.article-title {
-					font-size: 32rpx;
-					font-weight: bold;
-					color: #333;
-					margin-bottom: 15rpx;
-					display: block;
-				}
-
-				.article-summary {
-					font-size: 28rpx;
-					color: #666;
-					margin-bottom: 20rpx;
-					line-height: 1.5;
-					display: block;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					white-space: nowrap; /* 修改为单行显示 */
-					word-break: break-word;
-				}
-
-				// 文章标签
-				.article-tags {
-					display: flex;
-					flex-wrap: wrap;
-					margin-bottom: 20rpx;
-
-					.tag-item {
-						font-size: 24rpx;
-						color: #4361ee;
-						background-color: #f0f4ff;
-						padding: 8rpx 20rpx;
-						border-radius: 30rpx;
-						margin-right: 16rpx;
-						margin-bottom: 16rpx;
-					}
-				}
-
-				// 封面图片
-				.article-image {
-					width: 100%;
-					height: 300rpx;
-					border-radius: 12rpx;
-					overflow: hidden;
-					margin-top: 10rpx;
-					margin-bottom: 20rpx;
-					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.15); // 增强阴影效果
-					background-color: #f0f0f0; // 图片加载前显示的背景色
-					
-					.single-image {
-						width: 100%;
-						height: 100%;
-						background-color: #f5f5f5; // 图片加载前显示的背景色
-					}
-				}
-
-				// 多图布局
-				.image-grid {
-					width: 100%;
-					display: flex;
-					justify-content: space-between;
-					margin-top: 10rpx;
-					margin-bottom: 20rpx;
-					height: 180rpx;
-
-					.grid-image {
-						width: 32%;
-						height: 100%;
-						border-radius: 8rpx;
-						background-color: #f5f5f5;
-					}
-				}
-			}
-
-			// 文章操作按钮
-			.article-actions {
-				display: flex;
-				align-items: center;
-				justify-content: space-around;
-				border-top: 1rpx solid #f5f5f5;
-				padding-top: 15rpx;
-
-				.action-item {
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					font-size: 26rpx;
-					color: #666;
-
-					text {
-						margin-left: 10rpx;
-
-						&.liked {
-							color: #ff6b6b;
-						}
-					}
-
-					&.manage-btn {
-						padding: 0 15rpx;
-					}
-				}
-			}
-		}
-
 		// 加载状态
 		.loading-state {
 			text-align: center;
@@ -2254,16 +2155,6 @@
 				}
 			}
 		}
-
-		// 全局滚动模式的样式
-		.global-scroll {
-			&.mp-article-list {
-				width: 100%;
-				padding: 10rpx 10rpx 160rpx; // 减小左右内边距
-				box-sizing: border-box;
-				overflow: hidden;
-			}
-		}
 	}
 
 	// 添加展开文本的样式
@@ -2282,135 +2173,156 @@
 		// #endif
 	}
 
-	// 针对微信小程序和APP的回到顶部按钮样式调整
-	.mp-back-to-top {
+	// 小程序和APP的文章列表样式
+	// #ifndef H5
+	/* 移动端基础容器样式 */
+	.mp-scroll-view {
+		width: 100%;
+		box-sizing: border-box;
+	}
+
+	.mp-container {
+		width: 100%;
+		box-sizing: border-box;
+		padding: 20rpx;
+	}
+
+	.mp-global {
+		padding-bottom: 160rpx;
+	}
+
+	/* 文章卡片样式 */
+	.mp-item {
+		background-color: #fff;
+		border-radius: 12rpx;
+		margin-bottom: 30rpx;
+		padding: 20rpx;
+		box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+		box-sizing: border-box;
+		width: 100%;
+		overflow: hidden;
+	}
+
+	/* 文章标题样式 */
+	.mp-title {
+		font-size: 32rpx;
+		font-weight: 600;
+		color: #333;
+		margin-bottom: 16rpx;
+		line-height: 1.4;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		word-break: break-all;
+		width: 100%;
+	}
+
+	/* 文章摘要样式 */
+	.mp-summary {
+		font-size: 26rpx;
+		color: #666;
+		line-height: 1.5;
+		margin-bottom: 16rpx;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		word-break: break-all;
+		white-space: normal;
+		width: 100%;
+	}
+
+	/* 封面图片样式 */
+	.mp-image {
+		width: 100%;
+		height: 300rpx;
+		border-radius: 10rpx;
+		overflow: hidden;
+		margin-bottom: 20rpx;
+		background-color: #f5f5f5;
+	}
+
+	.mp-image image {
+		width: 100%;
+		height: 100%;
+		border-radius: 10rpx;
+		object-fit: cover;
+	}
+
+	/* 底部操作栏样式 */
+	.mp-actions {
+		display: flex;
+		align-items: center;
+		padding-top: 15rpx;
+		border-top: 1rpx solid #f2f2f2;
+		width: 100%;
+		box-sizing: border-box;
+		flex-wrap: wrap;
+	}
+
+	.mp-action {
+		display: flex;
+		align-items: center;
+		margin-right: 20rpx;
+	}
+
+	.mp-action text {
+		font-size: 24rpx;
+		color: #666;
+		margin-left: 6rpx;
+	}
+
+	.mp-liked {
+		color: #ff6b6b !important;
+	}
+
+	/* 加载状态样式 */
+	.mp-loading {
+		text-align: center;
+		font-size: 24rpx;
+		color: #999;
+		padding: 20rpx 0 60rpx;
+		width: 100%;
+	}
+
+	/* 空内容提示样式 */
+	.mp-no-content {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 60rpx 0;
+		width: 100%;
+	}
+
+	.mp-no-content text {
+		font-size: 28rpx;
+		color: #999;
+		margin-top: 20rpx;
+	}
+
+	/* 返回顶部按钮样式 */
+	.mp-back-top {
+		position: fixed;
 		bottom: 120rpx;
 		right: 20rpx;
 		width: 70rpx;
 		height: 70rpx;
+		background-color: rgba(67, 97, 238, 0.8);
+		border-radius: 50%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
+		z-index: 100;
 	}
 
-	// 小程序/App文章列表样式
-	.mp-article-list {
-		padding: 10rpx; // 减小内边距，防止溢出
-		box-sizing: border-box;
-		width: 100%;
-		overflow: hidden; // 防止内容溢出
-		
-		.mp-article-item {
-			width: 100%;
-			box-sizing: border-box;
-			margin-left: 0;
-			margin-right: 0;
-			padding-left: 0;
-			padding-right: 0;
-			background-color: #ffffff;
-			border-radius: 12rpx;
-			margin-bottom: 30rpx;
-			box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.08);
-			overflow: hidden;
-		}
-		
-		.mp-article-content {
-			width: 100%;
-			box-sizing: border-box;
-			padding: 15rpx; // 减小内边距
-			display: flex;
-			flex-direction: column;
-			position: relative;
-		}
-		
-		.mp-article-title {
-			font-size: 32rpx;
-			font-weight: 600;
-			color: #333;
-			margin-bottom: 15rpx;
-			line-height: 1.4;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			display: -webkit-box;
-			-webkit-line-clamp: 2;
-			-webkit-box-orient: vertical;
-			width: 100%;
-			box-sizing: border-box;
-		}
-		
-		.mp-article-summary {
-			font-size: 26rpx;
-			color: #666;
-			line-height: 1.5;
-			margin-bottom: 20rpx;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			display: -webkit-box;
-			-webkit-line-clamp: 2; // 允许显示2行
-			-webkit-box-orient: vertical;
-			width: 100%;
-			box-sizing: border-box;
-			word-break: break-all; // 允许在任意字符间断行
-			white-space: normal; // 确保可以换行
-		}
-		
-		// 单图布局
-		.mp-article-image {
-			width: 100%;
-			height: 300rpx;
-			border-radius: 8rpx;
-			
-			overflow: hidden;
-			margin-bottom: 15rpx;
-			background-color: #f5f5f5;
-			box-sizing: border-box;
-			
-			image {
-				width: 100%;
-				height: 100%;
-				object-fit: cover;
-			}
-		}
-		
-		// 多图布局
-		.mp-article-multi-image {
-			width: 100%;
-			height: 180rpx;
-			display: flex;
-			justify-content: space-between;
-			margin-bottom: 15rpx;
-			box-sizing: border-box;
-			
-			image {
-				width: 32%;
-				height: 100%;
-				border-radius: 8rpx;
-				background-color: #f5f5f5;
-			}
-		}
-		
-		.mp-article-actions {
-			display: flex;
-			height: 80rpx;
-			border-top: 1rpx solid #f2f2f2;
-			background-color: #fafafa;
-			padding: 0 20rpx;
-			align-items: center;
-			width: 100%;
-			box-sizing: border-box;
-		}
-		
-		.mp-action-item {
-			display: flex;
-			align-items: center;
-			margin-right: 40rpx;
-			
-			text {
-				font-size: 24rpx;
-				color: #666;
-				margin-left: 6rpx;
-				
-				&.liked {
-					color: #ff6b6b;
-				}
-			}
-		}
+	/* 管理按钮样式 */
+	.manage-btn {
+		margin-left: auto;
 	}
+	// #endif
 </style>
