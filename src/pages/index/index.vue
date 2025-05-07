@@ -1114,7 +1114,14 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 100vh;
+		// #ifdef H5
 		min-width: 1000px;
+		// #endif
+		// #ifndef H5
+		min-width: 100%;
+		width: 100%;
+		overflow-x: hidden;
+		// #endif
 		overflow: visible;
 	}
 
@@ -1127,15 +1134,19 @@
 		background-color: #fff;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		// #ifdef H5
 		min-width: 1000px;
+		// #endif
 
 		.header-top {
 			display: flex;
 			align-items: center;
 			height: 60px;
 			padding: 0 20px;
+			// #ifdef H5
 			max-width: 1200px;
 			min-width: 960px;
+			// #endif
 			margin: 0 auto;
 			justify-content: center;
 			gap: 20px;
@@ -1228,7 +1239,9 @@
 			display: flex;
 			align-items: center;
 			justify-content: flex-start;
+			// #ifdef H5
 			max-width: 1200px;
+			// #endif
 			margin: 0 auto;
 			padding: 0;
 
@@ -1241,7 +1254,12 @@
 				transition: color 0.3s;
 				
 				&:first-child {
+					// #ifdef H5
 					margin-left: 150px;
+					// #endif
+					// #ifndef H5
+					margin-left: 0;
+					// #endif
 				}
 
 				&.active {
@@ -1272,8 +1290,10 @@
 	.content-area {
 		display: flex;
 		justify-content: space-between;
+		// #ifdef H5
 		max-width: 1200px;
 		min-width: 960px;
+		// #endif
 		margin: 0 auto;
 		padding: 106px 20px 20px;
 		gap: 0;
@@ -1290,11 +1310,15 @@
 
 		.main-content {
 			flex: 1;
+			// #ifdef H5
 			min-width: 600px;
+			// #endif
 			background: #fff;
 			border-radius: 4px 0 0 4px;
 			padding: 20px;
+			// #ifdef H5
 			margin-left: 130px;
+			// #endif
 			margin-right: 0;
 			min-height: 200px;
 		}
@@ -1303,7 +1327,9 @@
 			position: sticky;
 			top: 106px;
 			width: 300px;
+			// #ifdef H5
 			min-width: 280px;
+			// #endif
 			height: fit-content;
 			background: transparent;
 			margin-left: 0;
@@ -1474,6 +1500,7 @@
 		left: 0;
 		right: 0;
 		z-index: 100;
+		width: 100%;
 
 		// 添加顶部导航栏样式
 		.mp-top-nav {
@@ -1528,12 +1555,19 @@
 			padding: 20rpx 30rpx;
 			background: #fff;
 			border-bottom: 1rpx solid #f0f0f0;
+			width: 100%;
+			overflow-x: auto;
+			white-space: nowrap;
+			box-sizing: border-box;
 
 			.nav-item {
 				padding: 0 20rpx;
 				font-size: 28rpx;
 				color: #666;
 				position: relative;
+				display: inline-block;
+				min-width: 120rpx;
+				text-align: center;
 
 				&.active {
 					color: #4361ee;
@@ -1552,12 +1586,22 @@
 					}
 				}
 			}
+			
+			// 隐藏导航横向滚动条
+			&::-webkit-scrollbar {
+				display: none;
+				width: 0;
+				height: 0;
+			}
 		}
 	}
 
 	.mp-content {
 		padding-top: calc(220rpx + var(--status-bar-height));
 		background: #f5f5f5;
+		width: 100%;
+		box-sizing: border-box;
+		overflow-x: hidden;
 	}
 	// #endif
 
