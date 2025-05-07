@@ -3,29 +3,31 @@
 		<!-- H5模式下显示网格布局 -->
 		<!-- #ifdef H5 -->
 		<template v-if="!props.useGlobalScroll">
-			<scroll-view scroll-y class="article-scroll" id="article-list-scroll-h5" @scrolltolower="handleLoadMore" :refresher-enabled="true"
-				:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
-				refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
-				:show-scrollbar="true" :enable-flex="true" :bounce="true" :enhanced="true" :scroll-with-animation="true"
-				@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
+			<scroll-view scroll-y class="article-scroll" id="article-list-scroll-h5" @scrolltolower="handleLoadMore"
+				:refresher-enabled="true" :refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh"
+				:refresher-threshold="100" refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}"
+				@scroll="handleScroll" :scroll-top="scrollTop" :show-scrollbar="true" :enable-flex="true" :bounce="true"
+				:enhanced="true" :scroll-with-animation="true" @touchstart="handleTouchStart"
+				@touchmove="handleTouchMove" @touchend="handleTouchEnd">
 				<!-- 网格布局文章列表 -->
 				<view class="article-grid">
 					<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
 						<!-- 文章内容 -->
-						<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
+						<view class="article-content" @click="handleArticleClick(article.id)"
+							:class="{'no-cover': !article.coverImage}">
 							<!-- 封面图片 - 仅当有封面时才显示 -->
 							<view class="article-image" v-if="article.coverImage">
 								<image :src="article.coverImage" mode="aspectFill" class="grid-image"
 									@error="handleImageError(index)"></image>
 							</view>
-							
+
 							<!-- 文章标题和简介 -->
 							<view class="article-info">
 								<text class="article-title">{{article.title}}</text>
-								
+
 								<!-- 文章简介 -->
 								<rich-text class="article-summary" :nodes="formatSummary(article.summary)"></rich-text>
-								
+
 								<!-- 文章标签 -->
 								<view class="article-tags" v-if="article.tags && article.tags.length > 0">
 									<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item"
@@ -53,7 +55,8 @@
 							<view class="action-item" @click.stop="handleLike(index)">
 								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
 									:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
-								<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+								<text
+									:class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
 							</view>
 
 							<!-- 编辑按钮（根据权限条件显示） -->
@@ -64,7 +67,8 @@
 							</view>
 
 							<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
-							<view class="action-item manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+							<view class="action-item manage-btn"
+								v-if="showManageOptions && isCurrentUser(article.author?.id)"
 								@click.stop="handleDelete(index)">
 								<uni-icons type="trash" size="20" color="#000"></uni-icons>
 							</view>
@@ -84,7 +88,7 @@
 						<text>{{ emptyText }}</text>
 					</view>
 				</view>
-				
+
 				<!-- 回到顶部按钮 -->
 				<view v-if="showBackTop" class="back-to-top" @click="scrollToTop">
 					<uni-icons type="top" size="20" color="#fff"></uni-icons>
@@ -97,20 +101,21 @@
 				<!-- 网格布局文章列表 -->
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-grid-item">
 					<!-- 文章内容 -->
-					<view class="article-content" @click="handleArticleClick(article.id)" :class="{'no-cover': !article.coverImage}">
+					<view class="article-content" @click="handleArticleClick(article.id)"
+						:class="{'no-cover': !article.coverImage}">
 						<!-- 封面图片 - 仅当有封面时才显示 -->
 						<view class="article-image" v-if="article.coverImage">
 							<image :src="article.coverImage" mode="aspectFill" class="grid-image"
 								@error="handleImageError(index)"></image>
 						</view>
-						
+
 						<!-- 文章标题和简介 -->
 						<view class="article-info">
 							<text class="article-title">{{article.title}}</text>
-							
+
 							<!-- 文章简介 -->
 							<rich-text class="article-summary" :nodes="formatSummary(article.summary)"></rich-text>
-							
+
 							<!-- 文章标签 -->
 							<view class="article-tags" v-if="article.tags && article.tags.length > 0">
 								<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item"
@@ -138,7 +143,8 @@
 						<view class="action-item" @click.stop="handleLike(index)">
 							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
 								:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
-							<text :class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+							<text
+								:class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
 						</view>
 
 						<!-- 编辑按钮（根据权限条件显示） -->
@@ -149,7 +155,8 @@
 						</view>
 
 						<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
-						<view class="action-item manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+						<view class="action-item manage-btn"
+							v-if="showManageOptions && isCurrentUser(article.author?.id)"
 							@click.stop="handleDelete(index)">
 							<uni-icons type="trash" size="20" color="#000"></uni-icons>
 						</view>
@@ -171,16 +178,17 @@
 			</view>
 		</template>
 		<!-- #endif -->
-		
+
 		<!-- 小程序和App模式 -->
 		<!-- #ifndef H5 -->
 		<template v-if="!props.useGlobalScroll">
-			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp" @scrolltolower="handleLoadMore" :refresher-enabled="true"
-				:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
-				refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
-				:show-scrollbar="false" :bounce="true" :enhanced="true" :scroll-with-animation="true"
-				@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
-				
+			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp" @scrolltolower="handleLoadMore"
+				:refresher-enabled="true" :refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh"
+				:refresher-threshold="100" refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}"
+				@scroll="handleScroll" :scroll-top="scrollTop" :show-scrollbar="false" :bounce="true" :enhanced="true"
+				:scroll-with-animation="true" @touchstart="handleTouchStart" @touchmove="handleTouchMove"
+				@touchend="handleTouchEnd">
+
 				<!-- 文章列表容器 -->
 				<view class="mp-container">
 					<!-- 文章项循环 -->
@@ -188,15 +196,15 @@
 						@click="handleArticleClick(article.id)">
 						<!-- 标题 -->
 						<text class="mp-title">{{article.title}}</text>
-						
+
 						<!-- 摘要 -->
 						<text class="mp-summary">{{formatArticleSummary(article.summary)}}</text>
-						
+
 						<!-- 图片区域 -->
 						<view class="mp-image" v-if="article.coverImage">
 							<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
 						</view>
-						
+
 						<!-- 底部操作栏 -->
 						<view class="mp-actions">
 							<!-- 分享按钮 -->
@@ -204,20 +212,21 @@
 								<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
 								<text>分享</text>
 							</view>
-							
+
 							<!-- 评论按钮 -->
 							<view class="mp-action" @click.stop="handleComment(index)">
 								<uni-icons type="chat" size="16" color="#666"></uni-icons>
 								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
 							</view>
-							
+
 							<!-- 点赞按钮 -->
 							<view class="mp-action" @click.stop="handleLike(index)">
 								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
 									:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-								<text :class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+								<text
+									:class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
 							</view>
-							
+
 							<!-- 编辑按钮（根据权限条件显示） -->
 							<view class="mp-action manage-btn"
 								v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
@@ -227,7 +236,8 @@
 							</view>
 
 							<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
-							<view class="mp-action manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+							<view class="mp-action manage-btn"
+								v-if="showManageOptions && isCurrentUser(article.author?.id)"
 								@click.stop="handleDelete(index)">
 								<uni-icons type="trash" size="16" color="#666"></uni-icons>
 								<text>删除</text>
@@ -249,7 +259,7 @@
 						</view>
 					</view>
 				</view>
-				
+
 				<!-- 回到顶部按钮 -->
 				<view v-if="showBackTop" class="mp-back-top" @click="scrollToTop">
 					<uni-icons type="top" size="18" color="#fff"></uni-icons>
@@ -258,27 +268,28 @@
 		</template>
 		<template v-else>
 			<!-- 修改全局滚动模式实现，添加scroll-view -->
-			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp-global" @scrolltolower="handleLoadMore" :refresher-enabled="true"
-				:refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh" :refresher-threshold="100"
-				refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
+			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp-global"
+				@scrolltolower="handleLoadMore" :refresher-enabled="true" :refresher-triggered="isRefreshing"
+				@refresherrefresh="handleRefresh" :refresher-threshold="100" refresher-background="#f5f5f5"
+				:style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
 				:show-scrollbar="false" :bounce="true" :enhanced="true" :scroll-with-animation="true"
 				@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
-				
+
 				<view class="mp-container mp-global">
 					<!-- 文章项循环 -->
 					<view v-for="(article, index) in articleList" :key="article.id" class="mp-item"
 						@click="handleArticleClick(article.id)">
 						<!-- 标题 -->
 						<text class="mp-title">{{article.title}}</text>
-						
+
 						<!-- 摘要 -->
 						<text class="mp-summary">{{formatArticleSummary(article.summary)}}</text>
-						
+
 						<!-- 图片区域 -->
 						<view class="mp-image" v-if="article.coverImage">
 							<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(index)"></image>
 						</view>
-						
+
 						<!-- 底部操作栏 -->
 						<view class="mp-actions">
 							<!-- 分享按钮 -->
@@ -286,20 +297,21 @@
 								<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
 								<text>分享</text>
 							</view>
-							
+
 							<!-- 评论按钮 -->
 							<view class="mp-action" @click.stop="handleComment(index)">
 								<uni-icons type="chat" size="16" color="#666"></uni-icons>
 								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
 							</view>
-							
+
 							<!-- 点赞按钮 -->
 							<view class="mp-action" @click.stop="handleLike(index)">
 								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
 									:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-								<text :class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+								<text
+									:class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
 							</view>
-							
+
 							<!-- 编辑按钮（根据权限条件显示） -->
 							<view class="mp-action manage-btn"
 								v-if="showManageOptions && (isCurrentUser(article.author?.id) || props.showEditForAllUsers)"
@@ -309,7 +321,8 @@
 							</view>
 
 							<!-- 删除按钮（当显示管理选项且是当前用户的文章时） -->
-							<view class="mp-action manage-btn" v-if="showManageOptions && isCurrentUser(article.author?.id)"
+							<view class="mp-action manage-btn"
+								v-if="showManageOptions && isCurrentUser(article.author?.id)"
 								@click.stop="handleDelete(index)">
 								<uni-icons type="trash" size="16" color="#666"></uni-icons>
 								<text>删除</text>
@@ -331,7 +344,7 @@
 						</view>
 					</view>
 				</view>
-				
+
 				<!-- 回到顶部按钮 -->
 				<view v-if="showBackTop" class="mp-back-top" @click="scrollToTop">
 					<uni-icons type="top" size="18" color="#fff"></uni-icons>
@@ -349,13 +362,17 @@
 		computed,
 		watch,
 		onMounted,
-		onBeforeUnmount
+		onBeforeUnmount,
+		nextTick,
+		inject
 	} from 'vue';
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	import {
 		deleteArticle,
 		getArticleDetail
 	} from '@/api/article';
+	import http from '@/utils/request';
+	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
 
 	// 定义组件属性
 	const props = defineProps({
@@ -429,28 +446,28 @@
 	const noMoreData = ref(false);
 	const currentPage = ref(1);
 	const pageSize = ref(10);
-	
+
 	// 滚动相关
 	const scrollTop = ref(0);
 	const showBackTop = ref(false);
 	const oldScrollTop = ref(0);
-	
+
 	// 处理滚动事件
 	const handleScroll = (e) => {
 		// 获取滚动条位置
 		const scrollTop = e.detail.scrollTop;
-		
+
 		// 当滚动超过500rpx时显示回到顶部按钮
 		showBackTop.value = scrollTop > 500;
-		
+
 		// 保存旧的滚动位置用于后续比较
 		oldScrollTop.value = scrollTop;
 	};
-	
+
 	// 回到顶部
 	const scrollToTop = () => {
 		console.log('文章列表: 执行滚动到顶部方法');
-		
+
 		// 直接操作scroll-view的滚动
 		// #ifdef H5
 		try {
@@ -459,22 +476,22 @@
 			if (scrollView) {
 				console.log('文章列表: H5环境找到scroll-view元素，设置scrollTop为0');
 				scrollView.scrollTop = 0;
-				
+
 				// 同时更新Vue响应式数据
 				scrollTop.value = 0;
-				
+
 				// 隐藏回到顶部按钮
 				showBackTop.value = false;
-				
+
 				// 显示成功反馈
 				uni.showToast({
 					title: '已返回顶部',
 					icon: 'none',
 					duration: 300
 				});
-				
+
 				return; // 操作成功，退出函数
-			} 
+			}
 			console.warn('文章列表: H5环境未找到scroll-view元素');
 			// 尝试通过类名查找
 			const scrollViewByClass = document.querySelector('.article-scroll');
@@ -488,16 +505,16 @@
 			console.error('文章列表: 回到顶部出错:', error);
 		}
 		// #endif
-		
+
 		// 在非H5环境或H5操作失败时，使用uni的API
 		// #ifndef H5
 		try {
 			const query = uni.createSelectorQuery();
-			
+
 			// 根据是否使用全局滚动选择正确的选择器
 			const scrollId = props.useGlobalScroll ? '#article-list-scroll-mp-global' : '#article-list-scroll-mp';
 			console.log('文章列表: 使用选择器', scrollId);
-			
+
 			// 使用ID更精确地定位元素
 			query.select(scrollId).boundingClientRect(data => {
 				if (data) {
@@ -509,13 +526,13 @@
 							duration: 0,
 							selector: scrollId // 使用选择器
 						});
-						
+
 						// 同时更新Vue响应式数据
 						scrollTop.value = 0;
-						
+
 						// 隐藏回到顶部按钮
 						showBackTop.value = false;
-						
+
 						// 显示成功反馈
 						uni.showToast({
 							title: '已返回顶部',
@@ -526,7 +543,7 @@
 				} else {
 					console.warn('文章列表: 非H5环境未找到指定ID的scroll-view元素');
 					// 退回到使用类选择器
-					
+
 					query.select('.mp-scroll-view').boundingClientRect(data => {
 						if (data) {
 							setTimeout(() => {
@@ -534,7 +551,7 @@
 									scrollTop: 0,
 									duration: 0
 								});
-								
+
 								// 更新状态
 								scrollTop.value = 0;
 								showBackTop.value = false;
@@ -550,7 +567,7 @@
 				scrollTop: 0,
 				duration: 0
 			});
-			
+
 			// 更新状态
 			scrollTop.value = 0;
 			showBackTop.value = false;
@@ -600,7 +617,7 @@
 			resetList();
 			loadArticles();
 		});
-		
+
 		// 监听文章点赞/收藏/评论事件
 		uni.$on('article_like_updated', (data) => {
 			console.log('接收到文章点赞更新事件:', data);
@@ -608,14 +625,14 @@
 				refreshArticleById(data.articleId, data);
 			}
 		});
-		
+
 		uni.$on('article_collect_updated', (data) => {
 			console.log('接收到文章收藏更新事件:', data);
 			if (data.articleId && (data.collectCount !== undefined || data.isCollected !== undefined)) {
 				refreshArticleById(data.articleId, data);
 			}
 		});
-		
+
 		uni.$on('article_comment_updated', (data) => {
 			console.log('接收到文章评论更新事件:', data);
 			if (data.articleId && data.commentCount !== undefined) {
@@ -834,30 +851,30 @@
 			if (article.like_count !== undefined && article.likeCount === undefined) {
 				article.likeCount = article.like_count;
 			}
-			
+
 			// 统一评论数字段
 			if (article.comment_count !== undefined && article.commentCount === undefined) {
 				article.commentCount = article.comment_count;
 			}
-			
+
 			// 修正为0的点赞和评论数
 			article.likeCount = article.likeCount || 0;
 			article.commentCount = article.commentCount || 0;
-			
+
 			// 检查点赞状态字段
 			if (article.is_liked !== undefined && article.isLiked === undefined) {
 				article.isLiked = article.is_liked;
 			}
-			
+
 			// 检查收藏状态字段
 			if (article.is_collected !== undefined && article.isCollected === undefined) {
 				article.isCollected = article.is_collected;
 			}
-			
+
 			// 确保布尔值格式正确
 			article.isLiked = !!article.isLiked;
 			article.isCollected = !!article.isCollected;
-			
+
 			// 检查数据库字段映射 - 后端用cover_image，前端用coverImage
 			if (article.cover_image && !article.coverImage) {
 				console.log(`检测到cover_image字段映射问题[${article.id}], 进行修正`);
@@ -944,7 +961,7 @@
 			if (article.author && article.author.avatar) {
 				// 移除URL中可能存在的多余空格
 				article.author.avatar = article.author.avatar.trim();
-				
+
 				// 确保不是null或undefined
 				if (article.author.avatar === 'null' || article.author.avatar === 'undefined') {
 					article.author.avatar = '/static/images/avatar.png';
@@ -1168,19 +1185,7 @@
 	/**
 	 * 获取基础URL
 	 */
-	const getBaseUrl = () => {
-		// #ifdef APP-PLUS
-		return 'http://10.9.99.181:8080'; // 安卓模拟器访问本机服务器的地址
-		// #endif
-
-		// #ifdef H5
-		return 'http://localhost:8080';
-		// #endif
-
-		// #ifdef MP-WEIXIN
-		return 'http://localhost:8080';
-		// #endif
-	};
+	// 已引入统一的getBaseUrl，不需要本地定义
 
 	/**
 	 * 处理头像URL格式，确保显示正确的头像
@@ -1189,15 +1194,15 @@
 	 */
 	const formatAvatarUrl = (url) => {
 		if (!url) return '/static/images/avatar.png';
-		
+
 		// 移除URL中可能存在的多余空格
 		url = url.trim();
-		
+
 		// 确保不是null或undefined
 		if (url === 'null' || url === 'undefined') {
 			return '/static/images/avatar.png';
 		}
-		
+
 		// 完整URL处理：如果已经是完整URL（包含http）则不处理
 		if (url.startsWith('http')) {
 			// 检查并修复双斜杠问题
@@ -1376,7 +1381,7 @@
 		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
 		window.open(detailUrl, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，触发父组件处理
 		emit('articleClick', articleId);
@@ -1393,7 +1398,7 @@
 		console.log('点击标签:', tag);
 		// 发出标签点击事件
 		emit('tagClick', tag);
-		
+
 		// 导航到分类页面并选择该标签
 		uni.navigateTo({
 			url: `/pages/classification/classification?tag=${encodeURIComponent(tag)}`
@@ -1408,15 +1413,15 @@
 	// 处理评论
 	const handleComment = (index) => {
 		const article = articleList.value[index];
-		
+
 		// 首先触发评论事件，让父组件决定如何处理
 		emit('comment', article);
-		
+
 		// 获取当前页面路径
 		const pages = getCurrentPages();
 		const currentPage = pages[pages.length - 1];
 		const currentPath = currentPage?.route || '';
-		
+
 		// 排除首页和其他专门处理了评论事件的页面
 		// 只有在非index、非my页面中才执行默认导航
 		if (!currentPath.includes('pages/index/') && !currentPath.includes('pages/my/')) {
@@ -1427,7 +1432,7 @@
 			const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`;
 			window.open(detailUrl, '_blank');
 			// #endif
-			
+
 			// #ifndef H5
 			// 非H5环境下，跳转到文章详情页并显示评论区
 			uni.navigateTo({
@@ -1449,7 +1454,7 @@
 				title: '请先登录',
 				icon: 'none'
 			});
-			
+
 			// 可选：跳转到登录页
 			// uni.navigateTo({ url: '/pages/login/login' });
 			return;
@@ -1459,11 +1464,11 @@
 			// 先保存原始收藏状态，以便在请求失败时恢复
 			const originalIsCollected = article.isCollected;
 			const originalCollectCount = article.collectCount || 0;
-			
+
 			// 提前在UI上更新，提供即时反馈
 			article.isCollected = !article.isCollected;
 			article.collectCount = (article.collectCount || 0) + (article.isCollected ? 1 : -1);
-			
+
 			// 构建请求
 			const url = `${baseUrl}/api/article/collect/${articleId}`;
 			const method = originalIsCollected ? 'DELETE' : 'POST';
@@ -1488,7 +1493,7 @@
 
 						// 触发事件
 						emit('collect', article);
-						
+
 						// 如果可能，从响应中获取确切的收藏数并更新
 						if (res.data && res.data.data && res.data.data.collectCount !== undefined) {
 							article.collectCount = res.data.data.collectCount;
@@ -1497,7 +1502,7 @@
 						// 请求失败，恢复原始状态
 						article.isCollected = originalIsCollected;
 						article.collectCount = originalCollectCount;
-						
+
 						uni.showToast({
 							title: res.data?.message || '操作失败',
 							icon: 'none'
@@ -1508,7 +1513,7 @@
 					// 请求失败，恢复原始状态
 					article.isCollected = originalIsCollected;
 					article.collectCount = originalCollectCount;
-					
+
 					console.error('收藏操作失败:', err);
 					uni.showToast({
 						title: '网络异常，请稍后再试',
@@ -1537,7 +1542,7 @@
 				title: '请先登录',
 				icon: 'none'
 			});
-			
+
 			// 可选：跳转到登录页
 			// uni.navigateTo({ url: '/pages/login/login' });
 			return;
@@ -1547,11 +1552,11 @@
 			// 先保存原始点赞状态，以便在请求失败时恢复
 			const originalIsLiked = article.isLiked;
 			const originalLikeCount = article.likeCount || 0;
-			
+
 			// 提前在UI上更新，提供即时反馈
 			article.isLiked = !article.isLiked;
 			article.likeCount = article.likeCount + (article.isLiked ? 1 : -1);
-			
+
 			// 构建请求
 			const url = `${baseUrl}/api/article/like/${articleId}`;
 			const method = originalIsLiked ? 'DELETE' : 'POST';
@@ -1576,7 +1581,7 @@
 
 						// 触发事件
 						emit('like', article);
-						
+
 						// 如果可能，从响应中获取确切的点赞数并更新
 						if (res.data && res.data.data && res.data.data.likeCount !== undefined) {
 							article.likeCount = res.data.data.likeCount;
@@ -1585,7 +1590,7 @@
 						// 请求失败，恢复原始状态
 						article.isLiked = originalIsLiked;
 						article.likeCount = originalLikeCount;
-						
+
 						uni.showToast({
 							title: res.data?.message || '操作失败',
 							icon: 'none'
@@ -1596,7 +1601,7 @@
 					// 请求失败，恢复原始状态
 					article.isLiked = originalIsLiked;
 					article.likeCount = originalLikeCount;
-					
+
 					console.error('点赞操作失败:', err);
 					uni.showToast({
 						title: '网络异常，请稍后再试',
@@ -1724,24 +1729,24 @@
 		refresh: handleRefresh,
 		getArticleList: () => articleList.value
 	});
-	
+
 	// 触摸相关状态
 	const touchStartY = ref(0);
 	const lastTouchY = ref(0);
 	const isScrolling = ref(false);
-	
+
 	// 处理触摸开始事件
 	const handleTouchStart = (e) => {
 		touchStartY.value = e.touches[0].clientY;
 		lastTouchY.value = e.touches[0].clientY;
 		isScrolling.value = false;
 	};
-	
+
 	// 处理触摸移动事件
 	const handleTouchMove = (e) => {
 		const currentY = e.touches[0].clientY;
 		const deltaY = currentY - lastTouchY.value;
-		
+
 		// 当滚动到顶部且继续下拉时，阻止外部容器滚动
 		if (scrollTop.value <= 0 && deltaY > 0) {
 			// 允许组件自己的下拉刷新行为
@@ -1752,10 +1757,10 @@
 			// 标记为正在滚动中
 			isScrolling.value = true;
 		}
-		
+
 		lastTouchY.value = currentY;
 	};
-	
+
 	// 处理触摸结束事件
 	const handleTouchEnd = () => {
 		// 重置触摸状态
@@ -1765,30 +1770,30 @@
 	// 刷新特定文章的数据
 	const refreshArticleById = (articleId, updatedData) => {
 		if (!articleId || !updatedData) return;
-		
+
 		// 查找文章在列表中的索引
 		const index = articleList.value.findIndex(article => article.id == articleId);
 		if (index === -1) return;
-		
+
 		console.log(`刷新文章[${articleId}]数据:`, updatedData);
-		
+
 		// 更新文章数据
 		if (updatedData.likeCount !== undefined) {
 			articleList.value[index].likeCount = updatedData.likeCount;
 		}
-		
+
 		if (updatedData.isLiked !== undefined) {
 			articleList.value[index].isLiked = updatedData.isLiked;
 		}
-		
+
 		if (updatedData.commentCount !== undefined) {
 			articleList.value[index].commentCount = updatedData.commentCount;
 		}
-		
+
 		if (updatedData.collectCount !== undefined) {
 			articleList.value[index].collectCount = updatedData.collectCount;
 		}
-		
+
 		if (updatedData.isCollected !== undefined) {
 			articleList.value[index].isCollected = updatedData.isCollected;
 		}
@@ -1797,10 +1802,10 @@
 	// 添加文章摘要格式化方法
 	const formatArticleSummary = (summary) => {
 		if (!summary) return '暂无摘要';
-		
+
 		// 去除HTML标签
 		let plainText = summary.replace(/<\/?[^>]+(>|$)/g, '');
-		
+
 		// 限制长度
 		const maxLength = 50;
 		if (plainText.length > maxLength) {
@@ -1808,7 +1813,7 @@
 		} else {
 			plainText += '...全文';
 		}
-		
+
 		return plainText;
 	};
 </script>
@@ -1816,12 +1821,12 @@
 <style lang="scss">
 	// 正确设置容器样式，确保适应所有平台
 	.article-list-container {
-		width: 100%; 
+		width: 100%;
 		max-width: 100%;
 		box-sizing: border-box;
 		position: relative;
 		overflow: hidden; // 防止内容溢出
-		
+
 		// 优化滚动区域样式
 		.article-scroll {
 			height: v-bind(height);
@@ -1832,22 +1837,23 @@
 			// 修改滚动条样式
 			scrollbar-width: thin;
 			-ms-overflow-style: scrollbar;
-			
+
 			&::-webkit-scrollbar {
 				width: 6px !important;
 				height: 6px !important;
-				display: block !important; /* 确保显示滚动条 */
+				display: block !important;
+				/* 确保显示滚动条 */
 			}
-			
+
 			&::-webkit-scrollbar-thumb {
 				background: #ccc;
 				border-radius: 3px;
 			}
-			
+
 			&::-webkit-scrollbar-track {
 				background: #f5f5f5;
 			}
-			
+
 			// 添加弹性滚动效果
 			-webkit-overflow-scrolling: touch;
 			overflow-x: hidden;
@@ -1869,23 +1875,24 @@
 			z-index: 100;
 			animation: fadeIn 0.3s;
 			transition: all 0.3s;
-			
+
 			&:hover {
 				background-color: rgba(67, 97, 238, 1);
 				transform: translateY(-3rpx);
 				box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.3);
 			}
-			
+
 			&:active {
 				transform: scale(0.95);
 			}
 		}
-		
+
 		@keyframes fadeIn {
 			from {
 				opacity: 0;
 				transform: translateY(20rpx);
 			}
+
 			to {
 				opacity: 1;
 				transform: translateY(0);
@@ -1899,19 +1906,19 @@
 			flex-wrap: wrap;
 			padding: 10rpx;
 			padding-bottom: 100rpx; // 添加底部内边距，确保最后一行不被遮挡
-			
+
 			// #ifdef H5
 			// 添加顶部的小间距，防止内容太靠近顶部
 			padding-top: 20rpx;
-			
+
 			// 添加适当的底部内边距
 			padding-bottom: 140rpx;
-			
+
 			// 确保容器足够宽以放置多列
 			min-width: 100%;
 			box-sizing: border-box;
 			// #endif
-			
+
 			// #ifndef H5
 			// 添加适当的顶部和底部内边距
 			padding-top: 20rpx;
@@ -1919,7 +1926,7 @@
 			min-width: 100%;
 			box-sizing: border-box;
 			// #endif
-			
+
 			.article-grid-item {
 				// #ifdef H5
 				width: 100%; // 修改为一行一个
@@ -1929,7 +1936,7 @@
 				border-radius: 12rpx;
 				overflow: hidden; // 确保边框圆角生效
 				// #endif
-				
+
 				// #ifndef H5
 				width: 100%; // 非H5环境也修改为一行一个，以保持统一视觉
 				margin-bottom: 30rpx; // 调整非H5环境下的间距
@@ -1937,23 +1944,23 @@
 				border-radius: 12rpx;
 				overflow: hidden; // 确保边框圆角生效
 				// #endif
-				
+
 				box-sizing: border-box;
 				padding: 10rpx;
 				height: 380rpx; // 减小总高度，移除了头像昵称部分
-				
+
 				// #ifdef H5
 				// 增大H5环境下的高度，使其更加明显
 				height: 470rpx; // 从450rpx增加到470rpx，为功能栏留出更多空间
 				padding: 0; // 去掉内边距，让内容紧贴边框
 				// #endif
-				
+
 				// #ifndef H5
 				// 为非H5环境也提供相同的样式处理
-				height: 470rpx; 
+				height: 470rpx;
 				padding: 0;
 				// #endif
-				
+
 				// 文章内容
 				.article-content {
 					background-color: #fff;
@@ -1961,26 +1968,26 @@
 					border-radius: 12rpx 12rpx 0 0; // 顶部圆角
 					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.1);
 					// #endif
-					
+
 					overflow: hidden;
 					transition: transform 0.3s, box-shadow 0.3s;
 					height: 320rpx; // 减小内容区高度
 					display: flex;
 					flex-direction: column;
-					
+
 					// #ifdef H5
 					height: 390rpx; // H5环境下增大高度
 					flex-direction: row; // H5环境下改为横向布局
 					box-shadow: none; // 去掉内容区的阴影，让整体阴影生效
 					// #endif
-					
+
 					// #ifndef H5
 					// 非H5环境下采用与H5相同的布局方式，保持一致
 					height: 390rpx;
 					flex-direction: row;
 					box-shadow: none;
 					// #endif
-					
+
 					// 无封面样式
 					&.no-cover {
 						.article-info {
@@ -1988,33 +1995,36 @@
 							padding: 40rpx; // 增大内边距，提升可读性
 						}
 					}
-					
+
 					// #ifndef H5
 					// 无封面样式
 					&.no-cover {
 						.article-title {
 							margin-bottom: 20rpx; // 增大标题与摘要之间的间距
 						}
-						
+
 						.article-summary {
 							-webkit-line-clamp: 5; // 无图片时允许显示更多文本行
 						}
 					}
+
 					// #endif
-					
+
 					// #ifndef H5
 					&:hover {
 						transform: translateY(-5rpx);
 						box-shadow: 0 10rpx 25rpx rgba(0, 0, 0, 0.15);
 					}
+
 					// #endif
-					
+
 					// #ifdef H5
 					&:hover {
 						background-color: #f8f9fa; // 悬停时背景色变化
 					}
+
 					// #endif
-					
+
 					// 文章信息
 					.article-info {
 						padding: 15rpx;
@@ -2022,11 +2032,11 @@
 						display: flex;
 						flex-direction: column;
 						justify-content: space-between;
-						
+
 						// #ifdef H5
 						padding: 30rpx; // H5环境下增大内边距
 						// #endif
-						
+
 						.article-title {
 							font-size: 28rpx;
 							font-weight: bold;
@@ -2038,35 +2048,36 @@
 							-webkit-line-clamp: 1;
 							-webkit-box-orient: vertical;
 							line-height: 1.3;
-							
+
 							// #ifdef H5
 							font-size: 36rpx; // H5环境下增大字体
 							-webkit-line-clamp: 2;
 							margin-bottom: 20rpx;
 							// #endif
 						}
-						
+
 						.article-summary {
 							font-size: 24rpx;
 							color: #666;
 							overflow: hidden;
 							text-overflow: ellipsis;
-							white-space: nowrap; /* 确保单行显示 */
+							white-space: nowrap;
+							/* 确保单行显示 */
 							line-height: 1.3;
 							flex: 1;
-							
+
 							// #ifdef H5
 							font-size: 28rpx; // H5环境下增大字体
 							// #endif
 						}
-						
+
 						// #ifdef H5
 						// 文章标签样式
 						.article-tags {
 							display: flex;
 							flex-wrap: wrap;
 							margin-top: 20rpx;
-							
+
 							.tag-item {
 								font-size: 24rpx;
 								color: #4361ee;
@@ -2075,7 +2086,7 @@
 								border-radius: 30rpx;
 								margin-right: 16rpx;
 								margin-bottom: 10rpx;
-								
+
 								&:hover {
 									background-color: #4361ee;
 									color: #fff;
@@ -2083,19 +2094,20 @@
 								}
 							}
 						}
+
 						// #endif
 					}
-					
+
 					// 封面图片
 					.article-image {
 						width: 100%;
 						height: 180rpx;
-						
+
 						// #ifdef H5
 						width: 40%; // H5环境下设置为固定比例
 						height: 100%;
 						// #endif
-						
+
 						.grid-image {
 							width: 100%;
 							height: 100%;
@@ -2103,7 +2115,7 @@
 						}
 					}
 				}
-				
+
 				// 文章操作按钮
 				.article-actions {
 					height: 60rpx;
@@ -2115,37 +2127,37 @@
 					box-shadow: 0 4rpx 15rpx rgba(0, 0, 0, 0.1);
 					border-radius: 0 0 12rpx 12rpx;
 					// #endif
-					
+
 					// #ifdef H5
 					height: 100rpx; // H5环境下增大高度，从80rpx增加到100rpx
 					border-top: 1px solid #eaeaea; // 添加顶部边框，与内容区分隔
 					padding-bottom: 10rpx; // 添加底部内边距
 					// #endif
-					
+
 					.action-item {
 						display: flex;
 						align-items: center;
 						justify-content: center;
 						font-size: 24rpx;
 						color: #333;
-						
+
 						// #ifdef H5
 						padding: 0 20rpx; // H5环境下增加内边距
 						font-size: 28rpx; // H5环境下增大字体
 						// #endif
-						
+
 						text {
 							margin-left: 6rpx;
-							
+
 							&.liked {
 								color: #ff6b6b;
 							}
-							
+
 							// #ifdef H5
 							margin-left: 10rpx; // H5环境下增大间距
 							// #endif
 						}
-						
+
 						&.manage-btn {
 							margin-left: auto;
 						}
@@ -2191,12 +2203,13 @@
 		display: inline-block;
 		transition: all 0.3s ease;
 		cursor: pointer;
-		
+
 		// #ifdef H5
 		&:hover {
 			transform: scale(1.1);
 			text-shadow: 0 0 3px rgba(67, 97, 238, 0.3);
 		}
+
 		// #endif
 	}
 
@@ -2207,7 +2220,8 @@
 		width: 100%;
 		box-sizing: border-box;
 		/* 为整个滚动区域添加底部安全距离 */
-		padding-bottom: 0; /* 移除底部padding */
+		padding-bottom: 0;
+		/* 移除底部padding */
 	}
 
 	.mp-container {
@@ -2218,7 +2232,8 @@
 
 	.mp-global {
 		/* 全局滚动模式下添加更大的底部安全距离 */
-		padding-bottom: 0; /* 移除底部padding，避免显示固定提示 */
+		padding-bottom: 0;
+		/* 移除底部padding，避免显示固定提示 */
 	}
 
 	/* 文章卡片样式 */
@@ -2315,7 +2330,7 @@
 		font-size: 24rpx;
 		color: #999;
 		/* 减少底部padding，确保在底部导航栏上方完全不可见 */
-		padding: 20rpx 0 30rpx; 
+		padding: 20rpx 0 30rpx;
 		width: 100%;
 	}
 
@@ -2355,5 +2370,6 @@
 	.manage-btn {
 		margin-left: auto;
 	}
+
 	// #endif
 </style>

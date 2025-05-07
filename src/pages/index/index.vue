@@ -167,7 +167,8 @@
 		nextTick,
 		watch,
 		onBeforeMount,
-		onUnmounted
+		onUnmounted,
+		getCurrentInstance
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
@@ -180,6 +181,8 @@
 	import UserSettings from '@/components/user-settings/user-settings.vue';
 	// 导入回到顶部组件
 	import BackToTop from '@/components/back-to-top/back-to-top.vue';
+	import http from '@/utils/request';
+	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
 
 	// 添加引用
 	const articleListRef = ref(null);
@@ -436,23 +439,6 @@
 			default:
 				return 'recommend';
 		}
-	};
-
-	/**
-	 * 获取基础URL
-	 */
-	const getBaseUrl = () => {
-		// #ifdef APP-PLUS
-		return 'http://10.9.99.181:8080'; // 安卓模拟器访问本机服务器的地址
-		// #endif
-
-		// #ifdef H5
-		return 'http://localhost:8080';
-		// #endif
-
-		// #ifdef MP-WEIXIN
-		return 'http://localhost:8080';
-		// #endif
 	};
 
 	/**

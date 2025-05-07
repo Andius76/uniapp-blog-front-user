@@ -183,6 +183,8 @@ import { ref, reactive, defineProps, defineEmits, watch, onMounted, onUnmounted,
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 import uniPopup from '@/uni_modules/uni-popup/components/uni-popup/uni-popup.vue';
 import uniPopupDialog from '@/uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.vue';
+import http from '@/utils/request';
+import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
 
 // 定义组件属性
 const props = defineProps({
@@ -407,17 +409,7 @@ const processImageUrl = (imageUrl) => {
 /**
  * 获取基础URL
  */
-const getBaseUrl = () => {
-  // #ifdef APP-PLUS
-  return 'http://10.9.248.114:8080'; // 替换为实际服务器IP
-  // #endif
-  
-  // #ifdef H5 || MP-WEIXIN
-  return 'http://localhost:8080';
-  // #endif
-  
-  return 'http://localhost:8080';
-};
+// 已引入统一的getBaseUrl，不需要本地定义
 
 // 修改头像
 const changeAvatar = (e) => {

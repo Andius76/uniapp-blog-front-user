@@ -15,13 +15,14 @@
 
 /**
  * 获取基础URL（根据不同平台进行适配）
+ * 这是整个应用中唯一的获取基础URL的方法，所有组件都应该引用这个方法
  * @returns {string} 基础URL
  */
 function getBaseUrl() {
 	// 获取当前运行的平台
 	// #ifdef APP-PLUS
 	// APP端不能使用localhost/127.0.0.1，需要使用本机IP地址
-	return 'http://10.9.99.181:8080'; // 请替换为开发服务器的IP地址
+	return 'http://10.9.135.132:8080'; // 请替换为开发服务器的IP地址
 	// #endif
 
 	// #ifdef H5 || MP-WEIXIN
@@ -262,3 +263,6 @@ const http = {
 };
 
 export default http;
+
+// 直接导出getBaseUrl函数，方便其他组件单独导入
+export { getBaseUrl };

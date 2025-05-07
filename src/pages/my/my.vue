@@ -269,6 +269,8 @@
 	import ArticleList from '@/components/article-list/article-list.vue';
 	// 导入回到顶部组件
 	import BackToTop from '@/components/back-to-top/back-to-top.vue';
+	import http from '@/utils/request';
+	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
 
 	// 默认个人简介
 	const DEFAULT_BIO = "这个人很懒，什么都没写";
@@ -377,19 +379,7 @@
 	/**
 	 * 获取基础URL
 	 */
-	const getBaseUrl = () => {
-		// #ifdef APP-PLUS
-		return 'http://10.9.99.181:8080'; // 安卓模拟器访问本机服务器的地址
-		// #endif
-
-		// #ifdef H5
-		return 'http://localhost:8080';
-		// #endif
-
-		// #ifdef MP-WEIXIN
-		return 'http://localhost:8080';
-		// #endif
-	};
+	// 已引入统一的getBaseUrl，不需要本地定义
 
 	// 处理图片URL格式
 	const formatAvatarUrl = (url) => {
