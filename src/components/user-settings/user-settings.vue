@@ -9,10 +9,12 @@
       :class="{ 
         'visible': panelVisible, 
         'fullscreen': true, 
-        'sliding': isSliding 
+        'sliding': isSliding,
+        'weapp-fix': true /* 添加小程序专用样式 */
       }"
       :style="{ 
-        transform: isSliding ? `translateY(${Math.max(0, touchStartY.value - touchCurrentY)}px)` : '' 
+        transform: isSliding ? `translateY(${Math.max(0, touchStartY.value - touchCurrentY)}px)` : '',
+        bottom: 0
       }"
     >
       <view class="panel-header">
@@ -247,8 +249,22 @@ const debounce = (fn, delay = 300) => {
 // 监听面板显示状态
 watch(() => props.visible, (newVal) => {
   if (newVal) {
-    // 先设置面板为可见
+    // 设置面板为可见
     panelVisible.value = true;
+    
+    // #ifdef APP-PLUS || MP-WEIXIN
+    // 在APP和小程序中特殊处理
+    setTimeout(() => {
+      if (panelVisible.value) {
+        console.log('强制刷新设置面板显示状态');
+        // 尝试强制刷新显示状态
+        panelVisible.value = false;
+        setTimeout(() => {
+          panelVisible.value = true;
+        }, 50);
+      }
+    }, 100);
+    // #endif
     
     // 延迟添加动画类，确保过渡效果正常
     nextTick(() => {
@@ -748,12 +764,20 @@ onMounted(() => {
     }
   });
   
-  // #ifdef H5
-  // 在H5环境下初始化panelVisible，确保设置面板在开始时正确显示
+  // 如果组件可见，立即设置面板可见状态
   if (props.visible) {
     panelVisible.value = true;
+    
+    // #ifdef APP-PLUS || MP-WEIXIN
+    // 在APP和小程序环境中添加额外延迟初始化
+    setTimeout(() => {
+      // 再次确保面板可见
+      if (props.visible && !panelVisible.value) {
+        panelVisible.value = true;
+      }
+    }, 100);
+    // #endif
   }
-  // #endif
 });
 
 // 组件卸载时
@@ -765,7 +789,19 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss">
+/* 全局样式修复 */
+page {
+  --window-height: 100vh;
+}
+
 .user-settings-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  
   // #ifdef H5
   // H5环境下强制禁止点击事件冒泡导致面板消失
   pointer-events: auto !important;
@@ -778,9 +814,10 @@ onUnmounted(() => {
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999;
+    z-index: 9998;
     opacity: 0;
     transition: opacity 0.3s ease;
+    pointer-events: auto;
     
     &.visible {
       opacity: 1;
@@ -792,15 +829,8 @@ onUnmounted(() => {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 750rpx;
-    background-color: #fff;
-    border-radius: 30rpx 30rpx 0 0;
-    z-index: 1000;
-    transform: translateY(100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    background-color: #ffffff;
     
     // #ifdef H5
     // H5环境下取消默认的滑入动画，改为直接显示
@@ -810,13 +840,37 @@ onUnmounted(() => {
     border-radius: 0 !important;
     // #endif
     
+    // #ifndef H5
+    /* 非H5环境使用固定高度 */
+    height: 80vh;
+    border-radius: 30rpx 30rpx 0 0;
+    transform: translateY(100%);
+    // #endif
+    
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.1);
+    
     &.visible {
-      transform: translateY(0);
+      // #ifndef H5
+      transform: translateY(0) !important;
+      // #endif
+    }
+    
+    /* 小程序专用修复 */
+    &.weapp-fix {
+      // #ifdef MP-WEIXIN
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      // #endif
     }
     
     &.fullscreen {
-      height: 100vh;
-      border-radius: 0;
+      // #ifndef H5
+      height: 80vh;
+      // #endif
       
       .panel-content {
         -webkit-overflow-scrolling: touch; // 增加iOS滚动惯性

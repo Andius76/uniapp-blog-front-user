@@ -265,4 +265,6 @@ const http = {
 export default http;
 
 // 直接导出getBaseUrl函数，方便其他组件单独导入
-export { getBaseUrl };
+export {
+	getBaseUrl
+};

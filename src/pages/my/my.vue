@@ -87,7 +87,7 @@
 		<!-- 用户设置组件 -->
 		<view v-if="data.showUserSettings" class="settings-overlay">
 			<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo"
-				:initialView="data.settingsInitialView" @update:visible="data.showUserSettings = $event"
+				:initialView="data.settingsInitialView" @update:visible="onSettingsVisibleChange"
 				@avatar-change="handleAvatarChange" @nickname-change="handleNicknameChange"
 				@bio-change="handleBioChange" @logout="handleLogout" />
 		</view>
@@ -200,7 +200,7 @@
 		<!-- 用户设置组件 -->
 		<view v-if="data.showUserSettings" class="settings-overlay">
 			<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo"
-				:initialView="data.settingsInitialView" @update:visible="data.showUserSettings = $event"
+				:initialView="data.settingsInitialView" @update:visible="onSettingsVisibleChange"
 				@avatar-change="handleAvatarChange" @nickname-change="handleNicknameChange"
 				@bio-change="handleBioChange" @logout="handleLogout" />
 		</view>
@@ -1481,6 +1481,20 @@
 			articleListRef.value.scrollToTop();
 		}
 	};
+
+	/**
+	 * 处理设置组件可见性变化
+	 */
+	const onSettingsVisibleChange = (visible) => {
+		// 加入延迟设置，确保动画完成后再真正隐藏组件
+		if (!visible) {
+			setTimeout(() => {
+				data.showUserSettings = visible;
+			}, 300);
+		} else {
+			data.showUserSettings = visible;
+		}
+	};
 </script>
 
 <style lang="scss">
@@ -2027,10 +2041,19 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background-color: rgba(0, 0, 0, 0.5);
-		z-index: 999;
-		display: flex;
-		justify-content: center;
-		align-items: center;
+		background-color: transparent;
+		z-index: 9995;
 	}
+
+	/* #ifdef APP-PLUS || MP-WEIXIN */
+	/* 确保在APP和小程序中用户设置组件能正确显示 */
+	:deep(.user-settings-wrapper) {
+		position: fixed !important;
+		top: 0 !important;
+		left: 0 !important;
+		right: 0 !important;
+		bottom: 0 !important;
+		z-index: 9999 !important;
+	}
+	/* #endif */
 </style>
