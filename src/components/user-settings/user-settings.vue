@@ -468,28 +468,47 @@ const changeAvatar = (e) => {
         title: '上传中...'
       });
       
-      setTimeout(() => {
+      // 使用实际的上传逻辑替代setTimeout模拟
+      // 通过emit让父组件处理上传逻辑，并接收处理结果
+      emit('avatar-change', tempFilePaths[0], (success, response) => {
         uni.hideLoading();
-        // 通知父组件头像已更改
-        emit('avatar-change', tempFilePaths[0]);
         
-        // 设置头像更新成功状态
-        isAvatarUpdated.value = true;
-        
-        // 显示成功提示
-        uni.showToast({
-          title: '头像更新成功',
-          icon: 'success',
-          duration: 2000
-        });
-        
-        // 3秒后重置状态
-        setTimeout(() => {
-          isAvatarUpdated.value = false;
-        }, 3000);
-        
-        // 成功后不关闭设置页面
-      }, 1500);
+        if (success) {
+          // 设置头像更新成功状态
+          isAvatarUpdated.value = true;
+          
+          // 显示成功提示
+          uni.showToast({
+            title: '头像更新成功',
+            icon: 'success',
+            duration: 2000
+          });
+          
+          // 3秒后重置状态
+          setTimeout(() => {
+            isAvatarUpdated.value = false;
+          }, 3000);
+        } else {
+          // 处理上传失败情况
+          const errorMsg = response?.message || '头像上传失败';
+          
+          // 特别处理"创建上传目录失败"错误
+          if (errorMsg.includes('创建上传目录失败')) {
+            uni.showModal({
+              title: '上传失败',
+              content: '系统暂时无法保存头像，请稍后再试或联系管理员处理。',
+              showCancel: false,
+              confirmText: '知道了'
+            });
+          } else {
+            uni.showToast({
+              title: errorMsg,
+              icon: 'none',
+              duration: 2000
+            });
+          }
+        }
+      });
     },
     fail: () => {
       // 用户取消选择头像，通知父组件操作已结束

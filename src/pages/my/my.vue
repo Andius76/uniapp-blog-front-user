@@ -732,9 +732,10 @@
 
 	/**
 	 * 修改用户头像
-	 * @param {String} newAvatar - 新头像地址
+	 * @param {String} newAvatar - 新头像地址 
+	 * @param {Function} callback - 可选的回调函数
 	 */
-	const handleAvatarChange = async (newAvatar) => {
+	const handleAvatarChange = async (newAvatar, callback) => {
 		try {
 			uni.showLoading({
 				title: '更新中...'
@@ -751,15 +752,41 @@
 					title: '头像更新成功',
 					icon: 'success'
 				});
+				
+				// 如果传入了回调函数，调用并传递成功状态
+				if (typeof callback === 'function') {
+					callback(true);
+				}
 			} else {
 				throw new Error(response.message || '头像更新失败');
 			}
 		} catch (error) {
 			console.error('头像更新失败:', error);
-			uni.showToast({
-				title: '头像更新失败，请重试',
-				icon: 'none'
-			});
+			
+			// 获取错误信息
+			const errorMessage = error.message || '头像更新失败，请重试';
+			
+			// 处理特定的错误
+			if (errorMessage.includes('创建上传目录失败')) {
+				uni.showModal({
+					title: '服务器错误',
+					content: '系统暂时无法保存头像，请联系管理员解决存储权限问题。',
+					showCancel: false
+				});
+			} else {
+				uni.showToast({
+					title: errorMessage,
+					icon: 'none'
+				});
+			}
+			
+			// 如果传入了回调函数，调用并传递失败状态和错误信息
+			if (typeof callback === 'function') {
+				callback(false, { 
+					message: errorMessage,
+					code: error.code || 500
+				});
+			}
 		} finally {
 			uni.hideLoading();
 		}
