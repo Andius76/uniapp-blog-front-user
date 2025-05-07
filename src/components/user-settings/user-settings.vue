@@ -248,64 +248,80 @@ const debounce = (fn, delay = 300) => {
 
 // 监听面板显示状态
 watch(() => props.visible, (newVal) => {
-  if (newVal) {
-    // 设置面板为可见
-    panelVisible.value = true;
-    
-    // #ifdef APP-PLUS || MP-WEIXIN
-    // 在APP和小程序中特殊处理
-    setTimeout(() => {
-      if (panelVisible.value) {
-        console.log('强制刷新设置面板显示状态');
-        // 尝试强制刷新显示状态
-        panelVisible.value = false;
-        setTimeout(() => {
-          panelVisible.value = true;
-        }, 50);
-      }
-    }, 100);
-    // #endif
-    
-    // 延迟添加动画类，确保过渡效果正常
-    nextTick(() => {
-      // 如果面板显示，根据初始视图设置显示界面
-      if (props.initialView === 'nickname') {
-        showNicknameEdit();
-      }
-      // 注册事件监听
-      registerBackButtonListener();
-      registerTabBarInterceptor();
-      // 重置状态
-      isSliding.value = false;
-      gestureLocked.value = false;
+  try {
+    if (newVal) {
+      // 设置面板为可见
+      panelVisible.value = true;
       
-      // 获取屏幕信息
-      uni.getSystemInfo({
-        success: (res) => {
-          panelWidth.value = res.windowWidth;
+      // #ifdef APP-PLUS || MP-WEIXIN
+      // 在APP和小程序中特殊处理
+      setTimeout(() => {
+        if (panelVisible.value) {
+          console.log('强制刷新设置面板显示状态');
+          // 尝试强制刷新显示状态
+          panelVisible.value = false;
+          setTimeout(() => {
+            panelVisible.value = true;
+          }, 50);
+        }
+      }, 100);
+      // #endif
+      
+      // 延迟添加动画类，确保过渡效果正常
+      nextTick(() => {
+        try {
+          // 如果面板显示，根据初始视图设置显示界面
+          if (props.initialView === 'nickname') {
+            showNicknameEdit();
+          }
+          // 注册事件监听
+          registerBackButtonListener();
+          registerTabBarInterceptor();
+          // 重置状态
+          isSliding.value = false;
+          gestureLocked.value = false;
+          
+          // 获取屏幕信息
+          uni.getSystemInfo({
+            success: (res) => {
+              panelWidth.value = res.windowWidth;
+            },
+            fail: (err) => {
+              console.error('获取系统信息失败:', err);
+              panelWidth.value = 375; // 默认宽度
+            }
+          });
+        } catch (e) {
+          console.error('设置面板初始化失败:', e);
         }
       });
-    });
-  } else {
-    // 面板关闭时使用防抖，避免频繁切换状态
-    debounce(() => {
-      // 先移除动画类
-      panelVisible.value = false;
-      // 重置所有状态
-      isEditingNickname.value = false;
-      isConfirmingLogout.value = false;
-      hasUnsavedChanges.value = false;
-      
-      // 移除事件监听
-      unregisterBackButtonListener();
-      unregisterTabBarInterceptor();
-      
-      // 锁定手势防止连续触发
-      gestureLocked.value = true;
-      setTimeout(() => {
-        gestureLocked.value = false;
-      }, 800);
-    });
+    } else {
+      // 面板关闭时使用防抖，避免频繁切换状态
+      debounce(() => {
+        try {
+          // 先移除动画类
+          panelVisible.value = false;
+          // 重置所有状态
+          isEditingNickname.value = false;
+          isConfirmingLogout.value = false;
+          hasUnsavedChanges.value = false;
+          
+          // 移除事件监听
+          unregisterBackButtonListener();
+          unregisterTabBarInterceptor();
+          
+          // 锁定手势防止连续触发
+          gestureLocked.value = true;
+          setTimeout(() => {
+            gestureLocked.value = false;
+          }, 800);
+        } catch (e) {
+          console.error('关闭设置面板失败:', e);
+        }
+      });
+    }
+  } catch (e) {
+    console.error('处理面板显示状态变化失败:', e);
   }
 });
 
@@ -676,8 +692,15 @@ const logout = async () => {
 
 // 注册返回按钮监听
 const registerBackButtonListener = () => {
+  // #ifdef APP-PLUS
+  // 仅在APP环境使用plus对象
+  if (plus && plus.key) {
+    plus.key.addEventListener('backbutton', handleBackButton);
+  }
+  // #endif
+  
+  // APP和小程序环境都使用拦截器
   // #ifdef APP-PLUS || MP-WEIXIN
-  plus?.key?.addEventListener('backbutton', handleBackButton);
   uni.addInterceptor('navigateBack', {
     success: handleBackButtonInterceptor
   });
@@ -686,9 +709,20 @@ const registerBackButtonListener = () => {
 
 // 移除返回按钮监听
 const unregisterBackButtonListener = () => {
+  // #ifdef APP-PLUS
+  // 仅在APP环境使用plus对象
+  if (plus && plus.key) {
+    plus.key.removeEventListener('backbutton', handleBackButton);
+  }
+  // #endif
+  
+  // APP和小程序环境都使用拦截器
   // #ifdef APP-PLUS || MP-WEIXIN
-  plus?.key?.removeEventListener('backbutton', handleBackButton);
-  uni.removeInterceptor('navigateBack');
+  try {
+    uni.removeInterceptor('navigateBack');
+  } catch (e) {
+    console.error('移除拦截器失败:', e);
+  }
   // #endif
 };
 
@@ -716,16 +750,24 @@ const handleBackButtonInterceptor = (e) => {
 // 注册TabBar点击拦截器
 const registerTabBarInterceptor = () => {
   // #ifdef MP-WEIXIN || APP-PLUS
-  uni.addInterceptor('switchTab', {
-    invoke: interceptTabBarClick
-  });
+  try {
+    uni.addInterceptor('switchTab', {
+      invoke: interceptTabBarClick
+    });
+  } catch (e) {
+    console.error('注册TabBar拦截器失败:', e);
+  }
   // #endif
 };
 
 // 移除TabBar点击拦截器
 const unregisterTabBarInterceptor = () => {
   // #ifdef MP-WEIXIN || APP-PLUS
-  uni.removeInterceptor('switchTab');
+  try {
+    uni.removeInterceptor('switchTab');
+  } catch (e) {
+    console.error('移除TabBar拦截器失败:', e);
+  }
   // #endif
 };
 
@@ -747,20 +789,32 @@ const interceptTabBarClick = (e) => {
 // 组件挂载时
 onMounted(() => {
   // 监听页面路由变化，确保关闭设置面板
-  uni.onTabBarMidButtonTap(() => {
-    if (props.visible) {
-      if (hasUnsavedChanges.value) {
-        showConfirmAbandonDialog();
-      } else {
-        closeSettings();
+  try {
+    // #ifdef APP-PLUS
+    // TabBar中间按钮点击监听仅在APP中有效
+    uni.onTabBarMidButtonTap(() => {
+      if (props.visible) {
+        if (hasUnsavedChanges.value) {
+          showConfirmAbandonDialog();
+        } else {
+          closeSettings();
+        }
       }
-    }
-  });
+    });
+    // #endif
+  } catch (e) {
+    console.error('注册TabBar中间按钮点击监听失败:', e);
+  }
   
   // 获取系统信息
   uni.getSystemInfo({
     success: (res) => {
       panelWidth.value = res.windowWidth;
+    },
+    fail: (err) => {
+      console.error('获取系统信息失败:', err);
+      // 设置默认宽度
+      panelWidth.value = 375;
     }
   });
   
@@ -782,9 +836,13 @@ onMounted(() => {
 
 // 组件卸载时
 onUnmounted(() => {
-  // 确保移除所有事件监听器
-  unregisterBackButtonListener();
-  unregisterTabBarInterceptor();
+  try {
+    // 确保移除所有事件监听器
+    unregisterBackButtonListener();
+    unregisterTabBarInterceptor();
+  } catch (e) {
+    console.error('移除事件监听器失败:', e);
+  }
 });
 </script>
 
@@ -840,8 +898,23 @@ page {
     border-radius: 0 !important;
     // #endif
     
-    // #ifndef H5
-    /* 非H5环境使用固定高度 */
+    // #ifdef MP-WEIXIN
+    /* 微信小程序专用样式 */
+    width: 100% !important;
+    height: 85vh;
+    border-radius: 20rpx 20rpx 0 0;
+    transform: translateY(100%);
+    // #endif
+    
+    // #ifdef APP-PLUS
+    /* APP专用样式 */
+    height: 80vh;
+    border-radius: 30rpx 30rpx 0 0;
+    transform: translateY(100%);
+    // #endif
+    
+    // #ifndef H5 || APP-PLUS || MP-WEIXIN
+    /* 其他平台样式 */
     height: 80vh;
     border-radius: 30rpx 30rpx 0 0;
     transform: translateY(100%);
