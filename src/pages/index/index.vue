@@ -5,7 +5,6 @@
 		<view class="header-fixed">
 			<view class="header-top">
 				<navigator url="/pages/index/index" class="logo">首页</navigator>
-				<view class="my-link hover-effect" hover-class="my-link-active" @click="navigateToMyPage">我的</view>
 				<!-- 搜索框 -->
 				<view class="search-bar">
 					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
@@ -16,7 +15,7 @@
 					<view class="notification" @click="goToMessage">
 						<uni-icons type="notification" size="24" />
 					</view>
-					<view class="user-info" @click.stop="handleUserClick">
+					<view class="user-info" @click.stop="navigateToMyPage">
 						<image class="avatar" :src="formatAvatarUrl(userInfo.avatar)" mode="aspectFill"></image>
 						<text class="nickname">{{ userInfo.nickname || '未登录' }}</text>
 					</view>
@@ -1145,13 +1144,6 @@
 				font-size: 18px;
 				font-weight: bold;
 				color: #333;
-				padding: 0 15px;
-				white-space: nowrap;
-			}
-
-			.my-link {
-				font-size: 16px;
-				color: #666;
 				padding: 0 15px;
 				white-space: nowrap;
 			}
