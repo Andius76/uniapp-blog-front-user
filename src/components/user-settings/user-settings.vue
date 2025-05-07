@@ -456,6 +456,25 @@ const changeAvatar = (e) => {
   // 触发头像选择前事件，通知父组件正在进行特殊操作
   emit('before-avatar-select');
   
+  // 获取token
+  const token = uni.getStorageSync('token');
+  console.log('当前token:', token); // 调试日志
+  if (!token) {
+    uni.showModal({
+      title: '提示',
+      content: '登录信息已失效，请重新登录',
+      confirmText: '去登录',
+      success: (res) => {
+        if (res.confirm) {
+          uni.navigateTo({
+            url: '/pages/login/login'
+          });
+        }
+      }
+    });
+    return;
+  }
+  
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
@@ -463,59 +482,182 @@ const changeAvatar = (e) => {
     success: (res) => {
       const tempFilePaths = res.tempFilePaths;
       
-      // 模拟上传成功后更新头像
-      uni.showLoading({
-        title: '上传中...'
-      });
+      // 验证文件大小（限制为2MB）
+      uni.getFileInfo({
+        filePath: tempFilePaths[0],
+        success: (fileInfo) => {
+          const fileSizeInMB = fileInfo.size / (1024 * 1024);
+          if (fileSizeInMB > 2) {
+            uni.showToast({
+              title: '图片大小不能超过2MB',
+              icon: 'none'
+            });
+            return;
+          }
       
-      // 使用实际的上传逻辑替代setTimeout模拟
-      // 通过emit让父组件处理上传逻辑，并接收处理结果
-      emit('avatar-change', tempFilePaths[0], (success, response) => {
-        uni.hideLoading();
-        
-        if (success) {
-          // 设置头像更新成功状态
-          isAvatarUpdated.value = true;
-          
-          // 显示成功提示
-          uni.showToast({
-            title: '头像更新成功',
-            icon: 'success',
-            duration: 2000
+          // 显示上传中提示
+          uni.showLoading({
+            title: '上传中...'
           });
           
-          // 3秒后重置状态
-          setTimeout(() => {
-            isAvatarUpdated.value = false;
-          }, 3000);
-        } else {
-          // 处理上传失败情况
-          const errorMsg = response?.message || '头像上传失败';
+          const baseUrl = getBaseUrl();
           
-          // 特别处理"创建上传目录失败"错误
-          if (errorMsg.includes('创建上传目录失败')) {
-            uni.showModal({
-              title: '上传失败',
-              content: '系统暂时无法保存头像，请稍后再试或联系管理员处理。',
-              showCancel: false,
-              confirmText: '知道了'
-            });
-          } else {
-            uni.showToast({
-              title: errorMsg,
-              icon: 'none',
-              duration: 2000
-            });
-          }
+          // 直接上传头像到服务器
+          uni.uploadFile({
+            url: baseUrl + '/api/user/avatar',
+            filePath: tempFilePaths[0],
+            name: 'avatar', // 确保参数名与后端API一致
+            header: {
+              // 确保使用正确的Bearer格式
+              'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+            },
+            success: (uploadRes) => {
+              uni.hideLoading();
+              
+              console.log('头像上传响应:', uploadRes);
+              console.log('响应状态码:', uploadRes.statusCode);
+              console.log('请求头:', JSON.stringify({
+                'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+              }));
+              
+              // 处理403错误
+              if (uploadRes.statusCode === 403) {
+                uni.showModal({
+                  title: '授权失败',
+                  content: '登录信息已过期，请重新登录',
+                  confirmText: '去登录',
+                  success: (res) => {
+                    if (res.confirm) {
+                      // 清除token
+                      uni.removeStorageSync('token');
+                      uni.navigateTo({
+                        url: '/pages/login/login'
+                      });
+                    }
+                  }
+                });
+                return;
+              }
+              
+              try {
+                // 解析响应数据
+                let responseData = uploadRes.data;
+                if (typeof responseData === 'string') {
+                  responseData = JSON.parse(responseData);
+                }
+                
+                console.log('解析后的响应数据:', responseData);
+                
+                // 专门处理创建目录失败的错误
+                if (responseData.code === 500 && responseData.message && responseData.message.includes('创建上传目录失败')) {
+                  console.error('服务器存储错误:', responseData.message);
+                  uni.hideLoading();
+                  uni.showModal({
+                    title: '上传失败',
+                    content: '服务器无法创建保存头像的目录，这是服务器配置问题。请联系管理员解决存储权限问题，或稍后再试。',
+                    showCancel: false,
+                    confirmText: '我知道了'
+                  });
+                  return;
+                }
+                
+                // 检查响应状态
+                if (uploadRes.statusCode === 200 && responseData.code === 200) {
+                  // 获取头像URL
+                  let avatarUrl = '';
+                  if (responseData.data && responseData.data.avatarUrl) {
+                    avatarUrl = responseData.data.avatarUrl;
+                  } else if (responseData.data) {
+                    avatarUrl = typeof responseData.data === 'string' ? responseData.data : '';
+                  }
+                  
+                  // 设置头像更新成功状态
+                  isAvatarUpdated.value = true;
+                  
+                  // 通知父组件头像已更改
+                  emit('avatar-change', avatarUrl || tempFilePaths[0]);
+                  
+                  // 显示成功提示
+                  uni.showToast({
+                    title: '头像更新成功',
+                    icon: 'success',
+                    duration: 2000
+                  });
+                  
+                  // 3秒后重置状态
+                  setTimeout(() => {
+                    isAvatarUpdated.value = false;
+                  }, 3000);
+                } else {
+                  // 其他错误
+                  const errorMsg = responseData.message || '头像上传失败';
+                  handleUploadError(errorMsg);
+                }
+              } catch (e) {
+                console.error('处理上传响应失败:', e);
+                handleUploadError('处理响应数据失败');
+              }
+            },
+            fail: (err) => {
+              uni.hideLoading();
+              console.error('头像上传请求失败:', err);
+              handleUploadError(err.errMsg || '网络错误，上传失败');
+            }
+          });
+        },
+        fail: (err) => {
+          console.log('获取文件信息失败:', err);
+          handleUploadError('获取文件信息失败');
         }
       });
     },
-    fail: () => {
+    fail: (err) => {
+      console.log('用户取消选择头像:', err);
       // 用户取消选择头像，通知父组件操作已结束
       emit('avatar-change', props.userInfo.avatar);
-      console.log('用户取消选择头像');
     }
   });
+};
+
+// 处理上传错误
+const handleUploadError = (errorMsg) => {
+  console.error('头像上传错误:', errorMsg);
+  
+  // 特别处理"创建上传目录失败"错误
+  if (errorMsg.includes('创建上传目录失败')) {
+    uni.showModal({
+      title: '服务器存储错误',
+      content: '服务器无法创建保存头像的目录，这是服务器配置问题。请联系管理员解决或稍后再试。',
+      showCancel: false,
+      confirmText: '我知道了'
+    });
+    // 可能需要向服务器发送错误报告或记录日志
+    console.warn('服务器文件系统错误，可能是目录权限问题');
+  } else if (errorMsg.includes('权限不足') || errorMsg.includes('授权失败')) {
+    // 处理授权相关错误
+    uni.showModal({
+      title: '授权失败',
+      content: '您的登录信息已过期，请重新登录',
+      confirmText: '去登录',
+      success: (res) => {
+        if (res.confirm) {
+          uni.removeStorageSync('token');
+          uni.navigateTo({
+            url: '/pages/login/login'
+          });
+        }
+      }
+    });
+  } else {
+    // 延迟显示错误提示，避免被其他UI元素覆盖
+    setTimeout(() => {
+      uni.showToast({
+        title: errorMsg.length > 20 ? errorMsg.substring(0, 20) + '...' : errorMsg,
+        icon: 'none',
+        duration: 3000
+      });
+    }, 100);
+  }
 };
 
 // 显示昵称编辑界面
@@ -591,6 +733,23 @@ const handleTouchMove = (e) => {
         isSliding.value = true;
         e.preventDefault();
       }
+    }
+  }
+  // #endif
+  
+  // #ifdef H5
+  // H5环境下特殊处理，从右向左滑动时关闭侧边栏
+  if (!props.visible || gestureLocked.value) return;
+  
+  if (e.touches && e.touches[0] && touchStartX.value) {
+    const currentX = e.touches[0].clientX;
+    // 计算水平滑动距离
+    const diffX = currentX - touchStartX.value;
+    
+    // 从右向左滑动超过阈值时关闭设置面板
+    if (diffX < -touchThreshold) {
+      closeSettings();
+      touchStartX.value = 0;
     }
   }
   // #endif
@@ -910,11 +1069,38 @@ page {
     background-color: #ffffff;
     
     // #ifdef H5
-    // H5环境下取消默认的滑入动画，改为直接显示
-    transform: none !important;
-    height: auto !important;
-    position: relative !important;
-    border-radius: 0 !important;
+    // H5环境样式，侧边设置风格
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: auto !important;
+    width: 360px !important; // 桌面端宽度
+    max-width: 85% !important; // 移动端最大宽度百分比
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 8px 0 0 8px !important;
+    transform: translateX(100%) !important;
+    transition: transform 0.3s ease !important;
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1) !important;
+    overflow-y: auto !important; // 允许内容滚动
+
+    &.visible {
+      transform: translateX(0) !important;
+    }
+    
+    // H5侧边栏样式优化
+    .panel-header {
+      position: sticky !important;
+      top: 0 !important;
+      background-color: #fff !important;
+      z-index: 10 !important;
+    }
+    
+    .panel-content {
+      height: auto !important;
+      min-height: calc(100vh - 150px) !important;
+    }
     // #endif
     
     // #ifdef MP-WEIXIN
@@ -945,9 +1131,7 @@ page {
     box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.1);
     
     &.visible {
-      // #ifndef H5
       transform: translateY(0) !important;
-      // #endif
     }
     
     /* 小程序专用修复 */
@@ -1247,6 +1431,13 @@ page {
       position: sticky;
       bottom: 0;
       border-top: 2rpx solid #f5f5f5;
+      
+      // #ifdef H5
+      // H5侧边栏版本信息样式
+      position: relative !important;
+      margin-top: auto !important;
+      padding: 20px 0 !important;
+      // #endif
       
       text {
         font-size: 24rpx;

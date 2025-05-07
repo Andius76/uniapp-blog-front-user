@@ -73,4 +73,24 @@ uni-page-body {
   min-height: 100% !important;
 }
 /* #endif */
+
+/* 全局弹窗层级修复 */
+/* #ifdef H5 */
+/* 确保uni弹窗显示在最顶层 */
+.uni-popup {
+  z-index: 99999 !important;
+}
+
+.uni-popup .uni-popup__mask {
+  z-index: 99998 !important;
+}
+
+.uni-popup .uni-popup__wrapper {
+  z-index: 99999 !important;
+}
+
+.uni-toast {
+  z-index: 100000 !important;
+}
+/* #endif */
 </style>
