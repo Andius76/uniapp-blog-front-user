@@ -1400,6 +1400,53 @@
 			return '';
 		}
 		
+		// APP环境特殊处理
+		// #ifdef APP-PLUS
+		console.log('[封面处理] 检测到APP环境，应用特殊处理');
+		
+		// 完整URL处理：如果已经是完整URL（包含http）则不处理
+		if (url.startsWith('http')) {
+			// 检查并修复双斜杠问题
+			if (url.includes('//uploads')) {
+				url = url.replace('//uploads', '/uploads');
+				console.log('[封面处理] APP-修复双斜杠问题，结果:', url);
+			}
+			console.log('[封面处理] APP-返回完整URL:', url);
+			return url;
+		}
+		// 静态资源处理：如果是静态资源路径则不处理
+		else if (url.startsWith('/static')) {
+			console.log('[封面处理] APP-返回静态资源路径:', url);
+			return url;
+		}
+		
+		// 处理文章图片路径
+		if (url.includes('articles') || url.includes('thumbnails')) {
+			// 提取文件名
+			const fileName = url.split('/').pop();
+			// 构建完整路径
+			let fullUrl;
+			if (url.includes('thumbnails')) {
+				fullUrl = getBaseUrl() + '/uploads/articles/thumbnails/' + fileName;
+			} else {
+				fullUrl = getBaseUrl() + '/uploads/articles/' + fileName;
+			}
+			console.log('[封面处理] APP-构建文章图片完整路径:', fullUrl);
+			return fullUrl;
+		} else {
+			// 默认假设是文章图片
+			let fullUrl;
+			if (url.startsWith('/')) {
+				fullUrl = getBaseUrl() + url;
+			} else {
+				fullUrl = getBaseUrl() + '/uploads/articles/' + url;
+			}
+			console.log('[封面处理] APP-构建默认文章图片路径:', fullUrl);
+			return fullUrl;
+		}
+		// #endif
+		
+		// 非APP环境的处理
 		// 完整URL处理：如果已经是完整URL（包含http）则不处理
 		if (url.startsWith('http')) {
 			// 检查并修复双斜杠问题
