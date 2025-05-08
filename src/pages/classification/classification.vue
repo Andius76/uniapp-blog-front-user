@@ -74,14 +74,13 @@
 					</view>
 
 					<!-- 文章内容 -->
-					<view class="article-content" @click="viewArticleDetail(article.id)">
+					<view class="article-content" @click="viewArticleDetail(article.id)" :class="{'no-cover': !article.coverImage}">
 						<text class="article-title">{{article.title}}</text>
-						<text class="article-summary">{{formatArticleSummary(article.summary)}}...全文</text>
+						<text class="article-summary">{{formatArticleSummary(article.summary)}}</text>
 
-						<!-- 文章封面图片 -->
+						<!-- 文章封面图片 - 仅当真正有封面时才显示 -->
 						<view class="article-image" v-if="article.coverImage">
 							<image :src="article.coverImage" mode="aspectFill" class="single-image" @error="handleImageError(article)"></image>
-							<text class="debug-info" v-if="false">封面URL: {{article.coverImage}}</text>
 						</view>
 						
 						<!-- 文章标签 -->
@@ -319,7 +318,7 @@ const viewAuthorProfile = (authorId) => {
  * 格式化文章摘要
  */
 const formatArticleSummary = (summary) => {
-	if (!summary) return '暂无摘要';
+	if (!summary) return '暂无摘要...全文';
 	
 	// 去除HTML标签
 	summary = summary.replace(/<[^>]+>/g, '');
@@ -329,7 +328,9 @@ const formatArticleSummary = (summary) => {
 	
 	// 限制长度
 	const maxLength = 80;
-	return summary.length > maxLength ? summary.substring(0, maxLength) : summary;
+	return summary.length > maxLength ? 
+		summary.substring(0, maxLength) + '...全文' : 
+		summary + '...全文';
 };
 
 /**
@@ -405,10 +406,39 @@ const handleUserAvatarError = (index) => {
  */
 const handleImageError = (article) => {
 	// 显示错误日志
-	console.error('图片加载错误:', article.id, article.title);
+	console.error('图片加载错误:', article.id, article.title, article.coverImage);
 	
-	// 替换为默认图片
-	article.coverImage = '/static/images/img1.png';
+	// 仅当文章确实有封面图时才尝试修复
+	if (article.coverImage) {
+		// URL格式问题处理
+		if (article.coverImage.includes('null') || article.coverImage.includes('undefined')) {
+			console.log('封面图片含有无效值，移除封面');
+			article.coverImage = null;
+			return;
+		}
+		
+		// 尝试修复URL格式问题
+		if (article.coverImage.startsWith('/uploads')) {
+			console.log('尝试修复URL格式: 添加基础URL');
+			const newUrl = getBaseUrl() + article.coverImage;
+			console.log(`修复URL: ${article.coverImage} -> ${newUrl}`);
+			article.coverImage = newUrl;
+			return;
+		}
+		
+		// 检查是否为相对路径
+		if (!article.coverImage.startsWith('http') && !article.coverImage.startsWith('/static')) {
+			console.log('尝试修复相对路径');
+			const newUrl = getBaseUrl() + '/' + article.coverImage;
+			console.log(`修复URL: ${article.coverImage} -> ${newUrl}`);
+			article.coverImage = newUrl;
+			return;
+		}
+		
+		// 如果上述修复都不成功，移除封面
+		console.log('无法修复封面图片URL，移除封面');
+		article.coverImage = null;
+	}
 };
 
 /**
@@ -632,7 +662,8 @@ const loadArticles = async (refresh = false) => {
 		const params = {
 			page: currentPage.value,
 			pageSize: pageSize.value,
-			sort: 'new'
+			sort: 'new',
+			timestamp: new Date().getTime() // 添加时间戳防止缓存
 		};
 		
 		// 添加标签过滤
@@ -640,22 +671,94 @@ const loadArticles = async (refresh = false) => {
 			params.tag = currentTag.value;
 		}
 		
+		console.log('请求参数:', params, '当前标签:', currentTag.value);
+		
 		// 发送请求
 		const res = await http.get('/api/article', params);
 		
 		if (res.code === 200 && res.data) {
+			// 获取文章列表
+			let articles = res.data.list || [];
+			console.log(`获取到${articles.length}篇文章数据`);
+			
+			// 处理每篇文章的数据
+			articles = articles.map(article => {
+				// 输出原始数据用于调试
+				console.log(`[文章${article.id}] 标题: ${article.title}`);
+				
+				// 尝试从多种可能的字段名获取封面图片URL
+				let coverImage = null;
+				
+				// 优先级1: coverImage字段
+				if (article.coverImage) {
+					coverImage = article.coverImage;
+					console.log(`[文章${article.id}] 使用coverImage字段:`, coverImage);
+				} 
+				// 优先级2: cover_image字段
+				else if (article.cover_image) {
+					coverImage = article.cover_image;
+					console.log(`[文章${article.id}] 使用cover_image字段:`, coverImage);
+				}
+				// 优先级3: thumbnail字段
+				else if (article.thumbnail) {
+					coverImage = article.thumbnail;
+					console.log(`[文章${article.id}] 使用thumbnail字段:`, coverImage);
+				}
+				// 优先级4: 从文章内容中提取第一张图片
+				else if (article.content && article.content.includes('<img')) {
+					const imgMatch = article.content.match(/<img[^>]+src=['"]([^'"]+)['"]/);
+					if (imgMatch && imgMatch[1]) {
+						coverImage = imgMatch[1];
+						console.log(`[文章${article.id}] 从内容提取图片:`, coverImage);
+					}
+				}
+				
+				// 使用formatArticleImage统一处理封面图片URL
+				if (coverImage) {
+					article.coverImage = formatArticleImage(coverImage);
+					console.log(`[文章${article.id}] 处理后的封面URL:`, article.coverImage);
+				} else {
+					article.coverImage = null; // 确保没有封面时设为null
+					console.log(`[文章${article.id}] 无封面图片`);
+				}
+				
+				// 处理作者头像
+				if (article.author && article.author.avatar) {
+					article.author.avatar = formatAvatarUrl(article.author.avatar);
+				}
+				
+				return article;
+			});
+			
 			// 如果是刷新，直接替换列表；否则，追加数据
 			if (refresh) {
-				articleList.value = res.data.list || [];
+				articleList.value = articles;
 			} else {
-				articleList.value = [...articleList.value, ...(res.data.list || [])];
+				articleList.value = [...articleList.value, ...articles];
 			}
 			
+			// 确保每个文章都有基本属性
+			articleList.value.forEach(article => {
+				// 确保有基本的计数字段
+				article.commentCount = article.commentCount || 0;
+				article.likeCount = article.likeCount || 0;
+				article.collectCount = article.collectCount || 0;
+				
+				// 确保有基本的状态字段
+				article.isLiked = !!article.isLiked;
+				article.isCollected = !!article.isCollected;
+				
+				// 确保有标签数组
+				if (!article.tags || !Array.isArray(article.tags)) {
+					article.tags = [];
+				}
+			});
+			
 			// 更新是否有更多数据的标志
-			noMoreData.value = articleList.value.length >= res.data.total;
+			noMoreData.value = articles.length < pageSize.value;
 			
 			// 如果成功加载，递增页码
-			if (res.data.list && res.data.list.length > 0) {
+			if (articles.length > 0) {
 				currentPage.value++;
 			}
 		} else {
@@ -739,6 +842,107 @@ onMounted(() => {
 		}
 	});
 });
+
+/**
+ * 处理文章封面图片URL
+ * @param {String} url - 图片URL
+ * @return {String} 处理后的图片URL
+ */
+const formatArticleImage = (url) => {
+	console.log('[封面处理] 输入图片URL:', url);
+	if (!url) {
+		console.log('[封面处理] 空URL，返回空字符串');
+		return '';
+	}
+	
+	// 移除URL中可能存在的多余空格
+	url = url.trim();
+	
+	// 确保不是null或undefined字符串
+	if (url === 'null' || url === 'undefined' || url === '') {
+		console.log('[封面处理] 无效URL值，返回空字符串');
+		return '';
+	}
+	
+	// APP环境特殊处理
+	// #ifdef APP-PLUS
+	console.log('[封面处理] 检测到APP环境，应用特殊处理');
+	
+	// 使用特定的APP环境基础URL
+	const appBaseUrl = 'http://10.9.135.132:8080';
+	
+	// 完整URL处理：如果已经是完整URL，需要特别处理localhost情况
+	if (url.startsWith('http')) {
+		// 检查是否包含localhost或127.0.0.1，需要替换为真实IP
+		if (url.includes('localhost') || url.includes('127.0.0.1')) {
+			// 保留路径部分，替换主机部分
+			const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
+			const newUrl = appBaseUrl + urlPath;
+			console.log(`[封面处理] APP-替换localhost: ${url} -> ${newUrl}`);
+			return newUrl;
+		}
+		
+		// 检查并修复双斜杠问题
+		if (url.includes('//uploads')) {
+			url = url.replace('//uploads', '/uploads');
+			console.log('[封面处理] APP-修复双斜杠问题，结果:', url);
+		}
+		console.log('[封面处理] APP-返回完整URL:', url);
+		return url;
+	}
+	// 静态资源处理：如果是静态资源路径则不处理
+	else if (url.startsWith('/static')) {
+		console.log('[封面处理] APP-返回静态资源路径:', url);
+		return url;
+	}
+	// 相对路径处理：添加基础URL
+	else {
+		// 如果以/开头，直接拼接
+		if (url.startsWith('/')) {
+			const newUrl = appBaseUrl + url;
+			console.log(`[封面处理] APP-添加基础URL: ${url} -> ${newUrl}`);
+			return newUrl;
+		} else {
+			// 否则添加/再拼接
+			const newUrl = appBaseUrl + '/' + url;
+			console.log(`[封面处理] APP-添加基础URL和斜杠: ${url} -> ${newUrl}`);
+			return newUrl;
+		}
+	}
+	// #endif
+	
+	// 非APP环境处理（H5、小程序等）
+	// 完整URL直接返回
+	if (url.startsWith('http')) {
+		// 检查并修复双斜杠问题
+		if (url.includes('//uploads')) {
+			url = url.replace('//uploads', '/uploads');
+			console.log('[封面处理] 修复双斜杠问题，结果:', url);
+		}
+		console.log('[封面处理] 返回完整URL:', url);
+		return url;
+	}
+	// 静态资源直接返回
+	else if (url.startsWith('/static')) {
+		console.log('[封面处理] 返回静态资源路径:', url);
+		return url;
+	}
+	// 相对路径添加基础URL
+	else {
+		const baseUrl = getBaseUrl();
+		// 以/开头，直接拼接
+		if (url.startsWith('/')) {
+			const newUrl = baseUrl + url;
+			console.log(`[封面处理] 添加基础URL: ${url} -> ${newUrl}`);
+			return newUrl;
+		} else {
+			// 否则添加/再拼接
+			const newUrl = baseUrl + '/' + url;
+			console.log(`[封面处理] 添加基础URL和斜杠: ${url} -> ${newUrl}`);
+			return newUrl;
+		}
+	}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -855,6 +1059,12 @@ onMounted(() => {
 	background-color: #fff;
 	border-radius: 12rpx;
 	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
+	// 设置合理的最小高度
+	min-height: 200rpx;
+	// 限制最大高度，防止卡片过高
+	max-height: 600rpx;
+	// 允许内容溢出时滚动
+	overflow: hidden;
 }
 
 .user-info {
@@ -895,6 +1105,23 @@ onMounted(() => {
 .article-content {
 	padding: 10rpx 0;
 	
+	// 针对无封面文章的样式调整
+	&.no-cover {
+		.article-title {
+			font-size: 34rpx;
+			margin-bottom: 20rpx;
+		}
+		
+		.article-summary {
+			font-size: 30rpx;
+			margin-bottom: 20rpx;
+		}
+		
+		.article-tags {
+			margin-top: 15rpx;
+		}
+	}
+	
 	.article-title {
 		font-size: 32rpx;
 		font-weight: bold;
@@ -902,6 +1129,12 @@ onMounted(() => {
 		line-height: 1.4;
 		margin-bottom: 15rpx;
 		display: block;
+		// 添加文本溢出处理
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 2; // 最多显示2行
+		-webkit-box-orient: vertical;
 	}
 	
 	.article-summary {
@@ -910,6 +1143,13 @@ onMounted(() => {
 		line-height: 1.5;
 		margin-bottom: 15rpx;
 		display: block;
+		// 添加文本溢出处理
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-line-clamp: 3; // 最多显示3行
+		-webkit-box-orient: vertical;
+		word-break: break-all; // 允许在任意字符间断行
 	}
 }
 
@@ -923,6 +1163,7 @@ onMounted(() => {
 		width: 100%;
 		height: 340rpx;
 		display: block;
+		object-fit: cover; // 确保图片正确裁剪，不变形
 	}
 }
 
