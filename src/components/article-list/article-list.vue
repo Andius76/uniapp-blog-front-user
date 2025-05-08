@@ -1240,17 +1240,8 @@
 		return plainText.length > maxLength ? plainText.substring(0, maxLength) : plainText;
 	};
 
-	// 处理带有展开提示的文章摘要
-	const formatSummary = (html, maxLength = 25) => {
-		if (!html) return '';
-		// 替换所有HTML标签为空字符串
-		const plainText = html.replace(/<\/?[^>]+(>|$)/g, '');
-		// 限制文本长度并添加展开文本
-		if (plainText.length > maxLength) {
-			return `${plainText.substring(0, maxLength)}<span class="expand-text">...展开</span>`;
-		}
-		return plainText;
-	};
+	// 处理带有展开提示的文章摘要 - 删除，使用底部定义的函数
+	/* 原formatSummary函数定义已删除，使用底部新定义的函数 */
 
 	// 处理下拉刷新
 	const handleRefresh = () => {
@@ -1806,8 +1797,8 @@
 		// 去除HTML标签
 		let plainText = summary.replace(/<\/?[^>]+(>|$)/g, '');
 
-		// 限制长度
-		const maxLength = 50;
+		// 统一所有平台的摘要字数限制，使用H5的标准
+		const maxLength = 100; // 增加字数限制，使其与H5一致
 		if (plainText.length > maxLength) {
 			plainText = plainText.substring(0, maxLength) + '...全文';
 		} else {
@@ -1815,6 +1806,25 @@
 		}
 
 		return plainText;
+	};
+
+	// 添加HTML格式化方法，用于H5富文本摘要显示
+	const formatSummary = (summary) => {
+		if (!summary) return '<p style="color:#666;font-size:28rpx;">暂无摘要</p>';
+		
+		// 去除HTML标签以获取纯文本
+		let plainText = summary.replace(/<\/?[^>]+(>|$)/g, '');
+		
+		// 统一所有平台的摘要字数限制
+		const maxLength = 100;
+		if (plainText.length > maxLength) {
+			plainText = plainText.substring(0, maxLength) + '...全文';
+		} else {
+			plainText += '...全文';
+		}
+		
+		// 返回带样式的HTML，确保溢出时正确处理
+		return `<p style="color:#666;font-size:28rpx;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-all;">${plainText}</p>`;
 	};
 </script>
 
@@ -2048,6 +2058,7 @@
 							-webkit-line-clamp: 1;
 							-webkit-box-orient: vertical;
 							line-height: 1.3;
+							word-break: break-all; /* 添加自动换行 */
 
 							// #ifdef H5
 							font-size: 36rpx; // H5环境下增大字体
@@ -2061,10 +2072,13 @@
 							color: #666;
 							overflow: hidden;
 							text-overflow: ellipsis;
-							white-space: nowrap;
-							/* 确保单行显示 */
+							display: -webkit-box;
+							-webkit-line-clamp: 3;  /* 从单行改为3行显示 */
+							-webkit-box-orient: vertical;
 							line-height: 1.3;
 							flex: 1;
+							word-break: break-all;  /* 添加自动换行 */
+							white-space: normal;    /* 移除单行显示设置 */
 
 							// #ifdef H5
 							font-size: 28rpx; // H5环境下增大字体
@@ -2232,8 +2246,7 @@
 
 	.mp-global {
 		/* 全局滚动模式下添加更大的底部安全距离 */
-		padding-bottom: 0;
-		/* 移除底部padding，避免显示固定提示 */
+		padding-bottom: 140rpx; /* 修改底部间距，确保内容不被底部导航栏遮挡 */
 	}
 
 	/* 文章卡片样式 */
@@ -2262,22 +2275,24 @@
 		-webkit-box-orient: vertical;
 		word-break: break-all;
 		width: 100%;
+		min-height: 90rpx; /* 添加最小高度，确保标题有足够空间 */
 	}
 
 	/* 文章摘要样式 */
 	.mp-summary {
-		font-size: 26rpx;
+		font-size: 28rpx; /* 增大字体大小以匹配H5 */
 		color: #666;
 		line-height: 1.5;
 		margin-bottom: 16rpx;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		display: -webkit-box;
-		-webkit-line-clamp: 2;
+		-webkit-line-clamp: 3; /* 增加行数，从2行改为3行，与H5一致 */
 		-webkit-box-orient: vertical;
 		word-break: break-all;
 		white-space: normal;
 		width: 100%;
+		min-height: 126rpx; /* 添加最小高度，确保空间足够显示3行 */
 	}
 
 	/* 封面图片样式 */
@@ -2330,7 +2345,7 @@
 		font-size: 24rpx;
 		color: #999;
 		/* 减少底部padding，确保在底部导航栏上方完全不可见 */
-		padding: 20rpx 0 30rpx;
+		padding: 20rpx 0 100rpx; /* 增加底部间距 */
 		width: 100%;
 	}
 

@@ -35,11 +35,6 @@
 		<!-- APP和小程序的顶部布局 -->
 		<!-- #ifndef H5 -->
 		<view class="mp-header">
-			<!-- 添加顶部导航按钮 -->
-			<view class="mp-top-nav">
-				<view class="mp-logo" hover-class="mp-nav-active" @click="refreshArticleList">首页</view>
-				<view class="mp-my-btn" hover-class="mp-nav-active" @click="navigateToMyPage">我的</view>
-			</view>
 			<!-- 搜索框 -->
 			<view class="search-bar">
 				<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
@@ -674,10 +669,12 @@
 	 * @param {Number} index - 导航索引
 	 */
 	const switchNav = (index) => {
+		// 增加双击导航菜单刷新功能
 		if (data.currentNav === index) {
-			// 如果点击当前选中的选项卡，则视为刷新操作
-			refreshArticleList();
-			return;
+			// 检查是否为双击
+			if (refreshByNavDoubleTap(index)) {
+				return; // 如果是双击，已经触发刷新，直接返回
+			}
 		}
 
 		data.currentNav = index;
@@ -722,8 +719,9 @@
 	// 添加获取APP和小程序文章列表高度的方法
 	const getMPListHeight = () => {
 		// #ifdef APP-PLUS || MP-WEIXIN
-		// 减去搜索框高度(90rpx)和导航菜单高度(80rpx)以及状态栏高度
-		return 'calc(100vh - 170rpx - var(--status-bar-height))';
+		// 减去搜索框高度和导航菜单高度以及状态栏高度，增加底部安全区域高度
+		// 由于移除了mp-top-nav(约50rpx)，所以从170rpx减少为120rpx
+		return 'calc(100vh - 120rpx - var(--status-bar-height) - 100rpx)';
 		// #endif
 		return '100vh';
 	};
@@ -1037,6 +1035,12 @@
 	 * 当点击在页面空白区域时，滚动文章列表到顶部
 	 */
 	const handleContainerClick = (event) => {
+		// 处理用户设置面板的关闭逻辑
+		if (showUserSettings.value && !isInOperation.value) {
+			closeUserSettings();
+			return;
+		}
+		
 		// 只有在点击容器本身而不是其子元素时才触发
 		if (event.target === event.currentTarget) {
 			console.log('首页: 点击页面容器空白区域');
@@ -1094,6 +1098,41 @@
 		});
 		// #endif
 	};
+
+	/**
+	 * 通过双击导航菜单刷新文章列表
+	 */
+	const refreshByNavDoubleTap = (() => {
+		let lastTapTime = 0;
+		let lastTapNav = -1;
+		
+		return (index) => {
+			const now = Date.now();
+			
+			// 如果是同一个导航项，且时间间隔小于500ms，则视为双击
+			if (lastTapNav === index && now - lastTapTime < 500) {
+				// 刷新当前列表
+				refreshArticleList();
+				// 重置点击记录
+				lastTapTime = 0;
+				lastTapNav = -1;
+				
+				// 显示刷新提示
+				uni.showToast({
+					title: '刷新中...',
+					icon: 'loading',
+					duration: 1000
+				});
+				
+				return true;
+			}
+			
+			// 记录本次点击
+			lastTapTime = now;
+			lastTapNav = index;
+			return false;
+		};
+	})();
 </script>
 
 <style lang="scss">
@@ -1493,41 +1532,21 @@
 	// APP和小程序的样式
 	// #ifndef H5
 	.mp-header {
-		background-color: #fff;
-		padding-top: var(--status-bar-height);
 		position: fixed;
-		top: 0;
+		top: var(--status-bar-height);
 		left: 0;
 		right: 0;
 		z-index: 100;
 		width: 100%;
-
-		// 添加顶部导航栏样式
-		.mp-top-nav {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			padding: 20rpx 30rpx;
-			border-bottom: 1rpx solid #f0f0f0;
-			
-			.mp-logo {
-				font-size: 32rpx;
-				font-weight: bold;
-				color: #333;
-			}
-			
-			.mp-my-btn {
-				font-size: 28rpx;
-				color: #4361ee;
-				padding: 10rpx 20rpx;
-			}
-		}
+		background-color: #fff;
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
 
 		.search-bar {
 			display: flex;
 			align-items: center;
 			padding: 20rpx;
 			background: #fff;
+			border-bottom: 1rpx solid #f0f0f0;
 
 			input {
 				flex: 1;
@@ -1597,7 +1616,7 @@
 	}
 
 	.mp-content {
-		padding-top: calc(220rpx + var(--status-bar-height));
+		padding-top: calc(120rpx + var(--status-bar-height));
 		background: #f5f5f5;
 		width: 100%;
 		box-sizing: border-box;
