@@ -1321,6 +1321,16 @@
 						
 						// 统一处理封面图片URL
 						if (coverImage) {
+							// #ifdef APP-PLUS
+							// APP环境下特别处理localhost
+							if (coverImage.includes('localhost') || coverImage.includes('127.0.0.1')) {
+								const appBaseUrl = 'http://10.9.135.132:8080';
+								const urlPath = coverImage.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
+								coverImage = appBaseUrl + urlPath;
+								console.log(`[文章${article.id}] APP环境替换localhost: ${coverImage}`);
+							}
+							// #endif
+							
 							article.coverImage = formatArticleImage(coverImage);
 							console.log(`[文章${article.id}] 处理后的封面图片URL:`, article.coverImage);
 						} else {
@@ -1404,8 +1414,20 @@
 		// #ifdef APP-PLUS
 		console.log('[封面处理] 检测到APP环境，应用特殊处理');
 		
-		// 完整URL处理：如果已经是完整URL（包含http）则不处理
+		// 使用特定的APP环境基础URL - 直接使用与request.js相同的地址
+		const appBaseUrl = 'http://10.9.135.132:8080';
+		
+		// 完整URL处理：如果已经是完整URL，需要特别处理localhost情况
 		if (url.startsWith('http')) {
+			// 检查是否包含localhost或127.0.0.1，需要替换为真实IP
+			if (url.includes('localhost') || url.includes('127.0.0.1')) {
+				// 保留路径部分，替换主机部分
+				const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
+				const newUrl = appBaseUrl + urlPath;
+				console.log(`[封面处理] APP-替换localhost: ${url} -> ${newUrl}`);
+				return newUrl;
+			}
+			
 			// 检查并修复双斜杠问题
 			if (url.includes('//uploads')) {
 				url = url.replace('//uploads', '/uploads');
@@ -1424,12 +1446,12 @@
 		if (url.includes('articles') || url.includes('thumbnails')) {
 			// 提取文件名
 			const fileName = url.split('/').pop();
-			// 构建完整路径
+			// 构建完整路径，使用APP专用的基础URL
 			let fullUrl;
 			if (url.includes('thumbnails')) {
-				fullUrl = getBaseUrl() + '/uploads/articles/thumbnails/' + fileName;
+				fullUrl = appBaseUrl + '/uploads/articles/thumbnails/' + fileName;
 			} else {
-				fullUrl = getBaseUrl() + '/uploads/articles/' + fileName;
+				fullUrl = appBaseUrl + '/uploads/articles/' + fileName;
 			}
 			console.log('[封面处理] APP-构建文章图片完整路径:', fullUrl);
 			return fullUrl;
@@ -1437,9 +1459,9 @@
 			// 默认假设是文章图片
 			let fullUrl;
 			if (url.startsWith('/')) {
-				fullUrl = getBaseUrl() + url;
+				fullUrl = appBaseUrl + url;
 			} else {
-				fullUrl = getBaseUrl() + '/uploads/articles/' + url;
+				fullUrl = appBaseUrl + '/uploads/articles/' + url;
 			}
 			console.log('[封面处理] APP-构建默认文章图片路径:', fullUrl);
 			return fullUrl;
@@ -1534,6 +1556,21 @@
 		// 修复可能的URL错误，重新尝试格式化
 		if (article.coverImage) {
 			const originalUrl = article.coverImage;
+			
+			// #ifdef APP-PLUS
+			// APP中特殊处理localhost问题
+			if (originalUrl.includes('localhost') || originalUrl.includes('127.0.0.1')) {
+				// 使用特定的APP环境基础URL
+				const appBaseUrl = 'http://10.9.135.132:8080';
+				// 提取路径部分，替换主机部分
+				const urlPath = originalUrl.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
+				article.coverImage = appBaseUrl + urlPath;
+				console.log(`[图片错误] APP-替换localhost: ${originalUrl} -> ${article.coverImage}`);
+				return;
+			}
+			// #endif
+			
+			// 通用错误处理
 			article.coverImage = formatArticleImage(article.coverImage);
 			console.log(`尝试修复封面URL: ${originalUrl} -> ${article.coverImage}`);
 		}
