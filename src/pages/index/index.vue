@@ -359,11 +359,27 @@
 		await loadUserData();
 		// 使用统一的数据加载入口
 		await loadArticleData();
+		
+		// 监听收藏状态更新事件
+		uni.$on('article_collect_updated', (data) => {
+			console.log('首页接收到文章收藏更新事件:', data);
+			if (data && data.articleId && data.collectCount !== undefined) {
+				// 查找文章并更新数据
+				const article = articleList.value.find(item => item.id == data.articleId);
+				if (article) {
+					console.log(`首页更新文章[${data.articleId}]收藏状态:`, data);
+					article.isCollected = data.isCollected;
+					article.collectCount = data.collectCount;
+				}
+			}
+		});
 	});
 
 	// 组件卸载时清理监听器
 	onUnmounted(() => {
 		// 清理工作已经在BackToTop组件中处理
+		// 清理文章收藏更新事件监听
+		uni.$off('article_collect_updated');
 	});
 
 	// 页面显示时刷新数据
@@ -668,6 +684,30 @@
 					if (res.data && typeof res.data.collectCount !== 'undefined') {
 						article.collectCount = res.data.collectCount;
 					}
+					
+					// 更新本地存储的收藏状态
+					try {
+						let collectedArticles = uni.getStorageSync('collectedArticles') || {};
+						if (article.isCollected) {
+							collectedArticles[article.id] = true;
+						} else {
+							delete collectedArticles[article.id];
+						}
+						uni.setStorageSync('collectedArticles', collectedArticles);
+						console.log('更新本地收藏状态:', 
+							article.isCollected ? '添加收藏' : '取消收藏', 
+							article.id
+						);
+					} catch (e) {
+						console.error('存储收藏状态出错:', e);
+					}
+					
+					// 发送全局事件，通知其他页面更新该文章的收藏状态
+					uni.$emit('article_collect_updated', {
+						articleId: article.id,
+						isCollected: article.isCollected,
+						collectCount: article.collectCount
+					});
 				} else {
 					// 恢复原状态
 					article.isCollected = originalState;
@@ -1435,6 +1475,14 @@
 					
 					// 处理文章数据
 					const processedArticles = newArticles.map(article => {
+						// 输出原始数据用于调试
+						console.log(`[文章${article.id}] 原始数据:`, Object.keys(article).reduce((acc, key) => {
+							if (typeof article[key] !== 'object' || key === 'author') {
+								acc[key] = article[key];
+							}
+							return acc;
+						}, {}));
+						
 						// 记录原始图片相关字段，用于调试
 						console.log(`[文章${article.id}] 原始字段:`, 
 							Object.keys(article).filter(key => 
@@ -1508,10 +1556,151 @@
 							console.log(`[文章${article.id}] 缺少作者信息，创建默认作者对象`);
 						}
 						
-						// 确保其他字段有正确的默认值
-						article.likeCount = parseInt(article.likeCount || 0);
-						article.commentCount = parseInt(article.commentCount || 0);
-						article.collectCount = parseInt(article.collectCount || 0);
+						// 处理点赞数、评论数和收藏数，支持多种可能的字段名
+						// 点赞数处理
+						if (typeof article.likeCount === 'number') {
+							// 已经存在likeCount字段，直接使用
+							article.likeCount = parseInt(article.likeCount || 0);
+						} else if (typeof article.like_count === 'number') {
+							// snake_case转换为camelCase
+							article.likeCount = parseInt(article.like_count || 0); 
+						} else if (typeof article.likes === 'number') {
+							// 可能使用复数形式likes
+							article.likeCount = parseInt(article.likes || 0);
+						} else {
+							article.likeCount = 0;
+						}
+
+						// 评论数处理
+						if (typeof article.commentCount === 'number') {
+							article.commentCount = parseInt(article.commentCount || 0);
+						} else if (typeof article.comment_count === 'number') {
+							article.commentCount = parseInt(article.comment_count || 0);
+						} else if (typeof article.comments === 'number') {
+							article.commentCount = parseInt(article.comments || 0);
+						} else {
+							article.commentCount = 0;
+						}
+
+						// 收藏数处理 - 完全重写为更彻底的扫描方式
+						let collectCountFound = false;
+
+						// 1. 首先尝试直接常见字段名
+						const commonCollectFields = ['collectCount', 'collect_count', 'collection_count', 'collectionsCount', 'favorites', 'favorite_count'];
+						for (const field of commonCollectFields) {
+							if (typeof article[field] === 'number' || (article[field] && !isNaN(parseInt(article[field])))) {
+								article.collectCount = parseInt(article[field]);
+								console.log(`[文章${article.id}] 找到收藏数字段 ${field}:`, article.collectCount);
+								collectCountFound = true;
+								break;
+							}
+						}
+
+						// 2. 如果常见字段没找到，尝试深度扫描整个对象
+						if (!collectCountFound) {
+							console.log(`[文章${article.id}] 开始深度扫描收藏数字段...`);
+							
+							// 扫描所有可能与收藏相关的字段
+							const collectMatches = findFields(article, key => 
+								key.includes('collect') || 
+								key.includes('collection') || 
+								key.includes('favorite') ||
+								key === 'collections'
+							);
+							
+							if (collectMatches.length > 0) {
+								console.log(`[文章${article.id}] 深度扫描发现可能的收藏相关字段:`, collectMatches);
+								
+								// 按优先级处理找到的字段
+								const numericMatches = collectMatches.filter(m => 
+									typeof m.value === 'number' || 
+									(m.value && !isNaN(parseInt(m.value)))
+								);
+								
+								if (numericMatches.length > 0) {
+									// 优先使用名称最匹配的字段
+									const bestMatch = numericMatches.find(m => 
+										m.key === 'collectCount' || 
+										m.key === 'collect_count' || 
+										m.key === 'collection_count'
+									) || numericMatches[0];
+									
+									article.collectCount = parseInt(bestMatch.value);
+									console.log(`[文章${article.id}] 使用深度扫描字段 ${bestMatch.path} 作为收藏数:`, article.collectCount);
+									collectCountFound = true;
+								}
+							}
+						}
+
+						// 3. 如果还没找到，尝试从stats或统计对象中获取
+						if (!collectCountFound && article.stats && typeof article.stats === 'object') {
+							console.log(`[文章${article.id}] 检查stats对象:`, article.stats);
+							
+							// 从stats对象中查找收藏数
+							const statsFields = Object.keys(article.stats).filter(key => 
+								key.includes('collect') || 
+								key.includes('collection') || 
+								key.includes('favorite')
+							);
+							
+							if (statsFields.length > 0) {
+								const firstStatField = statsFields[0];
+								article.collectCount = parseInt(article.stats[firstStatField]);
+								console.log(`[文章${article.id}] 从stats对象获取收藏数 ${firstStatField}:`, article.collectCount);
+								collectCountFound = true;
+							}
+						}
+
+						// 4. 作为最后手段，检查可能包含统计信息的字符串并解析
+						if (!collectCountFound) {
+							// 遍历所有字符串字段，查找可能包含收藏数据的内容
+							Object.keys(article).forEach(key => {
+								if (typeof article[key] === 'string' && 
+									(key.includes('stat') || key.includes('count') || key.includes('info'))) {
+									try {
+										const parsedData = JSON.parse(article[key]);
+										if (parsedData && typeof parsedData === 'object') {
+											const collectKey = Object.keys(parsedData).find(k => 
+												k.includes('collect') || k.includes('favorite')
+											);
+											
+											if (collectKey && !isNaN(parseInt(parsedData[collectKey]))) {
+												article.collectCount = parseInt(parsedData[collectKey]);
+												console.log(`[文章${article.id}] 从字符串 ${key} 解析出收藏数:`, article.collectCount);
+												collectCountFound = true;
+											}
+										}
+									} catch (e) {
+										// 解析失败，忽略错误
+									}
+								}
+							});
+						}
+
+						// 如果经过所有尝试还是没找到有效数据，设为0并记录所有字段用于调试
+						if (!collectCountFound) {
+							article.collectCount = 0;
+							console.log(`[文章${article.id}] 未找到有效的收藏数字段，记录所有顶层字段:`);
+							Object.keys(article).forEach(key => {
+								if (typeof article[key] !== 'object' || article[key] === null) {
+									console.log(`  - ${key}: ${article[key]} (${typeof article[key]})`);
+								} else {
+									console.log(`  - ${key}: [Object] (${Array.isArray(article[key]) ? 'Array' : 'Object'})`);
+								}
+							});
+						}
+						
+						// 设置点赞和收藏状态
+						article.isLiked = !!article.isLiked || !!article.is_liked || false;
+						article.isCollected = !!article.isCollected || !!article.is_collected || !!article.is_favorite || false;
+						
+						console.log(`[文章${article.id}] 处理后的数据:`, {
+							likeCount: article.likeCount,
+							commentCount: article.commentCount,
+							collectCount: article.collectCount,
+							isLiked: article.isLiked,
+							isCollected: article.isCollected
+						});
 						
 						return article;
 					});
@@ -1530,6 +1719,11 @@
 					if (!newArticles.length || newArticles.length < 10) {
 						noMoreData.value = true;
 					}
+					
+					// 加载完成后同步收藏状态
+					setTimeout(() => {
+						syncCollectionStatus();
+					}, 300);
 				} else {
 					uni.showToast({
 						title: res.message || '获取文章列表失败',
@@ -1707,7 +1901,14 @@
 
 	// 页面加载时初始化数据
 	onLoad(() => {
+		console.log('页面加载:');
+		// 先加载文章列表
 		loadArticleList();
+		
+		// 文章列表加载完成后，同步收藏状态
+		setTimeout(() => {
+			syncCollectionStatus();
+		}, 500);
 	});
 
 	/**
@@ -1749,6 +1950,106 @@
 			articleList.value[index].author.avatar = '/static/images/avatar.png';
 		}
 	};
+
+	/**
+	 * 深度扫描对象寻找特定模式的字段，返回所有匹配的路径和值
+	 * @param {Object} obj - 要扫描的对象
+	 * @param {Function} matcher - 匹配函数，接收字段名并返回是否匹配
+	 * @param {String} parentPath - 父路径，用于构建完整路径
+	 * @param {Array} results - 结果数组
+	 */
+	const findFields = (obj, matcher, parentPath = '', results = []) => {
+		if (!obj || typeof obj !== 'object') return results;
+		
+		Object.keys(obj).forEach(key => {
+			const value = obj[key];
+			const path = parentPath ? `${parentPath}.${key}` : key;
+			
+			// 检查当前字段是否匹配
+			if (matcher(key)) {
+				results.push({ path, key, value, type: typeof value });
+			}
+			
+			// 递归检查子对象，但跳过数组和null
+			if (value && typeof value === 'object' && !Array.isArray(value)) {
+				findFields(value, matcher, path, results);
+			}
+		});
+		
+		return results;
+	};
+
+	/**
+	 * 同步文章收藏状态和数量
+	 * 从本地存储和详情页同步收藏信息到首页列表
+	 */
+	const syncCollectionStatus = () => {
+		if (!articleList.value || articleList.value.length === 0) {
+			return;
+		}
+		
+		console.log('同步文章收藏状态...');
+		
+		// 获取本地存储的收藏文章ID列表
+		const collectedArticles = uni.getStorageSync('collectedArticles') || {};
+		console.log('本地存储的收藏文章:', Object.keys(collectedArticles));
+		
+		// 更新文章列表中的收藏状态
+		articleList.value.forEach(article => {
+			if (!article) return;
+			
+			const articleId = String(article.id);
+			const originalIsCollected = article.isCollected;
+			
+			// 从本地存储获取收藏状态
+			article.isCollected = !!collectedArticles[articleId];
+			
+			// 如果状态不一致，尝试获取详情
+			if (article.isCollected !== originalIsCollected || article.collectCount === 0) {
+				console.log(`文章[${articleId}]收藏状态需要更新:`, {
+					old: originalIsCollected,
+					new: article.isCollected
+				});
+				
+				// 尝试直接更新收藏数
+				// 如果是收藏状态但收藏数为0，增加收藏数
+				if (article.isCollected && article.collectCount === 0) {
+					console.log(`文章[${articleId}]收藏状态为true但收藏数为0，设置为1`);
+					article.collectCount = 1;
+				}
+				
+				// 延迟异步请求文章详情以避免批量请求
+				setTimeout(() => {
+					// 获取文章详情以获取准确的收藏状态和数量
+					getArticleDetail(articleId)
+						.then(res => {
+							if (res.code === 200 && res.data) {
+								// 更新UI
+								article.isCollected = !!res.data.isCollected;
+								
+								// 更新收藏数
+								if (res.data.collectCount !== undefined) {
+									article.collectCount = parseInt(res.data.collectCount) || 0;
+									console.log(`从详情更新文章[${articleId}]收藏数:`, article.collectCount);
+								}
+							}
+						})
+						.catch(err => {
+							console.error(`获取文章[${articleId}]详情失败:`, err);
+						});
+				}, Math.random() * 2000); // 随机延迟，避免同时发起多个请求
+			}
+		});
+	};
+
+	// 页面显示时同步收藏状态
+	onShow(() => {
+		// 如果已经有文章列表数据，同步收藏状态
+		if (articleList.value && articleList.value.length > 0) {
+			console.log('页面显示: 同步收藏状态');
+			syncCollectionStatus();
+		}
+	});
 </script>
 
 <style lang="scss">
