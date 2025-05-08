@@ -1531,21 +1531,23 @@
 	// APP和小程序的样式
 	// #ifndef H5
 	.mp-header {
-		position: fixed;
-		top: var(--status-bar-height);
-		left: 0;
-		right: 0;
-		z-index: 100;
 		width: 100%;
 		background-color: #fff;
 		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
 
 		.search-bar {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			z-index: 999;
 			display: flex;
 			align-items: center;
 			padding: 15rpx 20rpx;
+			padding-top: calc(15rpx + var(--status-bar-height));
 			background: #fff;
 			border-bottom: 1rpx solid #f0f0f0;
+			box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.08);
 
 			input {
 				flex: 1;
@@ -1569,6 +1571,11 @@
 		}
 
 		.nav-menu {
+			position: fixed;
+			top: calc(var(--status-bar-height) + 100rpx);
+			left: 0;
+			right: 0;
+			z-index: 100;
 			display: flex;
 			padding: 12rpx 30rpx;
 			background: #fff;
@@ -1615,7 +1622,7 @@
 	}
 
 	.mp-content {
-		padding-top: calc(100rpx + var(--status-bar-height));
+		padding-top: calc(var(--status-bar-height) + 170rpx);
 		background: #f5f5f5;
 		width: 100%;
 		box-sizing: border-box;
