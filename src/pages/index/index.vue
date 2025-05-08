@@ -137,7 +137,9 @@
 
 						<!-- 文章封面图片 -->
 						<view class="article-image" v-if="article.coverImage">
-							<image :src="article.coverImage" mode="aspectFill" class="single-image"></image>
+							<image :src="article.coverImage" mode="aspectFill" class="single-image" @error="handleImageError(article)"></image>
+							<!-- 添加调试信息，便于排查封面图片问题 -->
+							<text class="debug-info" v-if="false">封面URL: {{article.coverImage}}</text>
 						</view>
 						
 						<!-- 文章标签 -->
@@ -1271,17 +1273,81 @@
 			params.sort = 'new';
 		}
 		
+		console.log('请求参数:', params, '请求类型:', listType);
+		
 		// 调用API获取文章列表
 		http.get('/api/article', params)
 			.then(res => {
 				if (res.code === 200 && res.data && res.data.list) {
 					const newArticles = res.data.list;
+					console.log('获取到文章数据:', newArticles.length, '条');
+					
+					// 处理文章数据
+					const processedArticles = newArticles.map(article => {
+						// 记录原始图片相关字段，用于调试
+						console.log(`[文章${article.id}] 原始字段:`, 
+							Object.keys(article).filter(key => 
+								key.includes('cover') || 
+								key.includes('image') || 
+								key === 'thumbnail'
+							));
+						
+						// 尝试从多种可能的字段名获取封面图片URL
+						let coverImage = null;
+						
+						// 优先级1: coverImage字段
+						if (article.coverImage) {
+							coverImage = article.coverImage;
+							console.log(`[文章${article.id}] 使用coverImage字段:`, coverImage);
+						} 
+						// 优先级2: cover_image字段
+						else if (article.cover_image) {
+							coverImage = article.cover_image;
+							console.log(`[文章${article.id}] 使用cover_image字段:`, coverImage);
+						}
+						// 优先级3: thumbnail字段
+						else if (article.thumbnail) {
+							coverImage = article.thumbnail;
+							console.log(`[文章${article.id}] 使用thumbnail字段:`, coverImage);
+						}
+						// 优先级4: 从文章内容中提取第一张图片
+						else if (article.content && article.content.includes('<img')) {
+							const imgMatch = article.content.match(/<img[^>]+src=['"]([^'"]+)['"]/);
+							if (imgMatch && imgMatch[1]) {
+								coverImage = imgMatch[1];
+								console.log(`[文章${article.id}] 从内容提取图片:`, coverImage);
+							}
+						}
+						
+						// 统一处理封面图片URL
+						if (coverImage) {
+							article.coverImage = formatArticleImage(coverImage);
+							console.log(`[文章${article.id}] 处理后的封面图片URL:`, article.coverImage);
+						} else {
+							article.coverImage = ''; // 确保没有封面时设为空字符串
+							console.log(`[文章${article.id}] 无封面图片`);
+						}
+						
+						// 处理作者头像
+						if (article.author && article.author.avatar) {
+							const originalAvatar = article.author.avatar;
+							article.author.avatar = formatAvatarUrl(article.author.avatar);
+							console.log(`[文章${article.id}] 作者头像: ${originalAvatar} -> ${article.author.avatar}`);
+						}
+						
+						// 确保其他字段有正确的默认值
+						article.likeCount = parseInt(article.likeCount || 0);
+						article.commentCount = parseInt(article.commentCount || 0);
+						article.collectCount = parseInt(article.collectCount || 0);
+						
+						return article;
+					});
 					
 					// 第一页时替换列表，否则追加
 					if (currentPage.value === 1) {
-						articleList.value = newArticles;
+						articleList.value = processedArticles;
 					} else {
-						articleList.value = [...articleList.value, ...newArticles];
+						articleList.value = [...articleList.value, ...processedArticles];
 					}
 					
 					// 更新页码
@@ -1314,6 +1380,75 @@
 	};
 
 	/**
+	 * 处理文章封面图片URL
+	 * @param {String} url - 图片URL
+	 * @return {String} 处理后的图片URL
+	 */
+	const formatArticleImage = (url) => {
+		console.log('[封面处理] 输入图片URL:', url);
+		if (!url) {
+			console.log('[封面处理] 空URL，返回空字符串');
+			return '';
+		}
+		
+		// 移除URL中可能存在的多余空格
+		url = url.trim();
+		
+		// 确保不是null或undefined字符串
+		if (url === 'null' || url === 'undefined' || url === '') {
+			console.log('[封面处理] 无效URL值，返回空字符串');
+			return '';
+		}
+		
+		// 完整URL处理：如果已经是完整URL（包含http）则不处理
+		if (url.startsWith('http')) {
+			// 检查并修复双斜杠问题
+			if (url.includes('//uploads')) {
+				url = url.replace('//uploads', '/uploads');
+				console.log('[封面处理] 修复双斜杠问题，结果:', url);
+			}
+			console.log('[封面处理] 返回完整URL:', url);
+			return url;
+		}
+		// 静态资源处理：如果是静态资源路径则不处理
+		else if (url.startsWith('/static')) {
+			console.log('[封面处理] 返回静态资源路径:', url);
+			return url;
+		}
+		
+		// 处理封面图片特殊路径：检查是否包含特定路径
+		if (url.includes('articles') || url.includes('thumbnails')) {
+			// 如果包含articles或thumbnails但没有完整路径，尝试构建完整路径
+			if (!url.startsWith('/uploads')) {
+				// 提取文件名
+				const fileName = url.split('/').pop();
+				console.log('[封面处理] 文件名:', fileName);
+				// 构建完整路径 - 优先检查是否是缩略图路径
+				if (url.includes('thumbnails')) {
+					const fullUrl = getBaseUrl() + '/uploads/articles/thumbnails/' + fileName;
+					console.log('[封面处理] 构建缩略图完整路径:', fullUrl);
+					return fullUrl;
+				} else {
+					const fullUrl = getBaseUrl() + '/uploads/articles/' + fileName;
+					console.log('[封面处理] 构建文章图片完整路径:', fullUrl);
+					return fullUrl;
+				}
+			}
+		}
+		
+		// 其他情况：添加基础URL前缀
+		let fullUrl;
+		if (url.startsWith('/')) {
+			fullUrl = getBaseUrl() + url;
+		} else {
+			// 默认情况下，假设图片在articles目录
+			fullUrl = getBaseUrl() + '/uploads/articles/' + url;
+		}
+		console.log('[封面处理] 构建其他情况完整URL:', fullUrl);
+		return fullUrl;
+	};
+
+	/**
 	 * 处理下拉刷新
 	 */
 	const handleRefresh = () => {
@@ -1342,6 +1477,20 @@
 	onLoad(() => {
 		loadArticleList();
 	});
+
+	/**
+	 * 处理图片加载错误
+	 */
+	const handleImageError = (article) => {
+		console.error(`文章[${article.id}]封面图片加载失败:`, article.coverImage);
+		
+		// 修复可能的URL错误，重新尝试格式化
+		if (article.coverImage) {
+			const originalUrl = article.coverImage;
+			article.coverImage = formatArticleImage(article.coverImage);
+			console.log(`尝试修复封面URL: ${originalUrl} -> ${article.coverImage}`);
+		}
+	};
 </script>
 
 <style lang="scss">
@@ -1868,8 +2017,9 @@
 					font-size: 32rpx;
 					font-weight: bold;
 					color: #333;
-					margin-bottom: 10rpx;
+					margin-bottom: 15rpx;
 					display: block;
+					line-height: 1.4;
 				}
 				
 				.article-summary {
@@ -1887,11 +2037,24 @@
 					border-radius: 10rpx;
 					overflow: hidden;
 					margin-bottom: 20rpx;
+					position: relative;
 					
 					.single-image {
 						width: 100%;
 						height: 100%;
-						background-color: #eee;
+						background-color: #f5f5f5;
+					}
+					
+					.debug-info {
+						position: absolute;
+						bottom: 0;
+						left: 0;
+						right: 0;
+						background: rgba(0,0,0,0.5);
+						color: #fff;
+						font-size: 20rpx;
+						padding: 4rpx 10rpx;
+						word-break: break-all;
 					}
 				}
 				
@@ -2276,8 +2439,9 @@
 					font-size: 32rpx;
 					font-weight: bold;
 					color: #333;
-					margin-bottom: 10rpx;
+					margin-bottom: 15rpx;
 					display: block;
+					line-height: 1.4;
 				}
 				
 				.article-summary {
@@ -2295,11 +2459,24 @@
 					border-radius: 10rpx;
 					overflow: hidden;
 					margin-bottom: 20rpx;
+					position: relative;
 					
 					.single-image {
 						width: 100%;
 						height: 100%;
-						background-color: #eee;
+						background-color: #f5f5f5;
+					}
+					
+					.debug-info {
+						position: absolute;
+						bottom: 0;
+						left: 0;
+						right: 0;
+						background: rgba(0,0,0,0.5);
+						color: #fff;
+						font-size: 20rpx;
+						padding: 4rpx 10rpx;
+						word-break: break-all;
 					}
 				}
 				
