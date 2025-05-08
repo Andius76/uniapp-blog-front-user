@@ -34,26 +34,24 @@
 
 		<!-- APP和小程序的顶部布局 -->
 		<!-- #ifndef H5 -->
-		<view class="header-fixed">
-			<view class="header-main-container">
-				<!-- 顶部区域 -->
-				<view class="header-top">
-					<view class="search-bar">
-						<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
-						<button class="search-btn" @click="handleSearch">搜索</button>
+		<view class="header-main-container">
+			<!-- 顶部区域-搜索栏 -->
+			<view class="header-top">
+				<view class="search-bar">
+					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
+					<button class="search-btn" @click="handleSearch">搜索</button>
+				</view>
+			</view>
+
+			<!-- 导航菜单 -->
+			<scroll-view class="category-scroll" scroll-x show-scrollbar="false">
+				<view class="category-list">
+					<view v-for="(item, index) in data.navItems" :key="index" class="category-item"
+						:class="{ active: data.currentNav === index }" @click="switchNav(index)">
+						{{ item.name }}
 					</view>
 				</view>
-
-				<!-- 导航菜单 -->
-				<scroll-view class="category-scroll" scroll-x show-scrollbar="false">
-					<view class="category-list">
-						<view v-for="(item, index) in data.navItems" :key="index" class="category-item"
-							:class="{ active: data.currentNav === index }" @click="switchNav(index)">
-							{{ item.name }}
-						</view>
-					</view>
-				</scroll-view>
-			</view>
+			</scroll-view>
 		</view>
 		<!-- #endif -->
 
@@ -511,12 +509,12 @@
 		// 移除URL中可能存在的多余空格
 		url = url.trim();
 		
-		// 确保不是null或undefined
+		// 确保不是null、undefined或空字符串
 		if (url === 'null' || url === 'undefined' || url === '') {
 			return '/static/images/avatar.png';
 		}
 		
-		// 完整URL处理：如果已经是完整URL（包含http）则不处理
+		// 完整URL处理：如果已经是完整URL（包含http）则做特殊处理
 		if (url.startsWith('http')) {
 			// 检查并修复双斜杠问题
 			if (url.includes('//uploads')) {
@@ -2509,14 +2507,14 @@
 	// #ifndef H5
 	// 小程序和APP的样式
 	.content-area.mp-content {
-		padding: 212rpx 20rpx 0 20rpx;
-		padding-top: calc(var(--status-bar-height) + 212rpx);
+		padding: 20rpx;
+		padding-top: calc(var(--status-bar-height) + 85rpx); /* 进一步减少顶部间距 */
 		background: #f5f5f5;
 		flex: 1;
 		box-sizing: border-box;
 		
 		.article-list {
-			height: calc(100vh - 212rpx - var(--status-bar-height)); // 减去顶部导航栏高度
+			height: calc(100vh - 85rpx - var(--status-bar-height)); /* 匹配header高度 */
 		}
 		
 		// 文章卡片
@@ -2677,12 +2675,17 @@
 	// APP和小程序样式增强
 	// #ifndef H5
 	// 固定在顶部的标题和分类栏
-	.header-fixed {
+	.header-main-container {
 		position: fixed;
 		top: 0;
 		left: 0;
 		right: 0;
-		background-color: #f5f5f5;
+		display: flex;
+		flex-direction: column;
+		gap: 0; /* 减少垂直间隔 */
+		padding: 0;
+		padding-top: var(--status-bar-height);
+		background: #f5f5f5;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
 		
@@ -2690,22 +2693,24 @@
 		.header-top {
 			display: flex;
 			align-items: center;
-			padding: 15rpx 20rpx;
-			padding-top: calc(15rpx + var(--status-bar-height));
+			padding: 5rpx 20rpx; /* 减少上下间距 */
+			padding-top: 0;
 			
 			// 搜索栏样式
 			.search-bar {
 				display: flex;
+				align-items: center;
 				background: #fff;
 				border-radius: 40rpx;
 				overflow: hidden;
-				padding: 0 20rpx;
+				padding: 0 10rpx;
 				flex: 1;
 				box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+				height: 60rpx;
 				
 				input {
 					flex: 1;
-					height: 80rpx;
+					height: 60rpx;
 					padding: 0 20rpx;
 					font-size: 28rpx;
 				}
@@ -2713,14 +2718,14 @@
 			
 			// 搜索按钮
 			.search-btn {
-				height: 60rpx;
-				line-height: 60rpx;
-				margin: 10rpx 0;
+				height: 50rpx;
+				line-height: 50rpx;
+				margin: 0 0 0 10rpx;
 				background-color: #4361ee;
 				color: #fff;
 				font-size: 26rpx;
-				border-radius: 30rpx;
-				padding: 0 30rpx;
+				border-radius: 25rpx;
+				padding: 0 25rpx;
 			}
 		}
 		
@@ -2729,16 +2734,14 @@
 			width: 100%;
 			white-space: nowrap;
 			background-color: #f5f5f5;
-			padding: 10rpx 0;
-			position: relative;
-			z-index: 100;
+			padding: 2rpx 0; /* 减少上下间距 */
 			
 			.category-list {
 				display: inline-flex;
 				padding: 0 20rpx;
 				
 				.category-item {
-					padding: 10rpx 24rpx;
+					padding: 6rpx 22rpx; /* 减少上下间距 */
 					margin: 0 10rpx;
 					font-size: 28rpx;
 					color: #666;
@@ -2755,14 +2758,17 @@
 		}
 	}
 
-	.header-main-container {
-		display: flex;
-		flex-direction: column;
-		gap: 10rpx;
-		padding: 15rpx 0 0 0;
+	// 内容区域样式调整
+	.content-area.mp-content {
+		padding: 20rpx;
+		padding-top: calc(var(--status-bar-height) + 85rpx); /* 进一步减少顶部间距 */
 		background: #f5f5f5;
-		position: relative;
-		z-index: 99;
+		flex: 1;
+		box-sizing: border-box;
+		
+		.article-list {
+			height: calc(100vh - 85rpx - var(--status-bar-height)); /* 匹配header高度 */
+		}
 	}
 	// #endif
 </style>
