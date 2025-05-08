@@ -1533,7 +1533,6 @@
 	.mp-header {
 		width: 100%;
 		background-color: #fff;
-		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
 
 		.search-bar {
 			position: fixed;
@@ -1543,41 +1542,41 @@
 			z-index: 999;
 			display: flex;
 			align-items: center;
-			padding: 15rpx 20rpx;
-			padding-top: calc(15rpx + var(--status-bar-height));
+			padding: 8rpx 20rpx;
+			padding-top: calc(8rpx + var(--status-bar-height));
 			background: #fff;
 			border-bottom: 1rpx solid #f0f0f0;
-			box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.08);
+			box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0.05);
 
 			input {
 				flex: 1;
-				height: 70rpx;
+				height: 64rpx;
 				background: #f5f5f5;
-				border-radius: 35rpx;
+				border-radius: 32rpx;
 				padding: 0 30rpx;
 				font-size: 28rpx;
 			}
 
 			.search-btn {
 				padding: 0 30rpx;
-				height: 70rpx;
-				line-height: 70rpx;
+				height: 64rpx;
+				line-height: 64rpx;
 				font-size: 28rpx;
 				color: #fff;
 				background: #4361ee;
-				border-radius: 35rpx;
+				border-radius: 32rpx;
 				margin-left: 20rpx;
 			}
 		}
 
 		.nav-menu {
 			position: fixed;
-			top: calc(var(--status-bar-height) + 100rpx);
+			top: calc(var(--status-bar-height) + 80rpx); /* 减小与搜索栏的间距 */
 			left: 0;
 			right: 0;
 			z-index: 100;
 			display: flex;
-			padding: 12rpx 30rpx;
+			padding: 10rpx 20rpx;
 			background: #fff;
 			border-bottom: 1rpx solid #f0f0f0;
 			width: 100%;
@@ -1587,7 +1586,10 @@
 
 			.nav-item {
 				padding: 0 20rpx;
+				margin: 0 10rpx;
 				font-size: 28rpx;
+				height: 60rpx;
+				line-height: 60rpx;
 				color: #666;
 				position: relative;
 				display: inline-block;
@@ -1601,7 +1603,7 @@
 					&::after {
 						content: '';
 						position: absolute;
-						bottom: -6rpx;
+						bottom: -2rpx;
 						left: 50%;
 						transform: translateX(-50%);
 						width: 30rpx;
@@ -1622,7 +1624,7 @@
 	}
 
 	.mp-content {
-		padding-top: calc(var(--status-bar-height) + 170rpx);
+		padding-top: calc(var(--status-bar-height) + 150rpx); /* 调整内容区域的顶部间距 */
 		background: #f5f5f5;
 		width: 100%;
 		box-sizing: border-box;
