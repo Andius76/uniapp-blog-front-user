@@ -167,11 +167,13 @@
 							<text>{{article.commentCount || 0}}</text>
 						</view>
 						<view class="action-item" @click.stop="handleCollection(article)">
-							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" :color="article.isCollected ? '#ffc107' : '#666'"></uni-icons>
+							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" :color="article.isCollected ? '#ffc107' : '#666'" 
+								:class="{'animate-icon': article.isAnimating && article.animationType === 'collect'}"></uni-icons>
 							<text :class="{'collected': article.isCollected}">{{article.collectCount || 0}}</text>
 						</view>
 						<view class="action-item" @click.stop="handleLike(article)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20" :color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20" :color="article.isLiked ? '#ff6b6b' : '#666'"
+								:class="{'animate-icon': article.isAnimating && article.animationType === 'like'}"></uni-icons>
 							<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
 						</view>
 					</view>
@@ -230,7 +232,7 @@
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	// 导入API接口
-	import { getArticleDetail } from '@/api/article';
+	import { getArticleDetail, likeArticle, collectArticle } from '@/api/article';
 	import { getUserInfo } from '@/api/user'; // 导入getUserInfo接口
 	import { onLoad, onShow } from '@dcloudio/uni-app';
 	// 导入ArticleList组件
@@ -601,21 +603,22 @@
 	/**
 	 * 查看文章详情
 	 * @param {Number} articleId - 文章ID
+	 * @param {Boolean} scrollToComments - 是否滚动到评论区
 	 */
-	const viewArticleDetail = (articleId) => {
+	const viewArticleDetail = (articleId, scrollToComments = false) => {
 		// #ifdef H5
 		// H5环境下，新窗口打开文章详情页
 		// 获取正确的基础路径
 		const currentUrl = window.location.href;
 		const baseUrl = currentUrl.split('#')[0];
-		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
+		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}${scrollToComments ? '&scrollToComments=true' : ''}`;
 		window.open(detailUrl, '_blank');
 		// #endif
 		
 		// #ifndef H5
 		// 非H5环境下，正常跳转
 		uni.navigateTo({
-			url: `/pages/article-detail/article-detail?id=${articleId}`
+			url: `/pages/article-detail/article-detail?id=${articleId}${scrollToComments ? '&scrollToComments=true' : ''}`
 		});
 		// #endif
 	};
@@ -625,10 +628,74 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleCollect = (article) => {
-		uni.showToast({
-			title: article.isCollected ? '收藏成功' : '已取消收藏',
-			icon: article.isCollected ? 'success' : 'none'
-		});
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			
+			setTimeout(() => {
+				uni.navigateTo({
+					url: '/pages/login/login'
+				});
+			}, 1500);
+			return;
+		}
+		
+		// 切换收藏状态前的状态
+		const originalState = article.isCollected;
+		
+		// 设置动画标记
+		article.isAnimating = true;
+		article.animationType = 'collect';
+		
+		// 立即反馈UI (乐观更新)
+		article.isCollected = !article.isCollected;
+		article.collectCount = article.isCollected ? (article.collectCount || 0) + 1 : Math.max(0, (article.collectCount || 0) - 1);
+		
+		// 调用API进行实际收藏/取消收藏操作
+		collectArticle(article.id, article.isCollected)
+			.then(res => {
+				if (res.code === 200) {
+					uni.showToast({
+						title: article.isCollected ? '收藏成功' : '已取消收藏',
+						icon: article.isCollected ? 'success' : 'none'
+					});
+					
+					// API成功后，确保UI反映正确的计数
+					if (res.data && typeof res.data.collectCount !== 'undefined') {
+						article.collectCount = res.data.collectCount;
+					}
+				} else {
+					// 恢复原状态
+					article.isCollected = originalState;
+					article.collectCount = originalState ? (article.collectCount || 0) + 1 : Math.max(0, (article.collectCount || 0) - 1);
+					
+					uni.showToast({
+						title: res.message || '操作失败',
+						icon: 'none'
+					});
+				}
+			})
+			.catch(err => {
+				// 恢复原状态
+				article.isCollected = originalState;
+				article.collectCount = originalState ? (article.collectCount || 0) + 1 : Math.max(0, (article.collectCount || 0) - 1);
+				
+				uni.showToast({
+					title: '网络异常，请稍后再试',
+					icon: 'none'
+				});
+				console.error('收藏失败:', err);
+			})
+			.finally(() => {
+				// 700ms后移除动画标记
+				setTimeout(() => {
+					article.isAnimating = false;
+				}, 700);
+			});
 	};
 
 	/**
@@ -636,29 +703,24 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleComment = (article) => {
-		// 因为在页面index里，评论点击应该是在当前页面就处理完成
-		// 避免导航到两个地方的问题，这里只调用viewArticleDetail
-		viewArticleDetail(article.id);
+		// 检查登录状态，如果未登录，先跳转到登录页
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			
+			setTimeout(() => {
+				uni.navigateTo({
+					url: `/pages/login/login?redirect=${encodeURIComponent('/pages/article-detail/article-detail?id=' + article.id + '&scrollToComments=true')}`
+				});
+			}, 1500);
+			return;
+		}
 		
-		// 不再执行下面的代码，防止双重导航
-		return;
-		
-		/* 注释掉原来的代码，避免双重导航
-		// #ifdef H5
-		// H5环境下，在新窗口打开文章详情页
-		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`;
-		window.open(detailUrl, '_blank');
-		// #endif
-		
-		// #ifndef H5
-		// 非H5环境下，正常跳转到文章详情页
-		uni.navigateTo({
-			url: `/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`
-		});
-		// #endif
-		*/
+		// 跳转到文章详情页，并设置参数滚动到评论区
+		viewArticleDetail(article.id, true);
 	};
 
 	/**
@@ -666,10 +728,74 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleLike = (article) => {
-		uni.showToast({
-			title: article.isLiked ? '点赞成功' : '已取消点赞',
-			icon: article.isLiked ? 'success' : 'none'
-		});
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			
+			setTimeout(() => {
+				uni.navigateTo({
+					url: '/pages/login/login'
+				});
+			}, 1500);
+			return;
+		}
+		
+		// 保存点赞前的状态
+		const originalState = article.isLiked;
+		
+		// 设置动画标记
+		article.isAnimating = true;
+		article.animationType = 'like';
+		
+		// 立即反馈UI (乐观更新)
+		article.isLiked = !article.isLiked;
+		article.likeCount = article.isLiked ? (article.likeCount || 0) + 1 : Math.max(0, (article.likeCount || 0) - 1);
+		
+		// 调用API进行实际点赞/取消点赞操作
+		likeArticle(article.id, article.isLiked)
+			.then(res => {
+				if (res.code === 200) {
+					uni.showToast({
+						title: article.isLiked ? '点赞成功' : '已取消点赞',
+						icon: article.isLiked ? 'success' : 'none'
+					});
+					
+					// API成功后，确保UI反映正确的计数
+					if (res.data && typeof res.data.likeCount !== 'undefined') {
+						article.likeCount = res.data.likeCount;
+					}
+				} else {
+					// 恢复原状态
+					article.isLiked = originalState;
+					article.likeCount = originalState ? (article.likeCount || 0) + 1 : Math.max(0, (article.likeCount || 0) - 1);
+					
+					uni.showToast({
+						title: res.message || '操作失败',
+						icon: 'none'
+					});
+				}
+			})
+			.catch(err => {
+				// 恢复原状态
+				article.isLiked = originalState;
+				article.likeCount = originalState ? (article.likeCount || 0) + 1 : Math.max(0, (article.likeCount || 0) - 1);
+				
+				uni.showToast({
+					title: '网络异常，请稍后再试',
+					icon: 'none'
+				});
+				console.error('点赞失败:', err);
+			})
+			.finally(() => {
+				// 700ms后移除动画标记
+				setTimeout(() => {
+					article.isAnimating = false;
+				}, 700);
+			});
 	};
 
 	/**
@@ -2778,4 +2904,49 @@
 		}
 	}
 	// #endif
+
+	// 添加点赞和收藏的动画效果
+	.animate-icon {
+		animation: scale-bounce 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+	}
+
+	@keyframes scale-bounce {
+		0% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.5);
+		}
+		70% {
+			transform: scale(0.8);
+		}
+		85% {
+			transform: scale(1.2);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+
+	// 优化点赞和收藏文字样式
+	.action-item {
+		text {
+			&.liked {
+				color: #ff6b6b !important;
+				font-weight: bold;
+				transition: all 0.3s ease;
+			}
+			
+			&.collected {
+				color: #ffc107 !important;
+				font-weight: bold;
+				transition: all 0.3s ease;
+			}
+		}
+		
+		// 增加点击反馈
+		&:active {
+			transform: scale(0.95);
+		}
+	}
 </style>
