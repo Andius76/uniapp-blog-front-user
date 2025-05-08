@@ -2693,39 +2693,39 @@
 		.header-top {
 			display: flex;
 			align-items: center;
-			padding: 5rpx 20rpx; /* 减少上下间距 */
-			padding-top: 0;
+			padding: 15rpx 20rpx; /* 增加上下间距，让整个头部区域更大 */
+			padding-top: 10rpx;
 			
 			// 搜索栏样式
 			.search-bar {
 				display: flex;
 				align-items: center;
 				background: #fff;
-				border-radius: 40rpx;
+				border-radius: 45rpx; /* 增加圆角 */
 				overflow: hidden;
-				padding: 0 10rpx;
+				padding: 0 15rpx; /* 增加左右内边距 */
 				flex: 1;
 				box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
-				height: 60rpx;
+				height: 80rpx; /* 增加搜索框高度 */
 				
 				input {
 					flex: 1;
-					height: 60rpx;
-					padding: 0 20rpx;
-					font-size: 28rpx;
+					height: 80rpx; /* 增加输入框高度 */
+					padding: 0 25rpx; /* 增加左右内边距 */
+					font-size: 32rpx; /* 增加字体大小 */
 				}
 			}
 			
 			// 搜索按钮
 			.search-btn {
-				height: 50rpx;
-				line-height: 50rpx;
-				margin: 0 0 0 10rpx;
+				height: 70rpx; /* 增加按钮高度 */
+				line-height: 70rpx; /* 调整行高 */
+				margin: 0 0 0 15rpx;
 				background-color: #4361ee;
 				color: #fff;
-				font-size: 26rpx;
-				border-radius: 25rpx;
-				padding: 0 25rpx;
+				font-size: 30rpx; /* 增加字体大小 */
+				border-radius: 35rpx; /* 增加圆角 */
+				padding: 0 30rpx; /* 增加左右内边距 */
 			}
 		}
 		
@@ -2734,16 +2734,16 @@
 			width: 100%;
 			white-space: nowrap;
 			background-color: #f5f5f5;
-			padding: 2rpx 0; /* 减少上下间距 */
+			padding: 10rpx 0; /* 增加上下内边距 */
 			
 			.category-list {
 				display: inline-flex;
 				padding: 0 20rpx;
 				
 				.category-item {
-					padding: 6rpx 22rpx; /* 减少上下间距 */
+					padding: 10rpx 25rpx; /* 增加内边距 */
 					margin: 0 10rpx;
-					font-size: 28rpx;
+					font-size: 30rpx; /* 增加字体大小 */
 					color: #666;
 					border-radius: 30rpx;
 					transition: all 0.3s;
@@ -2758,16 +2758,16 @@
 		}
 	}
 
-	// 内容区域样式调整
+	// 内容区域样式调整 - 也需要修改顶部间距以适应更大的搜索框
 	.content-area.mp-content {
 		padding: 20rpx;
-		padding-top: calc(var(--status-bar-height) + 85rpx); /* 进一步减少顶部间距 */
+		padding-top: calc(var(--status-bar-height) + 170rpx); /* 进一步增加顶部间距，避免被菜单栏遮挡 */
 		background: #f5f5f5;
 		flex: 1;
 		box-sizing: border-box;
 		
 		.article-list {
-			height: calc(100vh - 85rpx - var(--status-bar-height)); /* 匹配header高度 */
+			height: calc(100vh - 170rpx - var(--status-bar-height)); /* 匹配调整后的header高度 */
 		}
 	}
 	// #endif
