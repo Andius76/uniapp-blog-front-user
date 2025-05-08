@@ -109,19 +109,74 @@
 
 		<!-- APP和小程序的内容区域 -->
 		<!-- #ifndef H5 -->
-		<view class="mp-content">
-			<ArticleList 
-				ref="articleListRef"
-				:key="data.currentNav"
-				:list-type="getListType()"
-				:height="getMPListHeight()"
-				:empty-text="'暂无文章内容'"
-				@article-click="viewArticleDetail"
-				@like="handleLike"
-				@share="handleShare"
-				@comment="handleComment"
-				@collect="handleCollect"
-			/>
+		<view class="content-area mp-content">
+			<scroll-view 
+				scroll-y 
+				class="article-list" 
+				refresher-enabled 
+				:refresher-triggered="data.isRefreshing" 
+				@refresherrefresh="handleRefresh"
+				@scrolltolower="handleLoadMore"
+				:refresher-threshold="100"
+			>
+				<!-- 文章列表循环显示 -->
+				<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
+					<!-- 用户信息 -->
+					<view class="user-info">
+						<image class="avatar" :src="article.author?.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
+						<button class="follow-btn" :class="{'followed': article.author?.isFollowed}" @click.stop="handleFollow(article)">
+							{{ article.author?.isFollowed ? '已关注' : '+ 关注' }}
+						</button>
+					</view>
+
+					<!-- 文章内容 -->
+					<view class="article-content" @click="viewArticleDetail(article.id)">
+						<text class="article-title">{{article.title}}</text>
+						<text class="article-summary">{{formatArticleSummary(article.summary)}}...全文</text>
+
+						<!-- 文章封面图片 -->
+						<view class="article-image" v-if="article.coverImage">
+							<image :src="article.coverImage" mode="aspectFill" class="single-image"></image>
+						</view>
+						
+						<!-- 文章标签 -->
+						<view class="article-tags" v-if="article.tags && article.tags.length > 0">
+							<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item">
+								{{ tag }}
+							</view>
+						</view>
+					</view>
+
+					<!-- 文章操作按钮 -->
+					<view class="article-actions">
+						<view class="action-item" @click.stop="handleShare(article)">
+							<uni-icons type="redo-filled" size="20" color="#666"></uni-icons>
+							<text>分享</text>
+						</view>
+						<view class="action-item" @click.stop="handleComment(article)">
+							<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
+							<text>{{article.commentCount || 0}}</text>
+						</view>
+						<view class="action-item" @click.stop="handleCollection(article)">
+							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" :color="article.isCollected ? '#ffc107' : '#666'"></uni-icons>
+							<text :class="{'collected': article.isCollected}">{{article.collectCount || 0}}</text>
+						</view>
+						<view class="action-item" @click.stop="handleLike(article)">
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20" :color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
+							<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
+						</view>
+					</view>
+				</view>
+
+				<!-- 加载状态 -->
+				<view class="loading-state">
+					<text v-if="isLoading">加载中...</text>
+					<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
+					<text v-else-if="articleList.length === 0 && !isLoading">暂无文章内容</text>
+					<text v-else>↓向下滑动加载更多文章列表↓</text>
+				</view>
+			</scroll-view>
 		</view>
 		<!-- #endif -->
 
@@ -1132,6 +1187,161 @@
 			return false;
 		};
 	})();
+
+	// 新增变量
+	const articleList = ref([]); // 文章列表数据
+	const isLoading = ref(false); // 加载状态
+	const noMoreData = ref(false); // 是否还有更多数据
+	const currentPage = ref(1); // 当前页码
+
+	/**
+	 * 处理文章摘要，展示纯文本并限制字数
+	 */
+	const formatArticleSummary = (summary) => {
+		if (!summary) return '暂无摘要';
+		// 去除HTML标签
+		let plainText = summary.replace(/<\/?[^>]+(>|$)/g, '');
+		// 限制字数
+		const maxLength = 100;
+		if (plainText.length > maxLength) {
+			plainText = plainText.substring(0, maxLength);
+		} 
+		return plainText;
+	};
+
+	/**
+	 * 处理用户关注
+	 */
+	const handleFollow = (article) => {
+		if (!article.author) return;
+		
+		// 检查登录状态
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 切换关注状态
+		article.author.isFollowed = !article.author.isFollowed;
+		
+		uni.showToast({
+			title: article.author.isFollowed ? '关注成功' : '已取消关注',
+			icon: article.author.isFollowed ? 'success' : 'none'
+		});
+		
+		// TODO: 实际关注/取消关注API调用
+	};
+
+	/**
+	 * 处理文章收藏 - 修改方法名以匹配模板中的方法名
+	 */
+	const handleCollection = (article) => {
+		handleCollect(article);
+	};
+
+	/**
+	 * 加载文章列表
+	 */
+	const loadArticleList = () => {
+		// 如果已经没有更多数据或正在加载中，则不处理
+		if (noMoreData.value || isLoading.value) return;
+		
+		isLoading.value = true;
+		
+		// 获取文章列表
+		const listType = getListType();
+		
+		// 构建请求参数
+		const params = {
+			page: currentPage.value,
+			pageSize: 10,
+			timestamp: new Date().getTime()
+		};
+		
+		// 根据不同的列表类型设置参数
+		if (listType === 'follow') {
+			params.type = 'follow';
+		} else if (listType === 'hot') {
+			params.sort = 'hot';
+		} else if (listType === 'new') {
+			params.sort = 'new';
+		}
+		
+		// 调用API获取文章列表
+		http.get('/api/article', params)
+			.then(res => {
+				if (res.code === 200 && res.data && res.data.list) {
+					const newArticles = res.data.list;
+					
+					// 第一页时替换列表，否则追加
+					if (currentPage.value === 1) {
+						articleList.value = newArticles;
+					} else {
+						articleList.value = [...articleList.value, ...newArticles];
+					}
+					
+					// 更新页码
+					currentPage.value++;
+					
+					// 判断是否还有更多数据
+					if (!newArticles.length || newArticles.length < 10) {
+						noMoreData.value = true;
+					}
+				} else {
+					uni.showToast({
+						title: res.message || '获取文章列表失败',
+						icon: 'none'
+					});
+				}
+			})
+			.catch(err => {
+				console.error('获取文章列表异常:', err);
+				uni.showToast({
+					title: '网络异常，请稍后再试',
+					icon: 'none'
+				});
+			})
+			.finally(() => {
+				isLoading.value = false;
+				if (data.isRefreshing) {
+					data.isRefreshing = false;
+				}
+			});
+	};
+
+	/**
+	 * 处理下拉刷新
+	 */
+	const handleRefresh = () => {
+		data.isRefreshing = true;
+		currentPage.value = 1;
+		noMoreData.value = false;
+		loadArticleList();
+	};
+
+	/**
+	 * 处理加载更多
+	 */
+	const handleLoadMore = () => {
+		loadArticleList();
+	};
+
+	// 监听导航切换，重新加载数据
+	watch(() => data.currentNav, () => {
+		currentPage.value = 1;
+		noMoreData.value = false;
+		articleList.value = [];
+		loadArticleList();
+	});
+
+	// 页面加载时初始化数据
+	onLoad(() => {
+		loadArticleList();
+	});
 </script>
 
 <style lang="scss">
@@ -1531,94 +1741,64 @@
 	// APP和小程序的样式
 	// #ifndef H5
 	.mp-header {
-		width: 100%;
-		background-color: #fff;
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 100;
+		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+		background-color: #f5f5f5;
 
 		.search-bar {
-			position: fixed;
-			top: 0;
-			left: 0;
-			right: 0;
-			z-index: 999;
 			display: flex;
 			align-items: center;
-			padding: 8rpx 20rpx;
-			padding-top: calc(8rpx + var(--status-bar-height));
+			padding: 15rpx 20rpx;
+			padding-top: calc(15rpx + var(--status-bar-height));
 			background: #fff;
-			border-bottom: 1rpx solid #f0f0f0;
-			box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0.05);
-
+			
 			input {
 				flex: 1;
-				height: 64rpx;
+				height: 70rpx;
 				background: #f5f5f5;
-				border-radius: 32rpx;
+				border-radius: 35rpx;
 				padding: 0 30rpx;
 				font-size: 28rpx;
 			}
-
+			
 			.search-btn {
-				padding: 0 30rpx;
-				height: 64rpx;
-				line-height: 64rpx;
-				font-size: 28rpx;
-				color: #fff;
-				background: #4361ee;
-				border-radius: 32rpx;
 				margin-left: 20rpx;
+				height: 70rpx;
+				line-height: 70rpx;
+				background-color: #4361ee;
+				color: #fff;
+				font-size: 28rpx;
+				border-radius: 35rpx;
+				padding: 0 30rpx;
 			}
 		}
 
 		.nav-menu {
-			position: fixed;
-			top: calc(var(--status-bar-height) + 80rpx); /* 减小与搜索栏的间距 */
-			left: 0;
-			right: 0;
-			z-index: 100;
 			display: flex;
-			padding: 10rpx 20rpx;
-			background: #fff;
-			border-bottom: 1rpx solid #f0f0f0;
-			width: 100%;
+			align-items: center;
+			padding: 10rpx 0;
 			overflow-x: auto;
 			white-space: nowrap;
-			box-sizing: border-box;
-
+			background-color: #f5f5f5;
+			border-bottom: 1rpx solid #f0f0f0;
+			
 			.nav-item {
-				padding: 0 20rpx;
+				padding: 10rpx 24rpx;
 				margin: 0 10rpx;
 				font-size: 28rpx;
-				height: 60rpx;
-				line-height: 60rpx;
 				color: #666;
-				position: relative;
-				display: inline-block;
-				min-width: 120rpx;
-				text-align: center;
-
+				border-radius: 30rpx;
+				transition: all 0.3s;
+				
 				&.active {
-					color: #4361ee;
+					color: #fff;
+					background-color: #4361ee;
 					font-weight: bold;
-
-					&::after {
-						content: '';
-						position: absolute;
-						bottom: -2rpx;
-						left: 50%;
-						transform: translateX(-50%);
-						width: 30rpx;
-						height: 6rpx;
-						background-color: #4361ee;
-						border-radius: 3rpx;
-					}
 				}
-			}
-			
-			// 隐藏导航横向滚动条
-			&::-webkit-scrollbar {
-				display: none;
-				width: 0;
-				height: 0;
 			}
 		}
 	}
@@ -1627,8 +1807,149 @@
 		padding-top: calc(var(--status-bar-height) + 150rpx); /* 调整内容区域的顶部间距 */
 		background: #f5f5f5;
 		width: 100%;
-		box-sizing: border-box;
-		overflow-x: hidden;
+		
+		.article-list {
+			height: calc(100vh - 212rpx); // 减去顶部导航栏高度
+		}
+		
+		// 文章卡片
+		.article-card {
+			background-color: #fff;
+			border-radius: 20rpx;
+			padding: 30rpx;
+			margin-top: 5rpx;
+			margin-bottom: 20rpx;
+			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+			
+			// 用户信息
+			.user-info {
+				display: flex;
+				align-items: center;
+				margin-bottom: 20rpx;
+				
+				.avatar {
+					width: 80rpx;
+					height: 80rpx;
+					border-radius: 50%;
+					margin-right: 20rpx;
+					background-color: #eee;
+				}
+				
+				.nickname {
+					flex: 1;
+					font-size: 28rpx;
+					color: #333;
+					font-weight: 500;
+				}
+				
+				.follow-btn {
+					height: 50rpx;
+					line-height: 50rpx;
+					background-color: #fff;
+					color: #4361ee;
+					font-size: 24rpx;
+					border: 2rpx solid #4361ee;
+					border-radius: 25rpx;
+					padding: 0 20rpx;
+					margin: 0;
+					
+					&.followed {
+						color: #999;
+						border-color: #999;
+					}
+				}
+			}
+			
+			// 文章内容
+			.article-content {
+				margin-bottom: 20rpx;
+				
+				.article-title {
+					font-size: 32rpx;
+					font-weight: bold;
+					color: #333;
+					margin-bottom: 10rpx;
+					display: block;
+				}
+				
+				.article-summary {
+					font-size: 28rpx;
+					color: #666;
+					margin-bottom: 20rpx;
+					line-height: 1.5;
+					display: block;
+				}
+				
+				// 单图布局
+				.article-image {
+					width: 100%;
+					height: 300rpx;
+					border-radius: 10rpx;
+					overflow: hidden;
+					margin-bottom: 20rpx;
+					
+					.single-image {
+						width: 100%;
+						height: 100%;
+						background-color: #eee;
+					}
+				}
+				
+				// 文章标签
+				.article-tags {
+					display: flex;
+					flex-wrap: wrap;
+					margin-top: 10rpx;
+					
+					.tag-item {
+						padding: 6rpx 16rpx;
+						font-size: 22rpx;
+						color: #4361ee;
+						background-color: rgba(67, 97, 238, 0.1);
+						border-radius: 20rpx;
+						margin-right: 10rpx;
+						margin-bottom: 10rpx;
+					}
+				}
+			}
+			
+			// 文章操作按钮
+			.article-actions {
+				display: flex;
+				justify-content: space-around;
+				border-top: 2rpx solid #f0f0f0;
+				padding-top: 20rpx;
+				
+				.action-item {
+					display: flex;
+					align-items: center;
+					
+					text {
+						font-size: 24rpx;
+						color: #666;
+						margin-left: 6rpx;
+						
+						&.liked {
+							color: #ff6b6b;
+						}
+						
+						&.collected {
+							color: #ffc107;
+						}
+					}
+				}
+			}
+		}
+		
+		// 加载状态
+		.loading-state {
+			text-align: center;
+			font-size: 24rpx;
+			color: #999;
+			margin: 20rpx 0;
+			padding: 20rpx 0;
+			padding-bottom: 120rpx; // 增加底部间距，确保在底部导航栏上方可见
+		}
 	}
 	// #endif
 
@@ -1887,4 +2208,156 @@
 			color: #666;
 		}
 	}
+
+	// #ifndef H5
+	// 小程序和APP的样式
+	.content-area.mp-content {
+		padding: 212rpx 20rpx 0 20rpx;
+		flex: 1;
+		box-sizing: border-box;
+		
+		.article-list {
+			height: calc(100vh - 212rpx); // 减去顶部导航栏高度
+		}
+		
+		// 文章卡片
+		.article-card {
+			background-color: #fff;
+			border-radius: 20rpx;
+			padding: 30rpx;
+			margin-top: 5rpx;
+			margin-bottom: 20rpx;
+			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+			
+			// 用户信息
+			.user-info {
+				display: flex;
+				align-items: center;
+				margin-bottom: 20rpx;
+				
+				.avatar {
+					width: 80rpx;
+					height: 80rpx;
+					border-radius: 50%;
+					margin-right: 20rpx;
+					background-color: #eee;
+				}
+				
+				.nickname {
+					flex: 1;
+					font-size: 28rpx;
+					color: #333;
+					font-weight: 500;
+				}
+				
+				.follow-btn {
+					height: 50rpx;
+					line-height: 50rpx;
+					background-color: #fff;
+					color: #4361ee;
+					font-size: 24rpx;
+					border: 2rpx solid #4361ee;
+					border-radius: 25rpx;
+					padding: 0 20rpx;
+					margin: 0;
+					
+					&.followed {
+						color: #999;
+						border-color: #999;
+					}
+				}
+			}
+			
+			// 文章内容
+			.article-content {
+				margin-bottom: 20rpx;
+				
+				.article-title {
+					font-size: 32rpx;
+					font-weight: bold;
+					color: #333;
+					margin-bottom: 10rpx;
+					display: block;
+				}
+				
+				.article-summary {
+					font-size: 28rpx;
+					color: #666;
+					margin-bottom: 20rpx;
+					line-height: 1.5;
+					display: block;
+				}
+				
+				// 单图布局
+				.article-image {
+					width: 100%;
+					height: 300rpx;
+					border-radius: 10rpx;
+					overflow: hidden;
+					margin-bottom: 20rpx;
+					
+					.single-image {
+						width: 100%;
+						height: 100%;
+						background-color: #eee;
+					}
+				}
+				
+				// 文章标签
+				.article-tags {
+					display: flex;
+					flex-wrap: wrap;
+					margin-top: 10rpx;
+					
+					.tag-item {
+						padding: 6rpx 16rpx;
+						font-size: 22rpx;
+						color: #4361ee;
+						background-color: rgba(67, 97, 238, 0.1);
+						border-radius: 20rpx;
+						margin-right: 10rpx;
+						margin-bottom: 10rpx;
+					}
+				}
+			}
+			
+			// 文章操作按钮
+			.article-actions {
+				display: flex;
+				justify-content: space-around;
+				border-top: 2rpx solid #f0f0f0;
+				padding-top: 20rpx;
+				
+				.action-item {
+					display: flex;
+					align-items: center;
+					
+					text {
+						font-size: 24rpx;
+						color: #666;
+						margin-left: 6rpx;
+						
+						&.liked {
+							color: #ff6b6b;
+						}
+						
+						&.collected {
+							color: #ffc107;
+						}
+					}
+				}
+			}
+		}
+		
+		// 加载状态
+		.loading-state {
+			text-align: center;
+			font-size: 24rpx;
+			color: #999;
+			margin: 20rpx 0;
+			padding: 20rpx 0;
+			padding-bottom: 120rpx; // 增加底部间距，确保在底部导航栏上方可见
+		}
+	}
+	// #endif
 </style>
