@@ -2684,7 +2684,8 @@
 		flex-direction: column;
 		gap: 0; /* 减少垂直间隔 */
 		padding: 0;
-		padding-top: var(--status-bar-height);
+		margin: 0; /* 确保外边距为0 */
+		padding-top: var(--status-bar-height); /* 仅保留状态栏高度的内边距 */
 		background: #f5f5f5;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
@@ -2693,39 +2694,43 @@
 		.header-top {
 			display: flex;
 			align-items: center;
-			padding: 15rpx 20rpx; /* 增加上下间距，让整个头部区域更大 */
-			padding-top: 10rpx;
+			padding: 15rpx 20rpx; /* 保持左右内边距 */
+			padding-top: 5rpx; /* 减少顶部内边距 */
+			padding-bottom: 5rpx; /* 减少底部内边距 */
+			margin: 0; /* 确保外边距为0 */
 			
 			// 搜索栏样式
 			.search-bar {
 				display: flex;
 				align-items: center;
 				background: #fff;
-				border-radius: 45rpx; /* 增加圆角 */
+				border-radius: 45rpx;
 				overflow: hidden;
-				padding: 0 15rpx; /* 增加左右内边距 */
+				padding: 0 15rpx;
 				flex: 1;
 				box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
-				height: 80rpx; /* 增加搜索框高度 */
+				height: 80rpx;
+				margin: 0; /* 确保外边距为0 */
 				
 				input {
 					flex: 1;
-					height: 80rpx; /* 增加输入框高度 */
-					padding: 0 25rpx; /* 增加左右内边距 */
-					font-size: 32rpx; /* 增加字体大小 */
+					height: 80rpx;
+					padding: 0 25rpx;
+					font-size: 32rpx;
+					margin: 0; /* 确保外边距为0 */
 				}
 			}
 			
 			// 搜索按钮
 			.search-btn {
-				height: 70rpx; /* 增加按钮高度 */
-				line-height: 70rpx; /* 调整行高 */
+				height: 70rpx;
+				line-height: 70rpx;
 				margin: 0 0 0 15rpx;
 				background-color: #4361ee;
 				color: #fff;
-				font-size: 30rpx; /* 增加字体大小 */
-				border-radius: 35rpx; /* 增加圆角 */
-				padding: 0 30rpx; /* 增加左右内边距 */
+				font-size: 30rpx;
+				border-radius: 35rpx;
+				padding: 0 30rpx;
 			}
 		}
 		
@@ -2734,16 +2739,18 @@
 			width: 100%;
 			white-space: nowrap;
 			background-color: #f5f5f5;
-			padding: 10rpx 0; /* 增加上下内边距 */
+			padding: 5rpx 0; /* 减少上下内边距 */
+			margin: 0; /* 确保外边距为0 */
 			
 			.category-list {
 				display: inline-flex;
 				padding: 0 20rpx;
+				margin: 0; /* 确保外边距为0 */
 				
 				.category-item {
-					padding: 10rpx 25rpx; /* 增加内边距 */
+					padding: 8rpx 25rpx; /* 减少上下内边距 */
 					margin: 0 10rpx;
-					font-size: 30rpx; /* 增加字体大小 */
+					font-size: 30rpx;
 					color: #666;
 					border-radius: 30rpx;
 					transition: all 0.3s;
