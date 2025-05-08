@@ -481,12 +481,15 @@ const changeAvatar = (e) => {
     sourceType: ['album', 'camera'],
     success: (res) => {
       const tempFilePaths = res.tempFilePaths;
+      console.log('选择图片成功，临时路径:', tempFilePaths[0]); // 添加调试日志
       
       // 验证文件大小（限制为2MB）
       uni.getFileInfo({
         filePath: tempFilePaths[0],
         success: (fileInfo) => {
           const fileSizeInMB = fileInfo.size / (1024 * 1024);
+          console.log('文件大小:', fileSizeInMB, 'MB'); // 添加调试日志
+          
           if (fileSizeInMB > 2) {
             uni.showToast({
               title: '图片大小不能超过2MB',
@@ -501,112 +504,37 @@ const changeAvatar = (e) => {
           });
           
           const baseUrl = getBaseUrl();
+          console.log('上传接口URL:', baseUrl + '/api/user/avatar'); // 添加调试日志
           
-          // 直接上传头像到服务器
-          uni.uploadFile({
-            url: baseUrl + '/api/user/avatar',
-            filePath: tempFilePaths[0],
-            name: 'avatar', // 确保参数名与后端API一致
-            header: {
-              // 确保使用正确的Bearer格式
-              'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+          // 特殊处理微信小程序环境下的文件路径
+          // #ifdef MP-WEIXIN
+          console.log('微信小程序环境，特殊处理文件路径');
+          // 检查文件是否存在
+          uni.saveFile({
+            tempFilePath: tempFilePaths[0],
+            success: function(saveRes) {
+              console.log('文件已保存，永久路径:', saveRes.savedFilePath);
+              // 使用保存后的文件路径进行上传
+              uploadAvatarFile(baseUrl, saveRes.savedFilePath, token);
             },
-            success: (uploadRes) => {
+            fail: function(err) {
+              console.error('保存文件失败:', err);
               uni.hideLoading();
-              
-              console.log('头像上传响应:', uploadRes);
-              console.log('响应状态码:', uploadRes.statusCode);
-              console.log('请求头:', JSON.stringify({
-                'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
-              }));
-              
-              // 处理403错误
-              if (uploadRes.statusCode === 403) {
-                uni.showModal({
-                  title: '授权失败',
-                  content: '登录信息已过期，请重新登录',
-                  confirmText: '去登录',
-                  success: (res) => {
-                    if (res.confirm) {
-                      // 清除token
-                      uni.removeStorageSync('token');
-                      uni.navigateTo({
-                        url: '/pages/login/login'
-                      });
-                    }
-                  }
-                });
-                return;
-              }
-              
-              try {
-                // 解析响应数据
-                let responseData = uploadRes.data;
-                if (typeof responseData === 'string') {
-                  responseData = JSON.parse(responseData);
-                }
-                
-                console.log('解析后的响应数据:', responseData);
-                
-                // 专门处理创建目录失败的错误
-                if (responseData.code === 500 && responseData.message && responseData.message.includes('创建上传目录失败')) {
-                  console.error('服务器存储错误:', responseData.message);
-                  uni.hideLoading();
-                  uni.showModal({
-                    title: '上传失败',
-                    content: '服务器无法创建保存头像的目录，这是服务器配置问题。请联系管理员解决存储权限问题，或稍后再试。',
-                    showCancel: false,
-                    confirmText: '我知道了'
-                  });
-                  return;
-                }
-                
-                // 检查响应状态
-                if (uploadRes.statusCode === 200 && responseData.code === 200) {
-                  // 获取头像URL
-                  let avatarUrl = '';
-                  if (responseData.data && responseData.data.avatarUrl) {
-                    avatarUrl = responseData.data.avatarUrl;
-                  } else if (responseData.data) {
-                    avatarUrl = typeof responseData.data === 'string' ? responseData.data : '';
-                  }
-                  
-                  // 设置头像更新成功状态
-                  isAvatarUpdated.value = true;
-                  
-                  // 通知父组件头像已更改
-                  emit('avatar-change', avatarUrl || tempFilePaths[0]);
-                  
-                  // 显示成功提示
-                  uni.showToast({
-                    title: '头像更新成功',
-                    icon: 'success',
-                    duration: 2000
-                  });
-                  
-                  // 3秒后重置状态
-                  setTimeout(() => {
-                    isAvatarUpdated.value = false;
-                  }, 3000);
-                } else {
-                  // 其他错误
-                  const errorMsg = responseData.message || '头像上传失败';
-                  handleUploadError(errorMsg);
-                }
-              } catch (e) {
-                console.error('处理上传响应失败:', e);
-                handleUploadError('处理响应数据失败');
-              }
-            },
-            fail: (err) => {
-              uni.hideLoading();
-              console.error('头像上传请求失败:', err);
-              handleUploadError(err.errMsg || '网络错误，上传失败');
+              uni.showToast({
+                title: '文件读取失败',
+                icon: 'none'
+              });
             }
           });
+          // #endif
+          
+          // 非微信小程序环境直接上传
+          // #ifndef MP-WEIXIN
+          uploadAvatarFile(baseUrl, tempFilePaths[0], token);
+          // #endif
         },
         fail: (err) => {
-          console.log('获取文件信息失败:', err);
+          console.error('获取文件信息失败:', err);
           handleUploadError('获取文件信息失败');
         }
       });
@@ -615,6 +543,123 @@ const changeAvatar = (e) => {
       console.log('用户取消选择头像:', err);
       // 用户取消选择头像，通知父组件操作已结束
       emit('avatar-change', props.userInfo.avatar);
+    }
+  });
+};
+
+// 抽取上传头像的函数
+const uploadAvatarFile = (baseUrl, filePath, token) => {
+  console.log('准备上传文件，路径:', filePath); // 添加调试日志
+  
+  // 直接上传头像到服务器
+  uni.uploadFile({
+    url: baseUrl + '/api/user/avatar',
+    filePath: filePath,
+    name: 'avatar', // 确保参数名与后端API一致
+    header: {
+      // 确保使用正确的Bearer格式
+      'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
+    },
+    success: (uploadRes) => {
+      uni.hideLoading();
+      
+      console.log('头像上传响应:', uploadRes);
+      console.log('响应状态码:', uploadRes.statusCode);
+      
+      // 处理403错误
+      if (uploadRes.statusCode === 403) {
+        uni.showModal({
+          title: '授权失败',
+          content: '登录信息已过期，请重新登录',
+          confirmText: '去登录',
+          success: (res) => {
+            if (res.confirm) {
+              // 清除token
+              uni.removeStorageSync('token');
+              uni.navigateTo({
+                url: '/pages/login/login'
+              });
+            }
+          }
+        });
+        return;
+      }
+      
+      try {
+        // 解析响应数据
+        let responseData = uploadRes.data;
+        if (typeof responseData === 'string') {
+          responseData = JSON.parse(responseData);
+        }
+        
+        console.log('解析后的响应数据:', responseData);
+        
+        // 专门处理创建目录失败的错误
+        if (responseData.code === 500 && responseData.message && responseData.message.includes('创建上传目录失败')) {
+          console.error('服务器存储错误:', responseData.message);
+          uni.hideLoading();
+          uni.showModal({
+            title: '上传失败',
+            content: '服务器无法创建保存头像的目录，这是服务器配置问题。请联系管理员解决存储权限问题，或稍后再试。',
+            showCancel: false,
+            confirmText: '我知道了'
+          });
+          return;
+        }
+        
+        // 检查响应状态
+        if (uploadRes.statusCode === 200 && responseData.code === 200) {
+          // 获取头像URL
+          let avatarUrl = '';
+          if (responseData.data && responseData.data.avatarUrl) {
+            avatarUrl = responseData.data.avatarUrl;
+          } else if (responseData.data) {
+            avatarUrl = typeof responseData.data === 'string' ? responseData.data : '';
+          }
+          
+          // 设置头像更新成功状态
+          isAvatarUpdated.value = true;
+          
+          // 通知父组件头像已更改
+          emit('avatar-change', avatarUrl || filePath);
+          
+          // 显示成功提示
+          uni.showToast({
+            title: '头像更新成功',
+            icon: 'success',
+            duration: 2000
+          });
+          
+          // 3秒后重置状态
+          setTimeout(() => {
+            isAvatarUpdated.value = false;
+          }, 3000);
+          
+          // #ifdef MP-WEIXIN
+          // 微信小程序环境下，清理保存的临时文件
+          if (filePath.indexOf('wxfile://') === 0) {
+            uni.removeSavedFile({
+              filePath: filePath,
+              fail: (err) => {
+                console.log('清理临时文件失败:', err);
+              }
+            });
+          }
+          // #endif
+        } else {
+          // 其他错误
+          const errorMsg = responseData.message || '头像上传失败';
+          handleUploadError(errorMsg);
+        }
+      } catch (e) {
+        console.error('处理上传响应失败:', e);
+        handleUploadError('处理响应数据失败');
+      }
+    },
+    fail: (err) => {
+      uni.hideLoading();
+      console.error('头像上传请求失败:', err);
+      handleUploadError(err.errMsg || '网络错误，上传失败');
     }
   });
 };
