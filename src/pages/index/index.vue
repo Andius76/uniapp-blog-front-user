@@ -34,18 +34,25 @@
 
 		<!-- APP和小程序的顶部布局 -->
 		<!-- #ifndef H5 -->
-		<view class="mp-header">
-			<!-- 搜索框 -->
-			<view class="search-bar">
-				<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
-				<button class="search-btn" @click="handleSearch">搜索</button>
-			</view>
-			<!-- 导航菜单 -->
-			<view class="nav-menu">
-				<view v-for="(item, index) in data.navItems" :key="index" class="nav-item"
-					:class="{ active: data.currentNav === index }" @click="switchNav(index)">
-					{{ item.name }}
+		<view class="header-fixed">
+			<view class="header-main-container">
+				<!-- 顶部区域 -->
+				<view class="header-top">
+					<view class="search-bar">
+						<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
+						<button class="search-btn" @click="handleSearch">搜索</button>
+					</view>
 				</view>
+
+				<!-- 导航菜单 -->
+				<scroll-view class="category-scroll" scroll-x show-scrollbar="false">
+					<view class="category-list">
+						<view v-for="(item, index) in data.navItems" :key="index" class="category-item"
+							:class="{ active: data.currentNav === index }" @click="switchNav(index)">
+							{{ item.name }}
+						</view>
+					</view>
+				</scroll-view>
 			</view>
 		</view>
 		<!-- #endif -->
@@ -123,7 +130,8 @@
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
 					<!-- 用户信息 -->
 					<view class="user-info">
-						<image class="avatar" :src="formatAvatarUrl(article.author?.avatar)" mode="aspectFill"></image>
+						<!-- 添加更多安全性检查，确保即使formatAvatarUrl函数有问题也能显示默认头像 -->
+						<image class="avatar" :src="article.author && formatAvatarUrl(article.author?.avatar) || '/static/images/avatar.png'" mode="aspectFill" @error="handleUserAvatarError(index)"></image>
 						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
 						<button class="follow-btn" :class="{'followed': article.author?.isFollowed}" @click.stop="handleFollow(article)">
 							{{ article.author?.isFollowed ? '已关注' : '+ 关注' }}
@@ -504,7 +512,7 @@
 		url = url.trim();
 		
 		// 确保不是null或undefined
-		if (url === 'null' || url === 'undefined') {
+		if (url === 'null' || url === 'undefined' || url === '') {
 			return '/static/images/avatar.png';
 		}
 		
@@ -514,18 +522,37 @@
 			if (url.includes('//uploads')) {
 				url = url.replace('//uploads', '/uploads');
 			}
+			
+			// APP环境下特别处理localhost
+			// #ifdef APP-PLUS
+			if (url.includes('localhost') || url.includes('127.0.0.1')) {
+				const appBaseUrl = 'http://10.9.135.132:8080';
+				const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
+				return appBaseUrl + urlPath;
+			}
+			// #endif
+			
 			return url;
 		}
 		// 静态资源处理：如果是静态资源路径则不处理
 		else if (url.startsWith('/static')) {
 			return url;
 		}
+		// 路径以/uploads开头
+		else if (url.startsWith('/uploads')) {
+			return getBaseUrl() + url;
+		}
+		// 用户头像特别处理：如果是user_开头的文件名，默认放在/uploads/avatars/目录下
+		else if (url.startsWith('user_')) {
+			return getBaseUrl() + '/uploads/avatars/' + url;
+		}
 		// 其他情况：添加基础URL前缀
 		else {
 			if (url.startsWith('/')) {
 				return getBaseUrl() + url;
 			} else {
-				return getBaseUrl() + '/' + url;
+				// 默认假设是avatars目录
+				return getBaseUrl() + '/uploads/avatars/' + url;
 			}
 		}
 	};
@@ -1343,6 +1370,18 @@
 							const originalAvatar = article.author.avatar;
 							article.author.avatar = formatAvatarUrl(article.author.avatar);
 							console.log(`[文章${article.id}] 作者头像: ${originalAvatar} -> ${article.author.avatar}`);
+						} else if (article.author) {
+							// 确保author对象存在但avatar为空时也设置默认头像
+							article.author.avatar = '/static/images/avatar.png';
+							console.log(`[文章${article.id}] 作者头像为空，使用默认头像`);
+						} else {
+							// 如果作者信息不存在，创建一个基本的author对象
+							article.author = {
+								nickname: '未知用户',
+								avatar: '/static/images/avatar.png',
+								isFollowed: false
+							};
+							console.log(`[文章${article.id}] 缺少作者信息，创建默认作者对象`);
 						}
 						
 						// 确保其他字段有正确的默认值
@@ -1573,6 +1612,17 @@
 			// 通用错误处理
 			article.coverImage = formatArticleImage(article.coverImage);
 			console.log(`尝试修复封面URL: ${originalUrl} -> ${article.coverImage}`);
+		}
+	};
+
+	/**
+	 * 处理用户头像加载错误
+	 */
+	const handleUserAvatarError = (index) => {
+		console.error(`文章[${articleList.value[index]?.id}]作者头像加载失败:`, articleList.value[index]?.author?.avatar);
+		// 设置默认头像
+		if (articleList.value[index] && articleList.value[index].author) {
+			articleList.value[index].author.avatar = '/static/images/avatar.png';
 		}
 	};
 </script>
@@ -2460,11 +2510,13 @@
 	// 小程序和APP的样式
 	.content-area.mp-content {
 		padding: 212rpx 20rpx 0 20rpx;
+		padding-top: calc(var(--status-bar-height) + 212rpx);
+		background: #f5f5f5;
 		flex: 1;
 		box-sizing: border-box;
 		
 		.article-list {
-			height: calc(100vh - 212rpx); // 减去顶部导航栏高度
+			height: calc(100vh - 212rpx - var(--status-bar-height)); // 减去顶部导航栏高度
 		}
 		
 		// 文章卡片
@@ -2619,6 +2671,98 @@
 			padding: 20rpx 0;
 			padding-bottom: 120rpx; // 增加底部间距，确保在底部导航栏上方可见
 		}
+	}
+	// #endif
+
+	// APP和小程序样式增强
+	// #ifndef H5
+	// 固定在顶部的标题和分类栏
+	.header-fixed {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		background-color: #f5f5f5;
+		z-index: 100;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		
+		// 顶部区域
+		.header-top {
+			display: flex;
+			align-items: center;
+			padding: 15rpx 20rpx;
+			padding-top: calc(15rpx + var(--status-bar-height));
+			
+			// 搜索栏样式
+			.search-bar {
+				display: flex;
+				background: #fff;
+				border-radius: 40rpx;
+				overflow: hidden;
+				padding: 0 20rpx;
+				flex: 1;
+				box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+				
+				input {
+					flex: 1;
+					height: 80rpx;
+					padding: 0 20rpx;
+					font-size: 28rpx;
+				}
+			}
+			
+			// 搜索按钮
+			.search-btn {
+				height: 60rpx;
+				line-height: 60rpx;
+				margin: 10rpx 0;
+				background-color: #4361ee;
+				color: #fff;
+				font-size: 26rpx;
+				border-radius: 30rpx;
+				padding: 0 30rpx;
+			}
+		}
+		
+		// 分类标签导航
+		.category-scroll {
+			width: 100%;
+			white-space: nowrap;
+			background-color: #f5f5f5;
+			padding: 10rpx 0;
+			position: relative;
+			z-index: 100;
+			
+			.category-list {
+				display: inline-flex;
+				padding: 0 20rpx;
+				
+				.category-item {
+					padding: 10rpx 24rpx;
+					margin: 0 10rpx;
+					font-size: 28rpx;
+					color: #666;
+					border-radius: 30rpx;
+					transition: all 0.3s;
+					
+					&.active {
+						color: #fff;
+						background-color: #4361ee;
+						font-weight: bold;
+					}
+				}
+			}
+		}
+	}
+
+	.header-main-container {
+		display: flex;
+		flex-direction: column;
+		gap: 10rpx;
+		padding: 15rpx 0 0 0;
+		background: #f5f5f5;
+		position: relative;
+		z-index: 99;
 	}
 	// #endif
 </style>
