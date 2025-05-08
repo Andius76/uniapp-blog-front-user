@@ -1827,12 +1827,11 @@
 
 ### 9. 获取文章标签列表
 
-**接口说明：** 获取系统中所有的文章标签
+**接口说明：** 获取系统中所有的文章标签及其对应的文章数量
 
 - **请求URL：** `/api/article/tags`
 - **请求方式：** GET
 - **请求参数：** 无
-
 - **响应参数：**
 
 | 参数名  | 类型   | 说明         |
@@ -1882,23 +1881,24 @@
   - 该接口可以在未登录状态下访问
   - 返回的标签按文章数量降序排列
   - 标签数据会被缓存，定期更新
-  - **⚠️ 当前状态：已实现**
+  - 用于分类页面的标签导航和标签云展示
+  - 返回的标签数量可能有限制，通常返回使用频率最高的前30个标签
+  - **⚠️ 当前状态：需要实现**
 
-## 评论管理相关接口
+### 10. 按标签获取文章列表
 
-### 1. 获取文章评论列表
+**接口说明：** 获取指定标签的文章列表
 
-**接口说明：** 获取指定文章的评论列表
-
-- **请求URL：** `/api/article/{articleId}/comments`
+- **请求URL：** `/api/article`
 - **请求方式：** GET
 - **请求参数：**
 
-| 参数名    | 类型   | 必选 | 说明                     |
-|-----------|--------|------|-------------------------|
-| articleId | number | 是   | 文章ID，包含在URL路径中  |
-| page      | number | 否   | 页码，默认1             |
-| pageSize  | number | 否   | 每页条数，默认10，最大50 |
+| 参数名   | 类型   | 必选 | 说明                              |
+|----------|--------|------|-----------------------------------|
+| tag      | string | 否   | 标签名称，不提供则返回所有文章     |
+| page     | number | 否   | 页码，默认1                       |
+| pageSize | number | 否   | 每页条数，默认10，最大50          |
+| sort     | string | 否   | 排序方式：new(最新)、hot(热门)    |
 
 - **响应参数：**
 
@@ -1910,471 +1910,121 @@
 
 - **data对象结构：**
 
-| 参数名 | 类型   | 说明         |
-|--------|--------|--------------|
-| total  | number | 总记录数     |
-| pages  | number | 总页数       |
-| list   | array  | 评论列表     |
+| 参数名      | 类型    | 说明               |
+|-------------|---------|-------------------|
+| total       | number  | 总记录数          |
+| pages       | number  | 总页数            |
+| list        | array   | 文章列表          |
 
 - **list数组元素结构：**
 
-| 参数名       | 类型    | 说明                 |
-|--------------|---------|---------------------|
-| id           | number  | 评论ID              |
-| content      | string  | 评论内容            |
-| createTime   | string  | 评论时间            |
-| userId       | number  | 评论用户ID          |
-| nickname     | string  | 评论用户昵称        |
-| avatar       | string  | 评论用户头像        |
-| likeCount    | number  | 点赞数              |
-| isLiked      | boolean | 当前用户是否已点赞  |
-| parentId     | number  | 父评论ID，一级评论为null |
-| replyUserId  | number  | 回复用户ID，一级评论为null |
-| replyNickname| string  | 回复用户昵称，一级评论为null |
-| replies      | array   | 子评论列表，可能为空 |
-
-- **⚠️ 当前状态：已更新接口路径，与后端接口保持一致**
-
-### 2. 发表评论
-
-**接口说明：** 对文章发表评论或回复其他评论
-
-- **请求URL：** `/api/article/{articleId}/comment`
-- **请求方式：** POST
-- **请求参数：**
-
-| 参数名      | 类型   | 必选 | 说明                         |
-|-------------|--------|------|-----------------------------|
-| articleId   | number | 是   | 文章ID，包含在URL路径中      |
-| content     | string | 是   | 评论内容                     |
-| parentId    | number | 否   | 父评论ID，回复评论时必需     |
-| replyUserId | number | 否   | 被回复用户ID，回复评论时必需 |
-
-- **响应参数：**
-
-| 参数名  | 类型   | 说明              |
-|---------|--------|------------------|
-| code    | number | 状态码           |
-| message | string | 提示信息         |
-| data    | object | 新评论信息       |
-
-- **data对象结构：**
-
-| 参数名     | 类型   | 说明           |
-|------------|--------|---------------|
-| id         | number | 新评论ID      |
-| createTime | string | 评论创建时间   |
-
-- **错误码说明：**
-
-| 错误码 | 说明                     |
-|--------|-------------------------|
-| 200    | 成功                    |
-| 400    | 参数错误                |
-| 401    | 未登录或token无效       |
-| 404    | 文章不存在              |
-| 500    | 服务器错误              |
-
-- **其他说明：**
-  - 该接口需要在请求头中携带token才能访问
-  - 评论内容不能为空，长度限制为1-500个字符
-  - 评论成功后会自动更新文章的评论数
-  - 如果是回复评论，需要同时提供parentId和replyUserId
-  - **⚠️ 当前状态：已更新接口路径，与后端接口保持一致**
-
-### 3. 点赞评论
-
-**接口说明：** 点赞指定评论
-
-- **请求URL：** `/api/article/comment/{commentId}/like`
-- **请求方式：** POST
-- **请求参数：**
-
-| 参数名    | 类型   | 必选 | 说明                    |
-|-----------|--------|------|------------------------|
-| commentId | number | 是   | 评论ID，包含在URL路径中 |
-
-- **响应参数：**
-
-| 参数名  | 类型   | 说明         |
-|---------|--------|--------------|
-| code    | number | 状态码       |
-| message | string | 提示信息     |
-| data    | object | 点赞结果信息 |
-
-- **data对象结构：**
-
-| 参数名    | 类型   | 说明           |
-|-----------|--------|---------------|
-| likeCount | number | 更新后的点赞数 |
-
-- **错误码说明：**
-
-| 错误码 | 说明                     |
-|--------|-------------------------|
-| 200    | 成功                    |
-| 401    | 未登录或token无效       |
-| 404    | 评论不存在              |
-| 409    | 已点赞                  |
-| 500    | 服务器错误              |
-
-- **⚠️ 当前状态：已更新接口路径，与后端接口保持一致**
-
-### 4. 取消点赞评论
-
-**接口说明：** 取消点赞指定评论
-
-- **请求URL：** `/api/article/comment/{commentId}/like`
-- **请求方式：** DELETE
-- **请求参数：**
-
-| 参数名    | 类型   | 必选 | 说明                    |
-|-----------|--------|------|------------------------|
-| commentId | number | 是   | 评论ID，包含在URL路径中 |
-
-- **响应参数：**
-
-| 参数名  | 类型   | 说明         |
-|---------|--------|--------------|
-| code    | number | 状态码       |
-| message | string | 提示信息     |
-| data    | object | 操作结果信息 |
-
-- **data对象结构：**
-
-| 参数名    | 类型   | 说明           |
-|-----------|--------|---------------|
-| likeCount | number | 更新后的点赞数 |
-
-- **错误码说明：**
-
-| 错误码 | 说明                     |
-|--------|-------------------------|
-| 200    | 成功                    |
-| 401    | 未登录或token无效       |
-| 404    | 评论不存在或未点赞      |
-| 500    | 服务器错误              |
-
-- **⚠️ 当前状态：已更新接口路径，与后端接口保持一致**
-
-### 3. 删除文章
-
-**接口说明：** 删除当前用户发布的文章
-
-- **请求URL：** `/api/article/{articleId}`
-- **请求方式：** DELETE
-- **请求参数：**
-
-| 参数名    | 类型   | 必选 | 说明                    |
-|-----------|--------|------|------------------------|
-| articleId | number | 是   | 文章ID，包含在URL路径中 |
-
-- **响应参数：**
-
-| 参数名  | 类型   | 说明         |
-|---------|--------|--------------|
-| code    | number | 状态码       |
-| message | string | 提示信息     |
+| 参数名         | 类型             | 说明                 |
+|----------------|------------------|---------------------|
+| id             | number           | 文章ID              |
+| title          | string           | 文章标题            |
+| summary        | string           | 文章摘要            |
+| content        | string           | 文章内容（纯文本）  |
+| coverImage     | string           | 封面图片URL         |
+| tags           | Array\<string\>  | 文章标签            |
+| viewCount      | number           | 浏览量              |
+| likeCount      | number           | 点赞数              |
+| commentCount   | number           | 评论数              |
+| collectCount   | number           | 收藏数              |
+| isLiked        | boolean          | 当前用户是否已点赞   |
+| isCollected    | boolean          | 当前用户是否已收藏   |
+| userId         | number           | 作者ID              |
+| nickname       | string           | 作者昵称            |
+| avatar         | string           | 作者头像            |
+| createTime     | string           | 创建时间            |
+| updateTime     | string           | 更新时间            |
 
 - **响应示例：**
 
 ```json
 {
     "code": 200,
-    "message": "文章删除成功"
+    "message": "success",
+    "data": {
+        "total": 42,
+        "pages": 5,
+        "list": [
+            {
+                "id": 1001,
+                "title": "技术文章标题",
+                "summary": "这是一篇关于技术的文章摘要...",
+                "coverImage": "https://example.com/uploads/articles/cover_1001.jpg",
+                "tags": ["技术", "编程"],
+                "viewCount": 120,
+                "likeCount": 30,
+                "commentCount": 15,
+                "collectCount": 25,
+                "isLiked": false,
+                "isCollected": true,
+                "userId": 1,
+                "nickname": "技术作者",
+                "avatar": "https://example.com/uploads/avatars/user_1.jpg",
+                "createTime": "2024-05-01 10:00:00",
+                "updateTime": "2024-05-01 10:00:00"
+            },
+            // 更多文章...
+        ]
+    }
 }
 ```
 
 - **错误码说明：**
 
-| 错误码 | 说明                       |
-|--------|-----------------------------|
-| 200    | 成功                        |
-| 401    | 未登录或token无效           |
-| 403    | 无权限删除此文章            |
-| 404    | 文章不存在                  |
-| 500    | 服务器错误                  |
+| 错误码 | 说明           |
+|--------|--------------|
+| 200    | 请求成功     |
+| 400    | 参数错误     |
+| 500    | 服务器错误   |
 
 - **其他说明：**
-  - 该接口需要在请求头中携带token才能访问
-  - 用户只能删除自己发布的文章
-  - 删除文章会同时删除相关的点赞、收藏和评论数据
-  - 删除文章不会删除已上传的图片文件
-  - **✅ 当前状态：已实现**
-## 可复用组件
+  - 该接口整合了获取文章列表和按标签筛选的功能
+  - 参数`tag`不区分大小写，但建议与标签获取接口返回的`name`字段保持一致
+  - isLiked和isCollected字段仅在用户已登录时有意义，未登录用户默认为false
+  - 可以通过`sort`参数指定排序方式，默认为最新文章
+  - 该接口被用于首页、标签筛选页、分类页面等多个场景
+  - **✅ 当前状态：已实现，需要扩展标签筛选功能**
 
-### 文章列表组件 (ArticleList)
+## 分类页面功能说明
 
-**组件说明：** 可复用的文章列表组件，支持多种列表类型、标签筛选、用户文章等功能
+### 标签分类页面
 
-1. **组件路径：** `/components/article-list/article-list.vue`
+**功能说明：** 根据标签分类展示文章的页面，提供标签导航和文章列表
 
-2. **组件属性：**
+1. **页面功能：**
+   - 顶部搜索栏，支持搜索标签
+   - 水平滚动的标签导航栏，显示标签名称和文章数量
+   - 文章列表区域，根据选择的标签展示相关文章
+   - 支持切换标签分类
+   - 支持下拉刷新和上拉加载更多
+   - 空状态提示和加载状态展示
 
-| 属性名           | 类型            | 默认值       | 说明                                     |
-|-----------------|-----------------|-------------|------------------------------------------|
-| listType        | String          | 'recommend' | 列表类型: recommend(推荐)、follow(关注)、hot(热门)、new(最新)、tag(标签)、collection(收藏) |
-| tagName         | String          | ''          | 标签名称，当listType为tag时使用           |
-| userId          | Number/String   | null        | 用户ID，当获取指定用户的文章时使用        |
-| showManageOptions | Boolean       | false       | 是否显示管理选项（编辑、删除）           |
-| emptyText       | String          | '暂无内容'   | 空列表提示文本                           |
-| autoLoad        | Boolean         | true        | 是否自动加载（组件挂载后是否自动请求数据）|
-| height          | String          | 'calc(100vh - 165rpx)' | 列表高度                      |
+2. **数据处理：**
+   - 页面加载时通过 `/api/article/tags` 获取标签列表
+   - 点击标签时通过 `/api/article?tag={tagName}` 获取文章列表
+   - 支持标签搜索功能，可在本地过滤标签
+   - 支持"全部"标签，显示所有文章
+   - 自动计算"全部"标签的文章数量（所有标签文章数量之和）
 
-3. **组件事件：**
+3. **交互优化：**
+   - 当前选中的标签高亮显示
+   - 标签导航栏支持水平滚动，确保所有标签可见
+   - 文章列表区域根据标签内容动态调整空状态提示
+   - 搜索标签后，如果找到匹配的标签，自动切换到该标签
+   - 标签点击有反馈效果
+   - 适配不同屏幕尺寸的响应式设计
 
-| 事件名         | 参数                    | 说明                          |
-|---------------|-------------------------|------------------------------|
-| refresh       | 无                      | 列表刷新时触发                |
-| loadMore      | 无                      | 加载更多内容时触发            |
-| articleClick  | articleId (文章ID)      | 点击文章时触发                |
-| authorClick   | authorId (作者ID)       | 点击作者头像或昵称时触发      |
-| tagClick      | tag (标签名称)          | 点击文章标签时触发            |
-| share         | article (文章对象)      | 点击分享按钮时触发            |
-| comment       | article (文章对象)      | 点击评论按钮时触发            |
-| collect       | article (文章对象)      | 点击收藏按钮时触发            |
-| like          | article (文章对象)      | 点击点赞按钮时触发            |
-| edit          | article (文章对象)      | 点击编辑按钮时触发            |
-| delete        | article (文章对象)      | 点击删除按钮时触发            |
-| follow        | author (作者对象)       | 点击关注/取消关注按钮时触发   |
-
-4. **组件方法：**
-
-| 方法名       | 参数     | 返回值  | 说明                        |
-|-------------|----------|--------|----------------------------|
-| loadArticles | 无       | 无     | 加载文章列表数据             |
-| resetList   | 无       | 无     | 重置列表数据并回到第一页      |
-| refresh     | 无       | 无     | 刷新列表数据                 |
-
-5. **使用示例：**
-
-```html
-<template>
-  <view class="container">
-    <ArticleList
-      ref="articleListRef"
-      list-type="recommend"
-      @article-click="handleArticleClick"
-      @author-click="handleAuthorClick"
-      @tag-click="handleTagClick"
-    />
-  </view>
-</template>
-
-<script setup>
-  import { ref } from 'vue';
-  import ArticleList from '@/components/article-list/article-list.vue';
-  
-  const articleListRef = ref(null);
-  
-  const handleArticleClick = (articleId) => {
-    // 处理文章点击事件
-    uni.navigateTo({ url: `/pages/article-detail/article-detail?id=${articleId}` });
-  };
-  
-  const handleAuthorClick = (authorId) => {
-    // 处理作者点击事件
-    uni.navigateTo({ url: `/pages/user-profile/user-profile?id=${authorId}` });
-  };
-  
-  const handleTagClick = (tag) => {
-    // 处理标签点击事件
-    console.log(`查看标签: ${tag}`);
-  };
-</script>
-```
-
-6. **数据结构：**
-
-组件内部使用的文章数据结构：
-
-```js
-{
-  id: 1,                               // 文章ID
-  title: '文章标题',                     // 文章标题
-  summary: '文章摘要...',                // 文章摘要
-  content: '文章内容...',                // 文章内容
-  coverImage: '/uploads/cover.jpg',     // 封面图片
-  images: ['/uploads/img1.jpg', ...],   // 文章图片数组（多图模式）
-  tags: ['标签1', '标签2'],              // 文章标签
-  likeCount: 156,                       // 点赞数量
-  commentCount: 38,                     // 评论数量
-  collectCount: 45,                     // 收藏数量
-  isLiked: false,                       // 当前用户是否已点赞
-  isCollected: false,                   // 当前用户是否已收藏
-  createTime: '2024-04-20 10:00:00',    // 创建时间
-  updateTime: '2024-04-20 10:00:00',    // 更新时间
-  author: {                             // 作者信息
-    id: 10001,                          // 作者ID
-    nickname: '用户昵称',                // 作者昵称
-    avatar: '/uploads/avatar.jpg',      // 作者头像
-    isFollowed: false                   // 当前用户是否已关注作者
-  }
-}
-```
-
-7. **功能说明：**
-
-   - 支持多种列表类型：推荐、关注、热门、最新、标签筛选、收藏文章
-   - 支持获取指定用户发布或点赞的文章列表
-   - 自动处理分页加载和加载更多功能
-   - 支持下拉刷新和到底加载更多
-   - 自动处理文章封面图片和多图显示
-   - 支持关注用户、点赞文章、收藏文章等交互功能
-   - 支持显示文章管理功能（编辑、删除）
-   - 根据登录状态自动处理用户关注显示
-   - 优化了空列表状态和加载状态的显示
-   - 支持自定义列表高度，适应不同的页面布局需求
-
-8. **数据源与API适配：**
-
-   - 根据`blog_uniapp_db.sql`中的表结构，组件内部会自动适配后端返回的数据
-   - 包括文章表(`tb_article`)、标签表(`tb_tag`)、文章-标签关联表(`tb_article_tag`)、点赞表(`tb_article_like`)和收藏表(`tb_article_collect`)
-   - 自动处理点赞和收藏状态，避免每次查询时需要额外请求
-   - 根据不同的列表类型自动选择对应的API接口
-
-9. **API接口调用：**
-
-   组件根据不同属性选择对应的API接口：
-
-   - **获取指定用户的文章列表** 
-     - API路径：`/api/article/user/{userId}/articles`
-     - 请求方式：GET
-     - 参数说明：
-       | 参数名 | 说明 |
-       |--------|------|
-       | userId | 用户ID，路径参数 |
-       | type | 文章类型：posts(发表的)或likes(点赞的)，默认posts |
-       | page | 页码，默认1 |
-       | pageSize | 每页记录数，默认10 |
-     - 当`listType`为'posts'时，`type=posts`；当`listType`为'like'时，`type=likes`
-
-   - **收藏文章操作** 
-     - API路径：`/api/article/collect/{articleId}`
-     - 请求方式：POST(收藏)或DELETE(取消收藏)
-     - 参数说明：
-       | 参数名 | 说明 |
-       |--------|------|
-       | articleId | 文章ID，路径参数 |
-     - 需要在请求头中添加`Authorization: Bearer {token}`
-
-   - **点赞文章操作** 
-     - API路径：`/api/article/like/{articleId}`
-     - 请求方式：POST(点赞)或DELETE(取消点赞)
-     - 参数说明：
-       | 参数名 | 说明 |
-       |--------|------|
-       | articleId | 文章ID，路径参数 |
-     - 需要在请求头中添加`Authorization: Bearer {token}`
-
-10. **运行时优化：**
-
-   - 使用响应式数据确保性能优化
-   - 图片加载优化，使用`mode="aspectFill"`确保图片显示一致
-   - 支持标签点击跳转到标签筛选页
-   - 用户头像和昵称点击跳转到用户资料页
-   - 自动处理文章摘要显示和"全文"显示
-   - 优化了按钮点击体验和反馈提示
-
-### 个人中心页面 (my.vue)
-
-**页面说明：** 用户个人中心页面，展示用户个人信息、关注统计和文章列表等内容
-
-1. **页面路径：** `/pages/my/my.vue`
-
-2. **API调用：**
-
-   - **获取当前登录用户信息**
-     - API路径：`/api/user/info`
-     - 请求方式：GET
-     - 请求参数：无
-     - 响应数据：
-       ```json
-       {
-         "code": 200,
-         "message": "操作成功",
-         "data": {
-           "id": 1,
-           "email": "user@example.com",
-           "nickname": "示例用户",
-           "avatar": "https://example.com/avatars/default.jpg",
-           "bio": "这是我的个人简介",
-           "followCount": 10,
-           "fansCount": 5,
-           "articleCount": 8,
-           "createTime": "2023-05-01 12:00:00"
-         }
-       }
-       ```
-     - 用于初始化用户个人资料、关注数量和粉丝数量等信息
-     - 数据适配：后端返回的`fansCount`字段在前端使用`followerCount`
-
-   - **更新用户个人资料**
-     - API路径：`/api/user/profile`
-     - 请求方式：PUT
-     - 请求参数：
-       ```json
-       {
-         "nickname": "新昵称", // 可选，仅更新个人简介时可不传
-         "bio": "新的个人简介" // 可选，仅更新昵称时可不传
-       }
-       ```
-     - 通过`handleNicknameChange`和`handleBioChange`方法调用
-
-   - **上传用户头像**
-     - API路径：`/api/user/avatar`
-     - 请求方式：POST（multipart/form-data）
-     - 请求参数：
-       | 参数名 | 说明 |
-       |--------|------|
-       | avatar | 头像文件 |
-     - 通过`handleAvatarChange`方法调用
-
-   - **获取用户文章列表**
-     - 通过ArticleList组件实现，根据选中的标签页(`data.currentTab`)显示用户发表的文章或用户点赞的文章：
-       - 当`data.currentTab === 0`时，显示用户发表的文章(`list-type="posts"`)
-       - 当`data.currentTab === 1`时，显示用户点赞的文章(`list-type="like"`)
-     - 实际API调用由ArticleList组件处理，详见组件文档
-
-3. **交互事件处理：**
-
-   - **切换标签页**
-     - 方法：`switchTab(index)`
-     - 功能：切换"我的发表"和"我的点赞"标签页，并重新加载对应类型的文章列表
-     - 相关API调用：通过ArticleList组件的`resetList`和`loadArticles`方法实现
-
-   - **编辑个人简介**
-     - 方法：`toggleBioEdit()`和`saveUserBio()`
-     - 功能：显示/隐藏个人简介编辑弹窗，并保存修改后的个人简介
-     - 相关API调用：使用`updateUserProfile({ bio: bioValue })`接口
-
-   - **文章操作**
-     - 通过ArticleList组件的事件实现文章的查看、点赞、收藏、评论、编辑和删除等操作
-     - 点击编辑文章时，跳转到发布页面并传递文章数据进行编辑
-     - 点击删除文章时，弹出确认对话框并在确认后调用删除文章API
-
-4. **数据刷新机制：**
-
-   - **页面显示时刷新**
-     - 在`onShow`生命周期钩子中调用`refreshUserInfo()`方法刷新用户信息
-     - 在`onShow`生命周期钩子中调用ArticleList组件的`refresh()`方法刷新文章列表
-     
-   - **节流控制**
-     - 使用`refreshTimeoutId`实现300ms的节流控制，避免频繁刷新数据
-     - 使用缓存的用户基本信息作为首屏渲染数据，提高页面加载速度
-
-5. **状态管理：**
-
-   - 使用Vue 3的Composition API (`reactive`和`ref`)管理页面状态
-   - 页面核心状态包括：用户信息(`data.userInfo`)、当前标签页(`data.currentTab`)、设置面板显示状态(`data.showUserSettings`)等
-   - 使用`watch`监听设置面板显示状态，实现物理返回键的拦截处理
-
-6. **注意事项：**
-
-   - 页面首次加载时，会优先使用本地缓存的用户信息进行渲染，然后再通过API获取完整的用户信息
-   - 使用`getCurrentUser()`方法获取当前登录用户，用于判断文章是否为当前用户所发表
-   - 页面实现了物理返回键和返回手势的拦截处理，提高用户体验
-   - 用户头像和个人简介都有默认值，确保UI显示的完整性
+4. **实现细节：**
+   - 使用 ArticleList 组件展示文章，提高代码复用
+   - 使用 computed 属性实现标签过滤功能
+   - 标签切换时重置文章列表并自动加载新数据
+   - 使用 BackToTop 组件提供回到顶部功能
+   - 使用 sticky 定位确保标签导航栏始终可见
+   - 搜索、刷新、加载更多功能无缝配合
+   - **✅ 当前状态：前端已实现，后端API需要完善**
 
 ## 性能优化与问题修复
 

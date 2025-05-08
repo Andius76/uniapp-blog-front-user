@@ -3,7 +3,7 @@
 		<!-- 固定在顶部的标题和分类选择栏 -->
 		<view class="header-fixed">
 			<view class="header-main-container">
-				<!-- 分类滑块容器 -->
+				<!-- 搜索栏 -->
 				<view class="header-top">
 					<view class="search-bar">
 						<input type="text" placeholder="请输入搜索标签" v-model="searchText" @confirm="handleSearch" />
@@ -15,78 +15,102 @@
 				<scroll-view class="category-scroll" scroll-x show-scrollbar="false">
 					<view class="category-list">
 						<view 
-							v-for="(tag, index) in tags" 
+							v-for="(tag, index) in filteredTags" 
 							:key="index" 
 							class="category-item" 
-							:class="{ active: currentTag === tag }"
-							@click="switchCategory(tag)"
+							:class="{ active: currentTag === tag.name }"
+							@click="switchCategory(tag.name)"
 						>
-							{{ tag }}
+							{{ tag.name }}
+							<text class="tag-count" v-if="tag.count !== undefined">({{ tag.count }})</text>
 						</view>
 					</view>
 				</scroll-view>
 			</view>
 		</view>
 
-		<!-- 内容区域，添加上边距为header高度 -->
+		<!-- 内容区域，使用ArticleList组件 -->
+		<!-- #ifdef H5 -->
 		<view class="content-area">
+			<ArticleList 
+				ref="articleListRef"
+				:key="currentTag" 
+				list-type="tag"
+				:tag-name="currentTag === '全部' ? '' : currentTag"
+				:height="'calc(100vh - 180rpx)'"
+				:empty-text="emptyText"
+				@article-click="viewArticleDetail"
+				@author-click="viewAuthorProfile"
+				@tag-click="handleTagClick"
+				@share="handleShare"
+				@comment="handleComment"
+				@collect="handleCollect"
+				@like="handleLike"
+			/>
+		</view>
+		<!-- #endif -->
+
+		<!-- APP和小程序的内容区域 -->
+		<!-- #ifndef H5 -->
+		<view class="content-area mp-content">
 			<scroll-view 
 				scroll-y 
 				class="article-list" 
-				@scrolltolower="loadMore" 
 				refresher-enabled 
 				:refresher-triggered="isRefreshing" 
-				@refresherrefresh="refreshList"
+				@refresherrefresh="handleRefresh"
+				@scrolltolower="handleLoadMore"
 				:refresher-threshold="100"
 			>
-				<!-- 文章列表循环 -->
-				<view v-for="(article, index) in articleList" :key="index" class="article-card">
+				<!-- 文章列表循环显示 -->
+				<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
+					<!-- 用户信息 -->
 					<view class="user-info">
-						<image class="avatar" :src="formatAvatarUrl(article.author.avatar)" mode="aspectFill"></image>
-						<text class="nickname">{{article.author.nickname}}</text>
-						<button class="follow-btn" :class="{'followed': article.author.isFollowed}" @click="toggleFollow(index)">
-							{{ article.author.isFollowed ? '已关注' : '+ 关注' }}
+						<image class="avatar" :src="article.author && formatAvatarUrl(article.author?.avatar) || '/static/images/avatar.png'" mode="aspectFill" @error="handleUserAvatarError(index)"></image>
+						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
+						<button class="follow-btn" :class="{'followed': article.author?.isFollowed}" @click.stop="handleFollow(article)">
+							{{ article.author?.isFollowed ? '已关注' : '+ 关注' }}
 						</button>
 					</view>
 
-					<view class="article-content" @click="viewArticleDetail(index)">
+					<!-- 文章内容 -->
+					<view class="article-content" @click="viewArticleDetail(article.id)">
 						<text class="article-title">{{article.title}}</text>
-						<text class="article-summary">{{article.summary}}...全文</text>
+						<text class="article-summary">{{formatArticleSummary(article.summary)}}...全文</text>
 
-						<!-- 单图布局 -->
-						<view class="article-image" v-if="article.imageType === 'single'">
-							<image :src="article.coverImg" mode="aspectFill" class="single-image"></image>
-						</view>
-
-						<!-- 多图布局 -->
-						<view class="image-grid" v-else-if="article.imageType === 'multi'">
-							<image v-for="(img, imgIndex) in article.images" :key="imgIndex" :src="img" mode="aspectFill" class="grid-image"></image>
+						<!-- 文章封面图片 -->
+						<view class="article-image" v-if="article.coverImage">
+							<image :src="article.coverImage" mode="aspectFill" class="single-image" @error="handleImageError(article)"></image>
+							<text class="debug-info" v-if="false">封面URL: {{article.coverImage}}</text>
 						</view>
 						
 						<!-- 文章标签 -->
 						<view class="article-tags" v-if="article.tags && article.tags.length > 0">
-							<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item">
+							<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item" @click.stop="handleTagClick(tag)">
 								{{ tag }}
 							</view>
 						</view>
 					</view>
 
+					<!-- 文章操作按钮 -->
 					<view class="article-actions">
-						<view class="action-item" @click="handleShare(index)">
+						<view class="action-item" @click.stop="handleShare(article)">
 							<uni-icons type="redo-filled" size="20" color="#666"></uni-icons>
 							<text>分享</text>
 						</view>
-						<view class="action-item" @click="handleComment(index)">
+						<view class="action-item" @click.stop="handleComment(article)">
 							<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
-							<text>{{article.commentCount}}</text>
+							<text>{{article.commentCount || 0}}</text>
 						</view>
-						<view class="action-item" @click="handleCollect(index)">
-							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" :color="article.isCollected ? '#ffc107' : '#666'"></uni-icons>
-							<text :class="{'collected': article.isCollected}">{{article.collectCount}}</text>
+						<view class="action-item" @click.stop="handleCollect(article)">
+							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" :color="article.isCollected ? '#ffc107' : '#666'" 
+								:class="{'animate-icon': article.isAnimating && article.animationType === 'collect'}"></uni-icons>
+							<text :class="{'collected': article.isCollected}">{{article.collectCount || 0}}</text>
 						</view>
-						<view class="action-item" @click="handleLike(index)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20" :color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
-							<text :class="{'liked': article.isLiked}">{{article.likeCount}}</text>
+						<view class="action-item" @click.stop="handleLike(article)">
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20" :color="article.isLiked ? '#ff6b6b' : '#666'"
+								:class="{'animate-icon': article.isAnimating && article.animationType === 'like'}"></uni-icons>
+							<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
 						</view>
 					</view>
 				</view>
@@ -95,759 +119,899 @@
 				<view class="loading-state">
 					<text v-if="isLoading">加载中...</text>
 					<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-					<text v-else-if="articleList.length === 0 && !isLoading">该分类下暂无文章</text>
+					<text v-else-if="articleList.length === 0 && !isLoading">{{emptyText}}</text>
 					<text v-else>↓向下滑动加载更多文章列表↓</text>
 				</view>
 			</scroll-view>
 		</view>
+		<!-- #endif -->
+
+		<!-- 返回顶部组件 -->
+		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
 	</view>
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue';
-// 导入uni-icons组件
-import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
-import { getBaseUrl } from '@/utils/request'; // 引入getBaseUrl函数
+import { ref, computed, onMounted, nextTick, reactive, watch, onUnmounted } from 'vue';
+import http from '@/utils/request'; // 修改为默认导入
+import { getBaseUrl } from '@/utils/request'; // 保留命名导入
+import { collectArticle, likeArticle } from '@/api/article'; // 导入文章操作API
+import ArticleList from '@/components/article-list/article-list.vue'; // 引入ArticleList组件
+import BackToTop from '@/components/back-to-top/back-to-top.vue'; // 引入BackToTop组件
+import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue'; // 引入uni-icons组件
+
+// 声明articleListRef在组件顶部
+const articleListRef = ref(null);
+const backToTopRef = ref(null);
+
+// 添加全局防抖标记，使用闭包确保跨页面刷新时重置
+const globalLoadingLock = (() => {
+	let isLocked = false;
+	let lockTimer = null;
+	
+	// 设置锁定方法
+	const lock = (duration = 3000) => {
+		if (lockTimer) clearTimeout(lockTimer);
+		isLocked = true;
+		lockTimer = setTimeout(() => {
+			isLocked = false;
+			lockTimer = null;
+		}, duration);
+		return true;
+	};
+	
+	// 检查是否锁定
+	const isActive = () => isLocked;
+	
+	// 解除锁定
+	const unlock = () => {
+		isLocked = false;
+		if (lockTimer) {
+			clearTimeout(lockTimer);
+			lockTimer = null;
+		}
+	};
+	
+	// 重置
+	const reset = () => {
+		unlock();
+	};
+	
+	return {
+		lock,
+		isActive,
+		unlock,
+		reset
+	};
+})();
 
 // 搜索相关
 const searchText = ref('');
+const isSearching = ref(false);
 
-// 可用的标签分类
-const tags = ref([
-	'全部', '技术', '生活', '旅行', '美食', '教育',
-	'健康', '时尚', '科技', '游戏', '娱乐',
-	'艺术', '体育', '音乐', '电影', '书籍'
+// 标签数据
+const allTags = ref([
+	{ name: '全部', count: 0 }
 ]);
-
-// 当前选中的标签
 const currentTag = ref('全部');
+const emptyText = ref('该分类下暂无文章');
 
-// 分页和加载状态
+// 文章列表数据（小程序和APP环境使用）
 const articleList = ref([]);
-const currentPage = ref(1);
-const pageSize = 5;
 const isLoading = ref(false);
-const noMoreData = ref(false);
 const isRefreshing = ref(false);
+const noMoreData = ref(false);
+const currentPage = ref(1);
+const pageSize = ref(10);
 
-// 格式化头像URL
+// 获取文章标签列表
+const loadTags = async () => {
+	try {
+		const res = await http.get('/api/article/tags');
+		if (res.code === 200 && Array.isArray(res.data)) {
+			// 将返回的标签加入到allTags中，保留'全部'为第一项
+			const tags = [{ name: '全部', count: 0 }, ...res.data];
+			
+			// 计算"全部"的文章数量（所有标签的文章数量之和）
+			const totalCount = res.data.reduce((sum, tag) => sum + (tag.count || 0), 0);
+			tags[0].count = totalCount;
+			
+			allTags.value = tags;
+		}
+	} catch (error) {
+		console.error('获取标签列表失败:', error);
+		uni.showToast({
+			title: '获取标签列表失败',
+			icon: 'none'
+		});
+	}
+};
+
+// 根据搜索文本过滤标签
+const filteredTags = computed(() => {
+	if (!searchText.value) return allTags.value;
+	
+	// 只有输入了搜索文本才过滤
+	return allTags.value.filter(tag => 
+		tag.name === '全部' || tag.name.toLowerCase().includes(searchText.value.toLowerCase())
+	);
+});
+
+// 切换分类
+const switchCategory = (tagName) => {
+	// 如果点击的是当前分类，不做任何操作
+	if (currentTag.value === tagName) return;
+	
+	// 更新当前选择的标签
+	currentTag.value = tagName;
+	
+	// 更新空列表提示文字
+	emptyText.value = tagName === '全部' ? '暂无文章内容' : `没有找到关于"${tagName}"的文章`;
+	
+	// #ifdef H5
+	// 对于H5环境，使用ArticleList组件刷新
+	nextTick(() => {
+		if (articleListRef.value) {
+			articleListRef.value.resetList(); // 重置列表
+			articleListRef.value.loadArticles(); // 加载文章
+		}
+	});
+	// #endif
+	
+	// #ifndef H5
+	// 对于APP和小程序环境，直接刷新文章列表
+	handleRefresh();
+	// #endif
+};
+
+// 处理搜索
+const handleSearch = () => {
+	isSearching.value = true;
+	
+	// 如果搜索框为空，则重置为全部分类
+	if (!searchText.value.trim()) {
+		switchCategory('全部');
+		isSearching.value = false;
+		return;
+	}
+	
+	// 在标签中搜索
+	const found = allTags.value.find(tag => 
+		tag.name !== '全部' && tag.name.toLowerCase() === searchText.value.toLowerCase()
+	);
+	
+	// 如果找到完全匹配的标签，切换到该标签
+	if (found) {
+		switchCategory(found.name);
+	} else {
+		// 否则，显示搜索结果
+		emptyText.value = `没有找到关于"${searchText.value}"的标签`;
+		// 这里可以根据需要添加更多搜索逻辑
+	}
+	
+	isSearching.value = false;
+};
+
+// 处理标签点击事件
+const handleTagClick = (tag) => {
+	// 切换到被点击的标签
+	switchCategory(tag);
+	
+	// 可选：清空搜索框
+	searchText.value = '';
+};
+
+// 查看文章详情
+const viewArticleDetail = (articleId) => {
+	uni.navigateTo({
+		url: `/pages/article-detail/article-detail?id=${articleId}`
+	});
+};
+
+// 查看作者资料
+const viewAuthorProfile = (authorId) => {
+	uni.navigateTo({
+		url: `/pages/user-profile/user-profile?id=${authorId}`
+	});
+};
+
+/**
+ * 格式化文章摘要
+ */
+const formatArticleSummary = (summary) => {
+	if (!summary) return '暂无摘要';
+	
+	// 去除HTML标签
+	summary = summary.replace(/<[^>]+>/g, '');
+	
+	// 去除多余空格
+	summary = summary.replace(/\s+/g, ' ');
+	
+	// 限制长度
+	const maxLength = 80;
+	return summary.length > maxLength ? summary.substring(0, maxLength) : summary;
+};
+
+/**
+ * 处理头像URL格式
+ */
 const formatAvatarUrl = (url) => {
 	if (!url) return '/static/images/avatar.png';
 	
 	// 移除URL中可能存在的多余空格
 	url = url.trim();
 	
-	// 确保不是null或undefined
-	if (url === 'null' || url === 'undefined') {
+	// 确保不是null、undefined或空字符串
+	if (url === 'null' || url === 'undefined' || url === '') {
 		return '/static/images/avatar.png';
 	}
 	
-	// 完整URL处理：如果已经是完整URL（包含http）则不处理
+	// 完整URL处理：如果已经是完整URL（包含http）则做特殊处理
 	if (url.startsWith('http')) {
 		// 检查并修复双斜杠问题
 		if (url.includes('//uploads')) {
 			url = url.replace('//uploads', '/uploads');
 		}
+		
+		// APP环境下特别处理localhost
+		// #ifdef APP-PLUS
+		if (url.includes('localhost') || url.includes('127.0.0.1')) {
+			const appBaseUrl = 'http://10.9.135.132:8080';
+			const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
+			return appBaseUrl + urlPath;
+		}
+		// #endif
+		
 		return url;
 	}
 	// 静态资源处理：如果是静态资源路径则不处理
 	else if (url.startsWith('/static')) {
 		return url;
 	}
+	// 路径以/uploads开头
+	else if (url.startsWith('/uploads')) {
+		return getBaseUrl() + url;
+	}
+	// 用户头像特别处理：如果是user_开头的文件名，默认放在/uploads/avatars/目录下
+	else if (url.startsWith('user_')) {
+		return getBaseUrl() + '/uploads/avatars/' + url;
+	}
 	// 其他情况：添加基础URL前缀
 	else {
 		if (url.startsWith('/')) {
 			return getBaseUrl() + url;
 		} else {
-			return getBaseUrl() + '/' + url;
+			// 默认假设是avatars目录
+			return getBaseUrl() + '/uploads/avatars/' + url;
 		}
 	}
 };
 
-// 模拟文章数据
-const mockArticles = [
-	{
-		id: 1,
-		title: '前端学习路线图 - Vue3新特性解析',
-		collectCount: 45,
-		isCollected: false,
-		summary: 'Vue3带来了Composition API、Teleport、Fragments等新特性，本文详细介绍这些新特性的使用方法和优势',
-		imageType: 'single',
-		coverImg: '/static/images/default.png',
-		likeCount: 156,
-		commentCount: 38,
-		isLiked: false,
-		tags: ['技术', '科技'],
-		author: {
-			nickname: '前端达人',
-			avatar: '/static/images/avatar.png',
-			isFollowed: false
-		}
-	},
-	{
-		id: 2,
-		title: 'uniapp跨平台开发实战经验分享',
-		collectCount: 32,
-		isCollected: true,
-		summary: '使用uniapp开发跨平台应用的实战经验，包括性能优化、组件复用、条件编译等多个方面的技巧',
-		imageType: 'multi',
-		images: [
-			'/static/images/default.png',
-			'/static/images/default.png',
-			'/static/images/default.png'
-		],
-		likeCount: 98,
-		commentCount: 25,
-		isLiked: false,
-		tags: ['技术', '科技', '教育'],
-		author: {
-			nickname: '移动开发专家',
-			avatar: '/static/images/avatar.png',
-			isFollowed: true
-		}
-	},
-	{
-		id: 3,
-		title: '如何搭建一个高性能的博客系统',
-		summary: '本文介绍了搭建高性能博客系统的技术选型、架构设计以及性能优化策略，适合有一定web开发基础的读者',
-		imageType: 'single',
-		coverImg: '/static/images/default.png',
-		likeCount: 76,
-		commentCount: 15,
-		isLiked: false,
-		collectCount: 28,
-		isCollected: false,
-		tags: ['技术', '教育'],
-		author: {
-			nickname: '后端工程师',
-			avatar: '/static/images/avatar.png',
-			isFollowed: false
-		}
-	},
-	{
-		id: 4,
-		title: '旅行摄影的10个小技巧',
-		summary: '分享旅行中拍摄美丽照片的实用技巧，从构图到用光，帮助你在旅途中记录难忘的瞬间',
-		imageType: 'multi',
-		images: [
-			'/static/images/default.png',
-			'/static/images/default.png'
-		],
-		likeCount: 112,
-		commentCount: 28,
-		isLiked: false,
-		collectCount: 48,
-		isCollected: false,
-		tags: ['旅行', '艺术'],
-		author: {
-			nickname: '摄影旅行家',
-			avatar: '/static/images/avatar.png',
-			isFollowed: false
-		}
-	},
-	{
-		id: 5,
-		title: '健康饮食指南：均衡营养的重要性',
-		summary: '探讨健康饮食的原则和均衡营养的重要性，包括各类营养素的摄入建议和日常饮食规划',
-		imageType: 'single',
-		coverImg: '/static/images/default.png',
-		likeCount: 89,
-		commentCount: 42,
-		isLiked: false,
-		collectCount: 36,
-		isCollected: false,
-		tags: ['健康', '美食'],
-		author: {
-			nickname: '营养师',
-			avatar: '/static/images/avatar.png',
-			isFollowed: false
-		}
-	},
-	{
-		id: 6,
-		title: '最新电影《星际冒险》观后感',
-		summary: '分享对最新科幻大片《星际冒险》的观后感，探讨电影中的科学元素和哲学思考',
-		imageType: 'single',
-		coverImg: '/static/images/default.png',
-		likeCount: 145,
-		commentCount: 37,
-		isLiked: false,
-		collectCount: 52,
-		isCollected: false,
-		tags: ['电影', '娱乐'],
-		author: {
-			nickname: '影评人',
-			avatar: '/static/images/avatar.png',
-			isFollowed: false
-		}
-	}
-];
-
 /**
- * 切换分类
- * @param {String} tag - 分类标签
+ * 处理用户头像加载错误
  */
-const switchCategory = (tag) => {
-	if (currentTag.value === tag) return;
+const handleUserAvatarError = (index) => {
+	// 显示错误日志
+	console.error('用户头像加载失败:', index);
 	
-	currentTag.value = tag;
-	
-	// 重置文章列表
-	articleList.value = [];
-	currentPage.value = 1;
-	noMoreData.value = false;
-	
-	// 显示加载提示
-	uni.showLoading({
-		title: '加载中...'
-	});
-	
-	// 加载选中分类的文章
-	loadArticles();
-	
-	// 隐藏加载提示
-	setTimeout(() => {
-		uni.hideLoading();
-	}, 500);
-};
-
-/**
- * 加载文章列表
- */
-const loadArticles = () => {
-	// 如果已经没有更多数据或正在加载中，则不处理
-	if (noMoreData.value || isLoading.value) return;
-	
-	isLoading.value = true;
-	
-	// 模拟API请求延迟
-	setTimeout(() => {
-		// 过滤符合当前分类的文章
-		const filteredArticles = currentTag.value === '全部' 
-			? mockArticles 
-			: mockArticles.filter(article => article.tags && article.tags.includes(currentTag.value));
-		
-		// 计算本次应加载的数据
-		const startIndex = (currentPage.value - 1) * pageSize;
-		const endIndex = startIndex + pageSize;
-		const pageData = filteredArticles.slice(startIndex, endIndex);
-		
-		// 如果没有数据，标记已加载全部
-		if (pageData.length === 0) {
-			noMoreData.value = true;
-			isLoading.value = false;
-			
-			// 如果是刷新状态，结束刷新
-			if (isRefreshing.value) {
-				isRefreshing.value = false;
-			}
-			return;
-		}
-		
-		// 添加到文章列表
-		articleList.value.push(...pageData);
-		
-		// 更新页码
-		currentPage.value++;
-		
-		// 如果获取的数据不足一页，也标记为没有更多数据
-		if (pageData.length < pageSize || endIndex >= filteredArticles.length) {
-			noMoreData.value = true;
-		}
-		
-		isLoading.value = false;
-		
-		// 如果是刷新状态，结束刷新
-		if (isRefreshing.value) {
-			isRefreshing.value = false;
-		}
-	}, 800);
-	
-	// TODO: 替换为实际API调用
-	// api.getArticlesByTag({
-	//   tag: currentTag.value,
-	//   page: currentPage.value,
-	//   pageSize: pageSize
-	// }).then(res => {
-	//   // 处理响应数据
-	// });
-};
-
-/**
- * 刷新列表
- */
-const refreshList = () => {
-	// 如果已经在刷新或加载中，则不处理
-	if (isRefreshing.value || isLoading.value) return;
-	
-	// 设置刷新状态
-	isRefreshing.value = true;
-	
-	// 重置数据
-	articleList.value = [];
-	currentPage.value = 1;
-	noMoreData.value = false;
-	
-	// 重新加载
-	loadArticles();
-};
-
-/**
- * 加载更多
- */
-const loadMore = () => {
-	if (!noMoreData.value) {
-		loadArticles();
+	// 替换为默认头像
+	if (articleList.value[index] && articleList.value[index].author) {
+		articleList.value[index].author.avatar = '/static/images/avatar.png';
 	}
 };
 
 /**
- * 查看文章详情
- * @param {Number} index - 文章索引
+ * 处理图片加载错误
  */
-const viewArticleDetail = (index) => {
-	// 获取文章完整数据
-	const article = articleList.value[index];
-	const articleId = article.id;
+const handleImageError = (article) => {
+	// 显示错误日志
+	console.error('图片加载错误:', article.id, article.title);
 	
-	// #ifdef H5
-	// H5环境下，新窗口打开文章详情页
-	// 获取正确的基础路径
-	const currentUrl = window.location.href;
-	const baseUrl = currentUrl.split('#')[0];
-	const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
-	window.open(detailUrl, '_blank');
-	// #endif
-	
-	// #ifndef H5
-	// 非H5环境下，正常跳转
-	uni.navigateTo({
-		url: `/pages/article-detail/article-detail?id=${articleId}`
-	});
-	// #endif
+	// 替换为默认图片
+	article.coverImage = '/static/images/img1.png';
 };
 
 /**
- * 点赞处理
- * @param {Number} index - 文章索引
+ * 处理分享
  */
-const handleLike = (index) => {
-	const article = articleList.value[index];
-	
-	// 切换点赞状态
-	article.isLiked = !article.isLiked;
-	
-	// 更新点赞数
-	if (article.isLiked) {
-		// 点赞
-		article.likeCount++;
-		uni.showToast({
-			title: '点赞成功',
-			icon: 'success'
-		});
-	} else {
-		// 取消点赞
-		article.likeCount--;
-		uni.showToast({
-			title: '已取消点赞',
-			icon: 'none'
-		});
-	}
-	
-	// TODO: 实际点赞API调用
-	// api.likeArticle(article.id, article.isLiked);
-};
-
-/**
- * 收藏处理
- * @param {Number} index - 文章索引
- */
-const handleCollect = (index) => {
-	const article = articleList.value[index];
-	article.isCollected = !article.isCollected;
-	article.collectCount += article.isCollected ? 1 : -1;
-	
+const handleShare = (article) => {
+	// 分享逻辑
 	uni.showToast({
-		title: article.isCollected ? '收藏成功' : '已取消收藏',
-		icon: article.isCollected ? 'success' : 'none'
-	});
-	
-	// TODO: 实际收藏API调用
-	// api.collectArticle(article.id, article.isCollected);
-};
-
-/**
- * 评论处理
- * @param {Number} index - 文章索引
- */
-const handleComment = (index) => {
-	uni.showToast({
-		title: '打开评论列表',
+		title: '分享功能开发中',
 		icon: 'none'
 	});
-	
-	// TODO: 跳转到评论页面
-	// uni.navigateTo({ url: `/pages/comment/comment?id=${articleList.value[index].id}` });
 };
 
 /**
- * 分享处理
- * @param {Number} index - 文章索引
+ * 处理评论
  */
-const handleShare = (index) => {
-	uni.showToast({
-		title: '分享成功',
-		icon: 'success'
+const handleComment = (article) => {
+	// 跳转到文章详情页评论区
+	uni.navigateTo({
+		url: `/pages/article-detail/article-detail?id=${article.id}&showComments=true`
 	});
-	
-	// TODO: 实际分享API调用
 };
 
 /**
- * 切换关注状态
- * @param {Number} index - 文章索引
+ * 处理收藏/取消收藏
  */
-const toggleFollow = (index) => {
-	const author = articleList.value[index].author;
-	author.isFollowed = !author.isFollowed;
-	
-	if (author.isFollowed) {
+const handleCollect = async (article) => {
+	// 检查登录状态
+	const token = uni.getStorageSync('token');
+	if (!token) {
 		uni.showToast({
-			title: '关注成功',
-			icon: 'success'
-		});
-	} else {
-		uni.showToast({
-			title: '已取消关注',
+			title: '请先登录',
 			icon: 'none'
 		});
+		setTimeout(() => {
+			uni.navigateTo({
+				url: '/pages/login/login'
+			});
+		}, 1500);
+		return;
 	}
 	
-	// TODO: 实际关注/取消关注API调用
-	// api.followAuthor(author.id, author.isFollowed);
+	try {
+		// 添加动画效果
+		article.isAnimating = true;
+		article.animationType = 'collect';
+		
+		// 调用收藏API
+		const res = await collectArticle(article.id, !article.isCollected);
+		
+		if (res.code === 200) {
+			// 更新文章收藏状态
+			article.isCollected = !article.isCollected;
+			// 更新收藏数量
+			article.collectCount = article.isCollected ? 
+				(article.collectCount || 0) + 1 : 
+				Math.max(0, (article.collectCount || 0) - 1);
+				
+			// 发送全局事件，通知其他页面更新
+			uni.$emit('article_collect_updated', {
+				articleId: article.id,
+				isCollected: article.isCollected,
+				collectCount: article.collectCount
+			});
+		} else {
+			uni.showToast({
+				title: res.message || '操作失败',
+				icon: 'none'
+			});
+		}
+	} catch (error) {
+		console.error('收藏操作失败:', error);
+		uni.showToast({
+			title: '操作失败，请稍后再试',
+			icon: 'none'
+		});
+	} finally {
+		// 动画结束后清除动画状态
+		setTimeout(() => {
+			article.isAnimating = false;
+		}, 500);
+	}
 };
 
 /**
- * 处理搜索
+ * 处理点赞/取消点赞
  */
-const handleSearch = () => {
-	if (!searchText.value.trim()) {
+const handleLike = async (article) => {
+	// 检查登录状态
+	const token = uni.getStorageSync('token');
+	if (!token) {
 		uni.showToast({
-			title: '请输入搜索内容',
+			title: '请先登录',
+			icon: 'none'
+		});
+		setTimeout(() => {
+			uni.navigateTo({
+				url: '/pages/login/login'
+			});
+		}, 1500);
+		return;
+	}
+	
+	try {
+		// 添加动画效果
+		article.isAnimating = true;
+		article.animationType = 'like';
+		
+		// 调用点赞API
+		const res = await likeArticle(article.id, !article.isLiked);
+		
+		if (res.code === 200) {
+			// 更新文章点赞状态
+			article.isLiked = !article.isLiked;
+			// 更新点赞数量
+			article.likeCount = article.isLiked ? 
+				(article.likeCount || 0) + 1 : 
+				Math.max(0, (article.likeCount || 0) - 1);
+		} else {
+			uni.showToast({
+				title: res.message || '操作失败',
+				icon: 'none'
+			});
+		}
+	} catch (error) {
+		console.error('点赞操作失败:', error);
+		uni.showToast({
+			title: '操作失败，请稍后再试',
+			icon: 'none'
+		});
+	} finally {
+		// 动画结束后清除动画状态
+		setTimeout(() => {
+			article.isAnimating = false;
+		}, 500);
+	}
+};
+
+/**
+ * 处理关注/取消关注
+ */
+const handleFollow = async (article) => {
+	// 检查登录状态
+	const token = uni.getStorageSync('token');
+	if (!token) {
+		uni.showToast({
+			title: '请先登录',
+			icon: 'none'
+		});
+		setTimeout(() => {
+			uni.navigateTo({
+				url: '/pages/login/login'
+			});
+		}, 1500);
+		return;
+	}
+	
+	// 获取作者ID
+	const authorId = article.author?.id;
+	if (!authorId) {
+		uni.showToast({
+			title: '操作失败，作者信息不完整',
 			icon: 'none'
 		});
 		return;
 	}
 	
-	// 模拟搜索
-	uni.showToast({
-		title: '搜索标签: ' + searchText.value,
-		icon: 'none'
-	});
-	
-	// TODO: 实际搜索标签API调用
-	// 可以添加标签到tags数组中，或者直接切换到匹配的标签分类
-	// 例如：如果搜索的标签存在，可以直接切换到该标签
-	// const searchedTag = searchText.value.trim();
-	// if (tags.value.includes(searchedTag)) {
-	//   switchCategory(searchedTag);
-	// } else {
-	//   // 可以添加到tags中并切换
-	//   tags.value.push(searchedTag);
-	//   switchCategory(searchedTag);
-	// }
+	try {
+		// 当前关注状态
+		const isFollowed = article.author.isFollowed;
+		
+		// 发送关注/取消关注请求
+		const url = `/api/user/follow/${authorId}`;
+		const method = isFollowed ? 'delete' : 'post';
+		
+		const res = await http[method](url);
+		
+		if (res.code === 200) {
+			// 更新关注状态
+			article.author.isFollowed = !isFollowed;
+			
+			// 显示操作成功提示
+			uni.showToast({
+				title: isFollowed ? '已取消关注' : '关注成功',
+				icon: 'none'
+			});
+		} else {
+			uni.showToast({
+				title: res.message || '操作失败',
+				icon: 'none'
+			});
+		}
+	} catch (error) {
+		console.error('关注操作失败:', error);
+		uni.showToast({
+			title: '网络错误，请稍后再试',
+			icon: 'none'
+		});
+	}
 };
 
-// 页面初始化
+// 加载文章列表数据
+const loadArticles = async (refresh = false) => {
+	// 避免重复加载
+	if (isLoading.value) return;
+	
+	// 如果刷新，重置页码
+	if (refresh) {
+		currentPage.value = 1;
+		noMoreData.value = false;
+		if (refresh && !isRefreshing.value) {
+			articleList.value = [];
+		}
+	}
+	
+	// 标记加载状态
+	isLoading.value = true;
+	
+	try {
+		// 构建请求参数
+		const params = {
+			page: currentPage.value,
+			pageSize: pageSize.value,
+			sort: 'new'
+		};
+		
+		// 添加标签过滤
+		if (currentTag.value !== '全部') {
+			params.tag = currentTag.value;
+		}
+		
+		// 发送请求
+		const res = await http.get('/api/article', params);
+		
+		if (res.code === 200 && res.data) {
+			// 如果是刷新，直接替换列表；否则，追加数据
+			if (refresh) {
+				articleList.value = res.data.list || [];
+			} else {
+				articleList.value = [...articleList.value, ...(res.data.list || [])];
+			}
+			
+			// 更新是否有更多数据的标志
+			noMoreData.value = articleList.value.length >= res.data.total;
+			
+			// 如果成功加载，递增页码
+			if (res.data.list && res.data.list.length > 0) {
+				currentPage.value++;
+			}
+		} else {
+			// 显示错误提示
+			uni.showToast({
+				title: res.message || '获取文章列表失败',
+				icon: 'none'
+			});
+		}
+	} catch (error) {
+		console.error('加载文章失败:', error);
+		uni.showToast({
+			title: '网络错误，请稍后再试',
+			icon: 'none'
+		});
+	} finally {
+		// 清除加载状态
+		isLoading.value = false;
+		isRefreshing.value = false;
+	}
+};
+
+// 处理下拉刷新
+const handleRefresh = () => {
+	if (isRefreshing.value) return; // 避免重复刷新
+	
+	isRefreshing.value = true;
+	loadArticles(true);
+};
+
+// 处理加载更多
+const handleLoadMore = () => {
+	if (isLoading.value || noMoreData.value) return;
+	loadArticles(false);
+};
+
+// 滚动到顶部
+const scrollToTop = () => {
+	// H5环境使用backToTopRef的scrollToTop方法
+	if (backToTopRef.value) {
+		backToTopRef.value.handleClick();
+	} else {
+		// 小程序和APP环境使用uni.pageScrollTo
+		uni.pageScrollTo({
+			scrollTop: 0,
+			duration: 300
+		});
+	}
+};
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+	// 移除收藏状态更新事件监听
+	uni.$off('article_collect_updated');
+});
+
+// 页面加载时获取标签数据和文章列表
 onMounted(() => {
-	// 加载文章列表
-	loadArticles();
+	// 重置全局加载锁
+	globalLoadingLock.reset();
+	
+	// 加载标签数据
+	loadTags();
+	
+	// #ifndef H5
+	// 仅在非H5环境加载文章列表
+	loadArticles(true);
+	// #endif
+	
+	// 监听收藏状态更新事件
+	uni.$on('article_collect_updated', (data) => {
+		console.log('分类页接收到文章收藏更新事件:', data);
+		if (data && data.articleId && data.collectCount !== undefined) {
+			// 查找文章并更新数据
+			const article = articleList.value.find(item => item.id == data.articleId);
+			if (article) {
+				console.log(`分类页更新文章[${data.articleId}]收藏状态:`, data);
+				article.isCollected = data.isCollected;
+				article.collectCount = data.collectCount;
+			}
+		}
+	});
 });
 </script>
 
-<style lang="scss">
-page {
-	background-color: #f5f5f5;
-	min-height: 100vh;
-}
-
+<style lang="scss" scoped>
 .container {
 	display: flex;
 	flex-direction: column;
-	position: relative;
+	width: 100%;
 	height: 100vh;
+	background-color: #f8f9fa;
 }
 
-// 固定在顶部的标题和分类栏
 .header-fixed {
-	position: fixed;
+	position: sticky;
 	top: 0;
-	left: 0;
-	right: 0;
-	background-color: #f5f5f5;
+	width: 100%;
+	background-color: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 	z-index: 100;
-	box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+	padding-bottom: 10rpx;
+}
+
+.header-main-container {
+	padding: 0 20rpx;
+}
+
+.header-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 90rpx;
+	padding: 0 10rpx;
+}
+
+.search-bar {
+	display: flex;
+	flex: 1;
+	height: 70rpx;
+	background-color: #f5f5f5;
+	border-radius: 35rpx;
+	padding: 0 20rpx;
+	align-items: center;
+	margin: 10rpx 0;
 	
-	// 顶部区域
-	.header-top {
+	input {
+		flex: 1;
+		height: 100%;
+		font-size: 28rpx;
+		color: #333;
+	}
+	
+	.search-btn {
+		height: 56rpx;
+		line-height: 56rpx;
+		font-size: 26rpx;
+		padding: 0 20rpx;
+		background-color: #3170f9;
+		color: #fff;
+		border-radius: 28rpx;
+		margin: 0;
+	}
+}
+
+.category-scroll {
+	width: 100%;
+	white-space: nowrap;
+	padding: 5rpx 0;
+}
+
+.category-list {
+	display: inline-flex;
+	padding: 0 10rpx;
+}
+
+.category-item {
+	display: inline-flex;
+	align-items: center;
+	padding: 10rpx 20rpx;
+	margin: 0 10rpx;
+	font-size: 28rpx;
+	color: #666;
+	border-radius: 30rpx;
+	background-color: #f5f5f5;
+	transition: all 0.3s;
+	
+	&.active {
+		background-color: #3170f9;
+		color: #fff;
+		
+		.tag-count {
+			color: rgba(255, 255, 255, 0.8);
+		}
+	}
+	
+	.tag-count {
+		font-size: 22rpx;
+		color: #999;
+		margin-left: 6rpx;
+	}
+}
+
+/* APP和小程序文章列表样式 */
+.mp-content {
+	padding: 0;
+}
+
+.article-list {
+	height: calc(100vh - 180rpx);
+	width: 100%;
+}
+
+.article-card {
+	margin: 20rpx;
+	padding: 20rpx;
+	background-color: #fff;
+	border-radius: 12rpx;
+	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
+}
+
+.user-info {
+	display: flex;
+	align-items: center;
+	margin-bottom: 15rpx;
+	
+	.avatar {
+		width: 64rpx;
+		height: 64rpx;
+		border-radius: 50%;
+		margin-right: 15rpx;
+		background-color: #f2f2f2;
+	}
+	
+	.nickname {
+		font-size: 28rpx;
+		color: #333;
+		flex: 1;
+	}
+	
+	.follow-btn {
+		font-size: 24rpx;
+		padding: 6rpx 20rpx;
+		background-color: #f0f2f7;
+		color: #3170f9;
+		border-radius: 30rpx;
+		margin: 0;
+		line-height: 1.5;
+		
+		&.followed {
+			background-color: #e6f0ff;
+			color: #3170f9;
+		}
+	}
+}
+
+.article-content {
+	padding: 10rpx 0;
+	
+	.article-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #222;
+		line-height: 1.4;
+		margin-bottom: 15rpx;
+		display: block;
+	}
+	
+	.article-summary {
+		font-size: 28rpx;
+		color: #666;
+		line-height: 1.5;
+		margin-bottom: 15rpx;
+		display: block;
+	}
+}
+
+.article-image {
+	width: 100%;
+	margin: 15rpx 0;
+	border-radius: 8rpx;
+	overflow: hidden;
+	
+	.single-image {
+		width: 100%;
+		height: 340rpx;
+		display: block;
+	}
+}
+
+.article-tags {
+	display: flex;
+	flex-wrap: wrap;
+	margin: 10rpx 0;
+	
+	.tag-item {
+		display: inline-block;
+		padding: 5rpx 15rpx;
+		font-size: 22rpx;
+		color: #3170f9;
+		background-color: #f0f2f7;
+		border-radius: 20rpx;
+		margin-right: 15rpx;
+		margin-bottom: 10rpx;
+	}
+}
+
+.article-actions {
+	display: flex;
+	justify-content: space-between;
+	padding-top: 15rpx;
+	border-top: 1rpx solid #f0f2f7;
+	
+	.action-item {
 		display: flex;
 		align-items: center;
-		padding: 15rpx 20rpx;
+		padding: 0 10rpx;
 		
-		// 搜索栏样式
-		.search-bar {
-			display: flex;
-			background: #fff;
-			border-radius: 40rpx;
-			overflow: hidden;
-			padding: 0 20rpx;
-			flex: 1;
-			box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+		text {
+			font-size: 24rpx;
+			color: #666;
+			margin-left: 8rpx;
 			
-			input {
-				flex: 1;
-				height: 80rpx;
-				padding: 0 20rpx;
-				font-size: 28rpx;
+			&.liked {
+				color: #ff6b6b;
+			}
+			
+			&.collected {
+				color: #ffc107;
 			}
 		}
+	}
+}
+
+.loading-state {
+	padding: 30rpx;
+	text-align: center;
+	color: #999;
+	font-size: 26rpx;
+}
+
+.animate-icon {
+	animation: scale-animation 0.5s;
+}
+
+@keyframes scale-animation {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.3);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+/* 媒体查询适配不同设备 */
+@media screen and (min-width: 768px) {
+	.category-item {
+		font-size: 30rpx;
+		padding: 12rpx 24rpx;
+	}
+	
+	.search-bar {
+		height: 80rpx;
 		
-		// 搜索按钮
+		input {
+			font-size: 30rpx;
+		}
+		
 		.search-btn {
-			height: 60rpx;
-			line-height: 60rpx;
-			margin: 10rpx 0;
-			background-color: #4361ee;
-			color: #fff;
-			font-size: 26rpx;
-			border-radius: 30rpx;
-			padding: 0 30rpx;
+			height: 64rpx;
+			line-height: 64rpx;
+			font-size: 28rpx;
 		}
 	}
-	
-	// 分类标签导航
-	.category-scroll {
-		width: 100%;
-		white-space: nowrap;
-		background-color: #f5f5f5;
-		padding: 10rpx 0;
-		position: relative;
-		z-index: 100;
-
-		
-		.category-list {
-			display: inline-flex;
-			padding: 0 20rpx;
-			
-			.category-item {
-				padding: 10rpx 24rpx;
-				margin: 0 10rpx;
-				font-size: 28rpx;
-				color: #666;
-				border-radius: 30rpx;
-				transition: all 0.3s;
-				
-				&.active {
-					color: #fff;
-					background-color: #4361ee;
-					font-weight: bold;
-				}
-			}
-		}
-	}
-}
-
-// 内容区域
-.content-area {
-	padding: 212rpx 20rpx 0 20rpx;
-	flex: 1;
-	
-	.article-list {
-		height: calc(100vh - 212rpx); // 减去底部导航栏高度
-	}
-	
-	// 文章卡片
-	.article-card {
-		background-color: #fff;
-		border-radius: 20rpx;
-		padding: 30rpx;
-		margin-top: 5rpx;
-		margin-bottom: 20rpx;
-		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-		
-		// 用户信息
-		.user-info {
-			display: flex;
-			align-items: center;
-			margin-bottom: 20rpx;
-			
-			.avatar {
-				width: 80rpx;
-				height: 80rpx;
-				border-radius: 50%;
-				margin-right: 20rpx;
-				background-color: #eee;
-			}
-			
-			.nickname {
-				flex: 1;
-				font-size: 28rpx;
-				color: #333;
-				font-weight: 500;
-			}
-			
-			.follow-btn {
-				height: 50rpx;
-				line-height: 50rpx;
-				background-color: #fff;
-				color: #4361ee;
-				font-size: 24rpx;
-				border: 2rpx solid #4361ee;
-				border-radius: 25rpx;
-				padding: 0 20rpx;
-				
-				&.followed {
-					color: #999;
-					border-color: #999;
-				}
-			}
-		}
-		
-		// 文章内容
-		.article-content {
-			margin-bottom: 20rpx;
-			
-			.article-title {
-				font-size: 32rpx;
-				font-weight: bold;
-				color: #333;
-				margin-bottom: 10rpx;
-				display: block;
-			}
-			
-			.article-summary {
-				font-size: 28rpx;
-				color: #666;
-				margin-bottom: 20rpx;
-				line-height: 1.5;
-				display: block;
-			}
-			
-			// 单图布局
-			.article-image {
-				width: 100%;
-				height: 300rpx;
-				border-radius: 10rpx;
-				overflow: hidden;
-				margin-bottom: 20rpx;
-				
-				.single-image {
-					width: 100%;
-					height: 100%;
-					background-color: #eee;
-				}
-			}
-			
-			// 多图布局
-			.image-grid {
-				display: flex;
-				justify-content: space-between;
-				margin-bottom: 20rpx;
-				
-				.grid-image {
-					width: 32%;
-					height: 200rpx;
-					border-radius: 10rpx;
-					background-color: #eee;
-				}
-			}
-			
-			// 文章标签
-			.article-tags {
-				display: flex;
-				flex-wrap: wrap;
-				margin-top: 10rpx;
-				
-				.tag-item {
-					padding: 6rpx 16rpx;
-					font-size: 22rpx;
-					color: #4361ee;
-					background-color: rgba(67, 97, 238, 0.1);
-					border-radius: 20rpx;
-					margin-right: 10rpx;
-					margin-bottom: 10rpx;
-				}
-			}
-		}
-		
-		// 文章操作按钮
-		.article-actions {
-			display: flex;
-			justify-content: space-around;
-			border-top: 2rpx solid #f0f0f0;
-			padding-top: 20rpx;
-			
-			.action-item {
-				display: flex;
-				align-items: center;
-				
-				.uni-icons {
-					margin-right: 10rpx;
-				}
-				
-				text {
-					font-size: 24rpx;
-					color: #666;
-					
-					&.liked {
-						color: #ff6b6b;
-					}
-					
-					&.collected {
-						color: #ffc107;
-					}
-				}
-			}
-		}
-	}
-	
-	// 加载状态
-	.loading-state {
-		text-align: center;
-		font-size: 24rpx;
-		color: #999;
-		margin: 20rpx 0;
-		padding: 20rpx 0;
-		padding-bottom: 50rpx; // 增加底部间距，确保在底部导航栏上方可见
-	}
-}
-
-// 全局样式覆盖
-.uni-scroll-view-refresh {
-	background-color: #f5f5f5 !important;
-	
-	&-inner {
-		color: #fff;
-		height: 80rpx !important;
-	}
-}
-.header-main-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-  padding: 15rpx 0 0 0;
-  background: #f5f5f5;
-  position: relative;
-  z-index: 99;
-}
-
-// 调整原有固定定位样式
-.header-fixed {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
 }
 </style>

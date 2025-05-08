@@ -257,14 +257,9 @@ const http = {
 			data,
 			...options
 		});
-	},
-	// 导出获取基础URL方法，方便其他模块直接使用
-	getBaseUrl
+	}
 };
 
+// 导出工具函数和HTTP请求对象
+export { getBaseUrl };
 export default http;
-
-// 直接导出getBaseUrl函数，方便其他组件单独导入
-export {
-	getBaseUrl
-};
