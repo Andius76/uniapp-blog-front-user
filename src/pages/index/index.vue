@@ -123,7 +123,7 @@
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
 					<!-- 用户信息 -->
 					<view class="user-info">
-						<image class="avatar" :src="article.author?.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+						<image class="avatar" :src="formatAvatarUrl(article.author?.avatar)" mode="aspectFill"></image>
 						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
 						<button class="follow-btn" :class="{'followed': article.author?.isFollowed}" @click.stop="handleFollow(article)">
 							{{ article.author?.isFollowed ? '已关注' : '+ 关注' }}

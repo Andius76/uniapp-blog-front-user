@@ -42,7 +42,7 @@
 				<!-- 文章列表循环 -->
 				<view v-for="(article, index) in articleList" :key="index" class="article-card">
 					<view class="user-info">
-						<image class="avatar" :src="article.author.avatar || '/static/images/avatar.png'" mode="aspectFill"></image>
+						<image class="avatar" :src="formatAvatarUrl(article.author.avatar)" mode="aspectFill"></image>
 						<text class="nickname">{{article.author.nickname}}</text>
 						<button class="follow-btn" :class="{'followed': article.author.isFollowed}" @click="toggleFollow(index)">
 							{{ article.author.isFollowed ? '已关注' : '+ 关注' }}
@@ -107,6 +107,7 @@
 import { reactive, ref, onMounted } from 'vue';
 // 导入uni-icons组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+import { getBaseUrl } from '@/utils/request'; // 引入getBaseUrl函数
 
 // 搜索相关
 const searchText = ref('');
@@ -128,6 +129,40 @@ const pageSize = 5;
 const isLoading = ref(false);
 const noMoreData = ref(false);
 const isRefreshing = ref(false);
+
+// 格式化头像URL
+const formatAvatarUrl = (url) => {
+	if (!url) return '/static/images/avatar.png';
+	
+	// 移除URL中可能存在的多余空格
+	url = url.trim();
+	
+	// 确保不是null或undefined
+	if (url === 'null' || url === 'undefined') {
+		return '/static/images/avatar.png';
+	}
+	
+	// 完整URL处理：如果已经是完整URL（包含http）则不处理
+	if (url.startsWith('http')) {
+		// 检查并修复双斜杠问题
+		if (url.includes('//uploads')) {
+			url = url.replace('//uploads', '/uploads');
+		}
+		return url;
+	}
+	// 静态资源处理：如果是静态资源路径则不处理
+	else if (url.startsWith('/static')) {
+		return url;
+	}
+	// 其他情况：添加基础URL前缀
+	else {
+		if (url.startsWith('/')) {
+			return getBaseUrl() + url;
+		} else {
+			return getBaseUrl() + '/' + url;
+		}
+	}
+};
 
 // 模拟文章数据
 const mockArticles = [
