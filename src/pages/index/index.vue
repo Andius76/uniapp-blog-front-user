@@ -719,9 +719,8 @@
 	// 添加获取APP和小程序文章列表高度的方法
 	const getMPListHeight = () => {
 		// #ifdef APP-PLUS || MP-WEIXIN
-		// 减去搜索框高度和导航菜单高度以及状态栏高度，增加底部安全区域高度
-		// 由于移除了mp-top-nav(约50rpx)，所以从170rpx减少为120rpx
-		return 'calc(100vh - 120rpx - var(--status-bar-height) - 100rpx)';
+		// 由于减小了header高度，从120rpx减少为100rpx
+		return 'calc(100vh - 100rpx - var(--status-bar-height) - 100rpx)';
 		// #endif
 		return '100vh';
 	};
@@ -1544,7 +1543,7 @@
 		.search-bar {
 			display: flex;
 			align-items: center;
-			padding: 20rpx;
+			padding: 15rpx 20rpx;
 			background: #fff;
 			border-bottom: 1rpx solid #f0f0f0;
 
@@ -1571,7 +1570,7 @@
 
 		.nav-menu {
 			display: flex;
-			padding: 20rpx 30rpx;
+			padding: 12rpx 30rpx;
 			background: #fff;
 			border-bottom: 1rpx solid #f0f0f0;
 			width: 100%;
@@ -1595,7 +1594,7 @@
 					&::after {
 						content: '';
 						position: absolute;
-						bottom: -10rpx;
+						bottom: -6rpx;
 						left: 50%;
 						transform: translateX(-50%);
 						width: 30rpx;
@@ -1616,7 +1615,7 @@
 	}
 
 	.mp-content {
-		padding-top: calc(120rpx + var(--status-bar-height));
+		padding-top: calc(100rpx + var(--status-bar-height));
 		background: #f5f5f5;
 		width: 100%;
 		box-sizing: border-box;
