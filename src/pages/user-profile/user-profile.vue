@@ -35,6 +35,28 @@
 				</view>
 			</view>
 		</view>
+
+		<!-- 添加导航菜单 -->
+		<view class="nav-menu">
+			<view class="nav-item active">
+				<text>{{ userInfo.nickname }}的文章</text>
+			</view>
+		</view>
+		
+		<!-- 添加文章列表 -->
+		<view class="article-list-container">
+			<ArticleList 
+				v-if="userInfo.id" 
+				ref="articleListRef" 
+				:list-type="'userPosts'" 
+				:userId="userInfo.id"
+				:show-manage-options="false" 
+				:empty-text="'该用户暂无发表内容'" 
+				:height="'auto'"
+				:use-global-scroll="false"
+				@article-click="viewArticleDetail"
+			/>
+		</view>
 	</view>
 </template>
 
@@ -44,6 +66,8 @@
 	import http from '@/utils/request.js';
 	import { checkUserFollow, followUser } from '@/api/user.js';
 	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
+	// 引入文章列表组件
+	import ArticleList from '@/components/article-list/article-list.vue';
 
 	// 基础URL配置 - 不再使用硬编码的值
 	// const baseURL = 'http://localhost:8080';
@@ -54,6 +78,8 @@
 	const isSelf = ref(false);
 	// 当前登录用户ID
 	let currentUserId = null;
+	// 文章列表引用
+	const articleListRef = ref(null);
 
 	// 获取头像完整URL
 	const getAvatarUrl = (avatar) => {
@@ -276,6 +302,24 @@
 		}
 	};
 
+	// 查看文章详情
+	const viewArticleDetail = (articleId) => {
+		// #ifdef H5
+		// H5环境下，新窗口打开文章详情页
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
+		window.open(detailUrl, '_blank');
+		// #endif
+
+		// #ifndef H5
+		// 非H5环境下，正常跳转
+		uni.navigateTo({
+			url: `/pages/article-detail/article-detail?id=${articleId}`
+		});
+		// #endif
+	};
+
 	// 页面加载
 	onLoad((options) => {
 		if (options.id) {
@@ -406,6 +450,75 @@
 					margin-top: 8rpx;
 					display: block;
 				}
+			}
+		}
+	}
+	
+	/* 添加导航菜单样式 */
+	.nav-menu {
+		display: flex;
+		padding: 10rpx 30rpx 5rpx;
+		background-color: #fff;
+		margin-top: 2rpx;
+		margin-bottom: 20rpx;
+
+		.nav-item {
+			padding: 10rpx 24rpx;
+			margin: 0 15rpx;
+			font-size: 30rpx;
+			color: #666;
+			position: relative;
+
+			&.active {
+				color: #4361ee;
+				font-weight: bold;
+
+				&::after {
+					content: '';
+					position: absolute;
+					bottom: -6rpx;
+					left: 50%;
+					transform: translateX(-50%);
+					width: 30rpx;
+					height: 6rpx;
+					background-color: #4361ee;
+					border-radius: 3rpx;
+				}
+			}
+		}
+	}
+	
+	/* 文章列表容器样式 */
+	.article-list-container {
+		background-color: #fff;
+		border-radius: 8rpx;
+		margin: 0 20rpx;
+		padding: 20rpx;
+		min-height: 300rpx;
+	}
+	
+	/* 修改文章列表在用户资料页的样式 */
+	:deep(.article-item) {
+		margin-bottom: 30rpx;
+		padding-bottom: 20rpx;
+		border-bottom: 1rpx solid #f0f0f0;
+	}
+	
+	:deep(.article-actions) {
+		border-top: 1rpx solid #eaeaea;
+		padding: 10rpx 0;
+		display: flex;
+		justify-content: space-around;
+		align-items: center;
+		
+		.action-item {
+			display: flex;
+			align-items: center;
+			padding: 6rpx 15rpx;
+			transition: all 0.3s ease;
+			
+			&:hover {
+				color: #4361ee;
 			}
 		}
 	}
