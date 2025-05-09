@@ -1646,7 +1646,7 @@
 		/* 首页文章列表最大宽度 */
 		margin: 0 auto;
 		/* 居中显示 */
-		padding: 20px;
+		padding: 10px 20px 20px; /* 减少顶部内边距 */
 		/* 与首页main-content一致 */
 		box-sizing: border-box;
 		background-color: #fff;
@@ -1657,7 +1657,7 @@
 		/* 与首页main-content一致 */
 		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 		/* 与首页相同的阴影效果 */
-		margin-top: 20px;
+		margin-top: 0; /* 修改为0，防止顶部溢出 */
 		/* 顶部间距 */
 	}
 
@@ -1680,6 +1680,7 @@
 		box-shadow: none;
 		background-color: transparent;
 		margin-bottom: 15px;
+		margin-top: 5px; /* 添加一点顶部间距 */
 	}
 
 	/* H5环境下调整内容区域 */
@@ -2081,6 +2082,22 @@
 		right: 0 !important;
 		bottom: 0 !important;
 		z-index: 9999 !important;
+	}
+	/* #endif */
+
+	/* H5环境下重置基础样式，修复顶部溢出问题 */
+	/* #ifdef H5 */
+	body, html {
+		margin: 0;
+		padding: 0;
+		overflow-x: hidden;
+	}
+
+	/* 容器从页面顶部开始，防止顶部溢出 */
+	.container {
+		margin-top: 0;
+		position: relative;
+		top: 0;
 	}
 	/* #endif */
 </style>
