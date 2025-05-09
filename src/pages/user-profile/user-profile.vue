@@ -43,10 +43,10 @@
 			</view>
 		</view>
 		
-		<!-- 添加文章列表 -->
+		<!-- 添加文章列表，使用v-if确保只有在用户信息加载完成且标记初始化后才渲染 -->
 		<view class="article-list-container">
 			<ArticleList 
-				v-if="userInfo.id" 
+				v-if="userInfo.id && isArticleListInitialized" 
 				ref="articleListRef" 
 				:list-type="'userPosts'" 
 				:userId="userInfo.id"
@@ -56,12 +56,15 @@
 				:use-global-scroll="false"
 				@article-click="viewArticleDetail"
 			/>
+			<view v-else-if="isLoading" class="loading-container">
+				<text class="loading-text">加载中...</text>
+			</view>
 		</view>
 	</view>
 </template>
 
 <script setup>
-	import { reactive, ref } from 'vue';
+	import { reactive, ref, onMounted } from 'vue';
 	import { onLoad } from '@dcloudio/uni-app';
 	import http from '@/utils/request.js';
 	import { checkUserFollow, followUser } from '@/api/user.js';
@@ -80,6 +83,10 @@
 	let currentUserId = null;
 	// 文章列表引用
 	const articleListRef = ref(null);
+	// 添加加载状态控制，防止重复请求
+	const isLoading = ref(false);
+	// 添加是否已经初始化文章列表的标志
+	const isArticleListInitialized = ref(false);
 
 	// 获取头像完整URL
 	const getAvatarUrl = (avatar) => {
@@ -138,7 +145,12 @@
 
 	// 加载用户信息
 	const loadUserInfo = async (userId) => {
+		// 防止重复加载
+		if (isLoading.value) return;
+		
 		try {
+			isLoading.value = true;
+			
 			const res = await http.get(`/api/user/profile/${userId}`);
 			if (res.code === 200) {
 				Object.assign(userInfo, res.data);
@@ -154,6 +166,9 @@
 				if (!isSelf.value) {
 					checkFollowStatus();
 				}
+				
+				// 标记文章列表可以初始化
+				isArticleListInitialized.value = true;
 			}
 		} catch (error) {
 			console.error('获取用户信息失败:', error);
@@ -161,6 +176,8 @@
 				title: '获取用户信息失败',
 				icon: 'none'
 			});
+		} finally {
+			isLoading.value = false;
 		}
 	};
 	
@@ -332,6 +349,9 @@
 			});
 		}
 	});
+	
+	// 避免重复初始化文章列表
+	// 不在onMounted中重复加载文章列表，防止重复请求
 </script>
 
 <style lang="scss">
@@ -495,6 +515,19 @@
 		margin: 0 20rpx;
 		padding: 20rpx;
 		min-height: 300rpx;
+	}
+	
+	/* 加载状态样式 */
+	.loading-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 100rpx;
+		
+		.loading-text {
+			color: #999;
+			font-size: 28rpx;
+		}
 	}
 	
 	/* 修改文章列表在用户资料页的样式 */
