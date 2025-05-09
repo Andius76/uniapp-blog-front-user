@@ -2051,7 +2051,7 @@
 			});
 		} else {
 			// 普通模式下刷新文章列表
-			loadArticleList();
+		loadArticleList();
 		}
 	};
 
@@ -2065,7 +2065,7 @@
 			loadMoreSearchResults();
 		} else {
 			// 普通模式下加载更多
-			loadArticleList();
+		loadArticleList();
 		}
 	};
 

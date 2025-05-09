@@ -1054,6 +1054,167 @@
   - 如果检查的是当前登录用户自己，将返回`following: false`（不能关注自己）
   - **✅ 当前状态：已实现**
 
+### 11. 搜索文章
+
+**接口说明：** 根据关键词搜索文章，支持按标题、作者昵称、标签进行模糊匹配
+
+- **请求URL：** `/api/article/search`
+- **请求方式：** GET
+- **请求参数：**
+
+| 参数名   | 类型   | 必选 | 说明                              |
+|----------|--------|------|-----------------------------------|
+| keyword  | string | 是   | 搜索关键词                        |
+| page     | number | 否   | 页码，默认1                       |
+| pageSize | number | 否   | 每页条数，默认10，最大50          |
+
+- **响应参数：**
+
+| 参数名  | 类型   | 说明         |
+|---------|--------|--------------|
+| code    | number | 状态码       |
+| message | string | 提示信息     |
+| data    | object | 分页数据     |
+
+- **data对象结构：**
+
+| 参数名      | 类型    | 说明               |
+|-------------|---------|-------------------|
+| total       | number  | 总记录数          |
+| pages       | number  | 总页数            |
+| list        | array   | 文章列表          |
+
+- **list数组元素结构：**
+
+| 参数名         | 类型             | 说明                 |
+|----------------|------------------|---------------------|
+| id             | number           | 文章ID              |
+| title          | string           | 文章标题            |
+| summary        | string           | 文章摘要            |
+| content        | string           | 文章内容（纯文本）  |
+| coverImage     | string           | 封面图片URL         |
+| tags           | Array\<string\>  | 文章标签            |
+| viewCount      | number           | 浏览量              |
+| likeCount      | number           | 点赞数              |
+| commentCount   | number           | 评论数              |
+| collectCount   | number           | 收藏数              |
+| isLiked        | boolean          | 当前用户是否已点赞   |
+| isCollected    | boolean          | 当前用户是否已收藏   |
+| author         | object           | 作者信息对象         |
+
+- **author对象结构：**
+
+| 参数名      | 类型    | 说明              |
+|-------------|---------|------------------|
+| id          | number  | 用户ID           |
+| nickname    | string  | 用户昵称         |
+| avatar      | string  | 用户头像URL      |
+| isFollowed  | boolean | 当前用户是否已关注此用户 |
+
+- **响应示例：**
+
+```json
+{
+    "code": 200,
+    "message": "success",
+    "data": {
+        "total": 25,
+        "pages": 3,
+        "list": [
+            {
+                "id": 1001,
+                "title": "Vue3学习笔记",
+                "summary": "这是一篇关于Vue3的学习笔记...",
+                "coverImage": "https://example.com/uploads/articles/cover_1001.jpg",
+                "tags": ["Vue", "前端"],
+                "viewCount": 120,
+                "likeCount": 30,
+                "commentCount": 15,
+                "collectCount": 25,
+                "isLiked": false,
+                "isCollected": true,
+                "author": {
+                    "id": 101,
+                    "nickname": "前端大神",
+                    "avatar": "https://example.com/uploads/avatars/user_101.jpg",
+                    "isFollowed": false
+                }
+            }
+        ]
+    }
+}
+```
+
+- **错误码说明：**
+
+| 错误码 | 说明                     |
+|--------|-------------------------|
+| 200    | 成功                    |
+| 400    | 参数错误                |
+| 500    | 服务器错误              |
+
+- **其他说明：**
+  - 该接口支持未登录状态访问，但未登录时isLiked, isCollected, isFollowed字段均为false
+  - 关键词会自动对标题、作者昵称和标签进行模糊匹配
+  - 搜索结果按相关度和发布时间排序
+  - 如果搜索结果为空，返回空列表而非错误
+  - 在首页搜索框中输入关键词并点击搜索按钮，会直接在首页显示搜索结果
+  - **✅ 当前状态：已实现**
+
+## 首页搜索功能
+
+### 搜索实现逻辑
+
+**功能说明：** 首页搜索功能允许用户直接在首页搜索文章，并在当前页面展示结果
+
+1. **搜索入口：**
+   - 首页顶部搜索框，支持输入关键词
+   - 可通过点击搜索按钮或按回车键触发搜索
+
+2. **实现方式：**
+   - 搜索时调用`searchArticles` API
+   - 搜索结果直接显示在首页文章列表区域
+   - 搜索状态时导航菜单不选中任何标签
+   - 显示搜索结果数量和搜索关键词
+   - 提供"清除搜索"按钮，点击后返回推荐列表
+
+3. **交互优化：**
+   - 搜索过程显示加载提示
+   - 无搜索结果时显示友好提示并自动返回推荐列表
+   - 支持搜索结果的分页加载（下拉刷新和上拉加载更多）
+   - 搜索模式下支持点赞、收藏等常规操作
+   - 清除搜索后自动恢复导航菜单选中状态
+
+4. **代码实现示例：**
+   ```js
+   // 搜索处理
+   const handleSearch = () => {
+     if (!searchText) return;
+     
+     // 设置搜索模式
+     currentNav = -1;
+     
+     // 调用搜索API
+     searchArticles(searchText, {page: 1, pageSize: 10})
+       .then(res => {
+         if (res.code === 200) {
+           articleList = processSearchResults(res.data.list);
+         }
+       });
+   };
+   ```
+
+5. **样式调整：**
+   - 搜索状态下添加搜索结果信息条
+   - 清除搜索按钮添加悬停和点击效果
+   - 搜索结果为空时提供明确反馈
+
+6. **数据处理：**
+   - 搜索结果经过统一的数据处理逻辑，确保头像、封面图等格式一致
+   - 保持与常规文章列表相同的交互行为
+   - 搜索模式下同样支持数据刷新和状态同步
+   - **✅ 当前状态：已实现**
+
 ## 功能说明
 
 ### 用户资料展示页面
