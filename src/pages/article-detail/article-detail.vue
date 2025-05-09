@@ -606,8 +606,20 @@
 				console.log('评论记录详情:', JSON.stringify(records));
 
 				// 将数据转换为组件需要的格式
-				const formattedComments = records.map(comment => {
-					console.log('[评论处理] 开始处理评论:', comment.id);
+				const formattedComments = [];
+				
+				// 先创建评论ID到评论对象的映射，方便快速查找
+				const commentMap = {};
+				
+				// 第一轮：处理所有评论，将它们按ID存储到映射中
+				records.forEach(comment => {
+					// 跳过处理parentId不为空的记录，这些是回复而不是父评论
+					if (comment.parentId) {
+						console.log(`[评论处理] 跳过子评论(${comment.id})处理，等待第二轮`);
+						return;
+					}
+					
+					console.log('[评论处理] 开始处理父评论:', comment.id);
 
 					// 确保所有ID为字符串类型
 					const commentId = String(comment.id);
@@ -642,29 +654,11 @@
 						console.log('[评论处理] 无法提取头像，使用默认头像');
 					}
 
-					// 确保头像URL正确 - 一定要使用默认头像
-					console.log('[评论处理] 处理前的头像URL:', avatar);
-
-					// 检查是否为用户头像文件格式：user_[id]_[timestamp].jpg
-					if (avatar && avatar.includes('user_') && !avatar.includes('/uploads/avatars/')) {
-						// 提取文件名
-						const fileName = avatar.split('/').pop();
-						if (fileName.match(/^user_\d+_\d+\.\w+$/)) {
-							// 直接构建完整路径
-							avatar = getBaseUrl() + '/uploads/avatars/' + fileName;
-							console.log('[评论处理] 直接补全头像路径:', avatar);
-						} else {
-							// 使用通用处理方法
-							avatar = formatAvatarUrl(avatar);
-						}
-					} else {
-						// 使用通用处理方法
-						avatar = formatAvatarUrl(avatar);
-					}
-
+					// 确保头像URL正确
+					avatar = formatAvatarUrl(avatar);
 					console.log('[评论处理] 处理后的头像URL:', avatar);
 
-					// 主评论
+					// 创建格式化的评论对象
 					const formattedComment = {
 						id: commentId,
 						author: nickname,
@@ -677,90 +671,87 @@
 						showAllReplies: false,
 						replies: []
 					};
-
-					// 处理回复
-					if (comment.replies && comment.replies.length > 0) {
-						console.log('[回复处理] 评论有回复数量:', comment.replies.length);
-
-						formattedComment.replies = comment.replies.map(reply => {
-							console.log('[回复处理] 开始处理回复:', reply.id);
-
-							// 确保回复中的ID也是字符串类型
-							const replyId = String(reply.id);
-
-							// 提取回复用户信息
-							let replyUserId, replyAuthor, replyAvatar;
-
-							// 提取回复的作者信息
-							if (reply.author && typeof reply.author === 'object') {
-								// 如果回复对象包含author对象（新版API）
-								replyUserId = reply.author.id || reply.userId || '';
-								replyAuthor = reply.author.nickname || "未知用户";
-								replyAvatar = reply.author.avatar || "";
-								console.log('[回复处理] 从author对象提取头像:', replyAvatar);
-							} else if (reply.user && typeof reply.user === 'object') {
-								// 如果回复对象包含user对象（旧版API）
-								replyUserId = reply.user.id || reply.userId || '';
-								replyAuthor = reply.user.nickname || "未知用户";
-								replyAvatar = reply.user.avatar || "";
-								console.log('[回复处理] 从user对象提取头像:', replyAvatar);
-							} else {
-								// 没有具体用户对象，尝试从其他字段提取
-								replyUserId = reply.userId || '';
-								replyAuthor = reply.author || reply.nickname || reply.userName || "用户" + replyUserId;
-								
-								// 基于userId构建头像 - 实际API返回的结构
-								if (replyUserId) {
-									// 使用标准命名规则构建可能的头像文件名
-									replyAvatar = `user_${replyUserId}`;
-									// 如果可能的话，添加随机的时间戳部分，或使用通用的头像
-									if (replyUserId == 5) { // 匹配特定用户ID的特殊处理
-										replyAvatar = "user_5_1746725805869.jpg";
-									} else {
-										replyAvatar = `user_${replyUserId}.jpg`;
-									}
-								} else {
-									replyAvatar = "";
-								}
-								console.log('[回复处理] 基于userId构建头像:', replyAvatar);
-							}
-
-							// 处理头像URL，确保使用完整URL和默认头像
-							console.log('[回复处理] 处理前的头像URL:', replyAvatar);
-
-							// 直接使用统一的头像处理函数
-							replyAvatar = formatAvatarUrl(replyAvatar);
-
-							console.log('[回复处理] 处理后的头像URL:', replyAvatar);
-
-							// 处理回复目标用户
-							let replyToUserId = null;
-							let replyToUser = null;
-
-							if (reply.replyUserId) {
-								replyToUserId = String(reply.replyUserId);
-								replyToUser = reply.replyUser || reply.replyNickname || "未知用户";
-								console.log('[回复处理] 回复目标用户:', replyToUser, '(ID:', replyToUserId,
-									')');
-							}
-
-							return {
-								id: replyId,
-								author: replyAuthor,
-								avatar: replyAvatar,
-								content: reply.content,
-								createTime: reply.createTime,
-								userId: replyUserId,
-								replyUser: replyToUser,
-								replyUserId: replyToUserId,
-								likeCount: reply.likeCount !== undefined ? parseInt(reply
-									.likeCount) || 0 : 0,
-								isLiked: reply.isLiked || false
-							};
-						});
+					
+					// 将评论添加到映射中
+					commentMap[commentId] = formattedComment;
+					// 将评论添加到结果数组
+					formattedComments.push(formattedComment);
+				});
+				
+				// 第二轮：处理所有回复，将它们添加到相应的父评论中
+				records.forEach(comment => {
+					// 只处理有parentId的评论(即回复)
+					if (!comment.parentId) {
+						return;
 					}
-
-					return formattedComment;
+					
+					const parentIdStr = String(comment.parentId);
+					console.log(`[回复处理] 处理回复(${comment.id})到父评论(${parentIdStr})`);
+					
+					// 查找父评论
+					const parentComment = commentMap[parentIdStr];
+					if (!parentComment) {
+						console.error(`[回复处理] 未找到父评论(${parentIdStr})，可能是数据不完整`);
+						return;
+					}
+					
+					// 处理回复用户信息
+					let userId, nickname, avatar;
+					
+					// 提取评论用户信息
+					if (comment.author && typeof comment.author === 'object') {
+						userId = String(comment.author.id || 0);
+						nickname = comment.author.nickname || "未知用户";
+						avatar = comment.author.avatar || "";
+					} else if (comment.user && typeof comment.user === 'object') {
+						userId = String(comment.user.id || 0);
+						nickname = comment.user.nickname || "未知用户";
+						avatar = comment.user.avatar || "";
+					} else if (comment.userId) {
+						userId = String(comment.userId);
+						nickname = comment.nickname || "未知用户";
+						avatar = comment.avatar || "";
+					} else {
+						userId = "0";
+						nickname = "未知用户";
+						avatar = "";
+					}
+					
+					// 处理头像URL
+					avatar = formatAvatarUrl(avatar);
+					
+					// 处理回复目标用户
+					let replyToUser = null;
+					let replyToUserId = null;
+					
+					if (comment.replyUserId) {
+						replyToUserId = String(comment.replyUserId);
+						replyToUser = comment.replyUser || comment.replyNickname || "未知用户";
+					}
+					
+					// 创建回复对象
+					const replyObj = {
+						id: String(comment.id),
+						author: nickname,
+						avatar: avatar,
+						content: comment.content,
+						createTime: comment.createTime,
+						userId: userId,
+						replyUser: replyToUser,
+						replyUserId: replyToUserId,
+						likeCount: comment.likeCount !== undefined ? parseInt(comment.likeCount) || 0 : 0,
+						isLiked: comment.isLiked || false
+					};
+					
+					// 将回复添加到父评论的回复列表
+					parentComment.replies.push(replyObj);
+				});
+				
+				// 对每个评论的回复按时间排序，最新的在前面
+				formattedComments.forEach(comment => {
+					if (comment.replies && comment.replies.length > 0) {
+						comment.replies.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+					}
 				});
 
 				// 第一页直接替换，其他页追加
@@ -775,6 +766,10 @@
 				data.hasMoreComments = current < totalPages;
 
 				console.log('处理后的评论数量:', data.comments.length);
+				console.log('父评论数量:', formattedComments.length);
+				let replyTotal = 0;
+				formattedComments.forEach(c => replyTotal += c.replies.length);
+				console.log('子评论总数:', replyTotal);
 			} else {
 				uni.showToast({
 					title: response.message || '获取评论失败',
@@ -1303,44 +1298,53 @@
 				// 如果返回了评论数据，直接添加到评论列表（优化体验，避免重新请求）
 				if (response.data && response.data.id) {
 					try {
-						// 构造新评论对象
-						const newComment = {
-							id: String(response.data.id),
-							author: response.data.author,
-							avatar: response.data.avatar || '/static/images/avatar.png',
-							content: response.data.content,
-							createTime: response.data.createTime,
-							likeCount: 0,
-							isLiked: false,
-							userId: String(response.data.userId),
-							replies: []
-						};
-
 						// 判断是新评论还是回复
 						if (commentData.parentId) {
-							// 这是一条回复，添加到对应的主评论的回复列表中
-							const parentIndex = data.comments.findIndex(c => String(c.id) === commentData
-								.parentId);
+							// 这是一条回复，添加到对应的父评论的回复列表中
+							const parentIndex = data.comments.findIndex(c => String(c.id) === commentData.parentId);
+							
 							if (parentIndex !== -1) {
 								// 构造回复对象
 								const newReply = {
 									id: String(response.data.id),
-									author: response.data.author,
-									avatar: response.data.avatar || '/static/images/avatar.png', // 添加头像字段
+									
+									author: response.data.author || (response.data.user ? response.data.user.nickname : '未知用户'),
+									avatar: formatAvatarUrl(response.data.avatar || (response.data.user ? response.data.user.avatar : '')),
 									content: response.data.content,
 									createTime: response.data.createTime,
-									userId: String(response.data.userId),
+									userId: String(response.data.userId || (response.data.user ? response.data.user.id : '')),
 									replyUser: data.replyTarget,
 									replyUserId: commentData.replyUserId,
-									likeCount: 0, // 初始化点赞数
-									isLiked: false // 初始化点赞状态
+									likeCount: 0,
+									isLiked: false
 								};
 
-								// 将回复添加到主评论的回复列表开头
+								// 将回复添加到父评论的回复列表开头
 								data.comments[parentIndex].replies.unshift(newReply);
+								
+								// 重要：不要将子评论当作父评论添加到评论列表中
+								console.log('已将回复添加到父评论下，跳过添加为新评论');
+							} else {
+								console.error('未找到对应的父评论:', commentData.parentId);
+								// 找不到父评论时，刷新评论列表
+								data.currentPage = 1;
+								fetchComments();
 							}
 						} else {
 							// 这是一条新评论，添加到评论列表开头
+							const newComment = {
+								id: String(response.data.id),
+								author: response.data.author || (response.data.user ? response.data.user.nickname : '未知用户'),
+								avatar: formatAvatarUrl(response.data.avatar || (response.data.user ? response.data.user.avatar : '')),
+								content: response.data.content,
+								createTime: response.data.createTime,
+								likeCount: 0,
+								isLiked: false,
+								userId: String(response.data.userId || (response.data.user ? response.data.user.id : '')),
+								showAllReplies: false,
+								replies: []
+							};
+							
 							data.comments.unshift(newComment);
 						}
 					} catch (e) {
@@ -1468,13 +1472,21 @@
 		console.log('刷新控件恢复默认状态');
 	};
 
-	// 加载更多评论
+	/**
+	 * 加载更多评论
+	 */
 	const loadMoreComments = () => {
-		// 如果没有更多评论或正在加载中，则不执行
-		if (!data.hasMoreComments || data.isLoadingMore) return;
-
-		// 加载下一页
+		if (data.isLoadingMore || !data.hasMoreComments) return;
+		
+		console.log(`加载更多评论，当前页: ${data.currentPage}，加载下一页: ${data.currentPage + 1}`);
+		
+		// 显示加载中的状态
+		data.isLoadingMore = true;
+		
+		// 递增页码
 		data.currentPage++;
+		
+		// 调用加载评论函数
 		fetchComments();
 	};
 
@@ -1520,7 +1532,14 @@
 
 	// 滚动到底部时加载更多评论
 	onReachBottom(() => {
-		loadMoreComments();
+		console.log('滚动到底部，尝试加载更多评论');
+		
+		// 防止频繁触发，加入简单节流
+		if (!data.isLoadingMore && data.hasMoreComments) {
+			loadMoreComments();
+		} else {
+			console.log('跳过加载更多评论：已在加载中或没有更多评论');
+		}
 	});
 
 	// 修改滚动到顶部函数，使用组件方法
