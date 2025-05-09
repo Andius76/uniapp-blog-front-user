@@ -137,7 +137,7 @@
 
 		<!-- APP和小程序的内容区域 -->
 		<!-- #ifndef H5 -->
-		<view class="content-area mp-content">
+		<view class="content-area mp-content" :style="{ paddingTop: mpContentPaddingTop }">
 			<scroll-view 
 				scroll-y 
 				class="article-list" 
@@ -146,6 +146,7 @@
 				@refresherrefresh="handleRefresh"
 				@scrolltolower="handleLoadMore"
 				:refresher-threshold="100"
+				:style="{ height: mpArticleListHeight }"
 			>
 				<!-- 文章列表循环显示 -->
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
@@ -213,7 +214,7 @@
 		</view>
 		<!-- #endif -->
 
-		<!-- #ifdef H5 -->
+		<!-- #ifdef H5
 		<view class="settings-mask" v-if="showUserSettings" @click.self="closeUserSettings"></view>
 		<view class="user-settings" v-if="showUserSettings">
 			<view class="settings-header">
@@ -234,7 +235,7 @@
 				/>
 			</view>
 		</view>
-		<!-- #endif -->
+		#endif -->
 
 		<!-- 使用通用的回到顶部组件，明确配置点击后隐藏并立即滚动到顶部 -->
 		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
@@ -341,6 +342,7 @@
 			}
 		],
 		currentNav: 1, // 默认选中推荐
+		searchStatusHeight: 0, // 搜索状态栏高度
 	});
 
 	const userInfo = reactive({
@@ -398,6 +400,15 @@
 				}
 			}
 		});
+		
+		// #ifndef H5
+		// 监听搜索状态栏高度变化事件
+		uni.$on('search-status-height-changed', (data) => {
+			console.log('接收到搜索状态栏高度变化:', data);
+			// 计算内容区域样式
+			updateContentAreaStyle(data.height);
+		});
+		// #endif
 	});
 
 	// 组件卸载时清理监听器
@@ -405,7 +416,34 @@
 		// 清理工作已经在BackToTop组件中处理
 		// 清理文章收藏更新事件监听
 		uni.$off('article_collect_updated');
+		
+		// #ifndef H5
+		// 移除搜索状态栏高度变化监听
+		uni.$off('search-status-height-changed');
+		// #endif
 	});
+	
+	// #ifndef H5
+	/**
+	 * 更新内容区域样式
+	 * @param {Number} searchStatusHeight - 搜索状态栏高度（rpx）
+	 */
+	const updateContentAreaStyle = (searchStatusHeight) => {
+		// 计算内容区域内边距
+		const contentPadding = `calc(var(--status-bar-height) + 170rpx + ${searchStatusHeight}rpx)`;
+		
+		// 计算文章列表高度
+		const listHeight = `calc(100vh - 170rpx - var(--status-bar-height) - ${searchStatusHeight}rpx)`;
+		
+		// 更新计算样式
+		mpContentPaddingTop.value = contentPadding;
+		mpArticleListHeight.value = listHeight;
+	};
+	
+	// 添加响应式样式变量
+	const mpContentPaddingTop = ref('calc(var(--status-bar-height) + 170rpx)');
+	const mpArticleListHeight = ref('calc(100vh - 170rpx - var(--status-bar-height))');
+	// #endif
 
 	// 页面显示时刷新数据
 	onShow(() => {
@@ -2352,29 +2390,45 @@
 		// #endif
 	};
 
-	// 修改CSS变量设置方法
+	/**
+	 * 修改CSS变量设置方法
+	 */
 	const setSearchStatusHeight = (height) => {
 		// #ifndef H5
-		setTimeout(() => {
-			const styleEl = document.querySelector(':root');
-			if (styleEl && styleEl.style) {
-				styleEl.style.setProperty('--search-status-height', height);
-			} else {
-				// 如果无法通过document获取，则尝试通过uni API设置
-				uni.getSystemInfo({
-					success: (res) => {
-						if (res.platform === 'android' || res.platform === 'ios') {
-							// 计算实际像素
-							const actualHeight = parseInt(height) * (res.windowWidth / 750);
-							// APP端使用布局方式实现而不是CSS变量
-							uni.$emit('update-content-padding', actualHeight);
-						}
-					}
-				});
-			}
-		}, 50);
+		// 将搜索状态栏高度设置为CSS变量，用于动态调整内容区域的padding
+		if (height !== '0rpx') {
+			// 当显示搜索状态栏时，调整内容区域
+			const heightValue = parseInt(height);
+			
+			// 使用uni的API获取系统信息
+			uni.getSystemInfo({
+				success: (res) => {
+					// 计算实际像素高度（rpx转px）
+					const actualHeight = heightValue * (res.windowWidth / 750);
+					console.log('搜索状态栏高度(px):', actualHeight);
+					
+					// 发送事件通知页面调整内容
+					uni.$emit('search-status-height-changed', {
+						height: heightValue,
+						actualHeight: actualHeight
+					});
+					
+					// 添加状态到页面数据中
+					data.searchStatusHeight = heightValue;
+				}
+			});
+		} else {
+			// 当隐藏搜索状态栏时，恢复原始padding
+			data.searchStatusHeight = 0;
+			
+			// 发送事件通知页面恢复内容
+			uni.$emit('search-status-height-changed', {
+				height: 0,
+				actualHeight: 0
+			});
+		}
 		// #endif
-	}
+	};
 
 	/**
 	 * 统一处理文章数据，确保头像和封面图等格式正确
@@ -3564,16 +3618,19 @@
 		.search-status {
 			width: 100%;
 			padding: 15rpx 20rpx;
-			background-color: #fff;
 			box-sizing: border-box;
+			background-color: #f8f9fa;
+			border-bottom: 1rpx solid #e0e0e0;
+			z-index: 101; // 确保高于内容区域
 			
 			.search-info {
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
-				background-color: #f8f9fa;
-				padding: 12rpx 20rpx;
+				background-color: #fff;
+				padding: 15rpx 20rpx;
 				border-radius: 8rpx;
+				border: 1rpx solid #e0e0e0;
 				
 				text {
 					font-size: 26rpx;
@@ -3583,8 +3640,8 @@
 				.clear-search {
 					display: flex;
 					align-items: center;
-					padding: 8rpx 16rpx;
-					background-color: #fff;
+					padding: 10rpx 16rpx;
+					background-color: #f5f5f5;
 					border-radius: 30rpx;
 					border: 1rpx solid #eee;
 					
@@ -3602,6 +3659,7 @@
 			}
 		}
 	}
+	// #endif
 
 	// 内容区域样式调整 - 也需要修改顶部间距以适应更大的搜索框
 	.content-area.mp-content {
@@ -3615,7 +3673,6 @@
 			height: calc(100vh - 170rpx - var(--status-bar-height) - (var(--search-status-height, 0rpx))); /* 匹配调整后的header高度 */
 		}
 	}
-	// #endif
 
 	// 添加点赞和收藏的动画效果
 	.animate-icon {
