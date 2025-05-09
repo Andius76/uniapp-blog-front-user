@@ -820,14 +820,17 @@
 		try {
 			if (props.userId) {
 				// 获取指定用户的文章
+				apiPath = `/api/article/user/${props.userId}/articles`;
+				
 				if (props.listType === 'likes') {
 					// 获取用户点赞的文章
-					apiPath = `/api/user/${props.userId}/liked-articles`;
+					params.type = 'likes';
+					console.log(`加载用户(${props.userId})的点赞文章`);
 				} else {
 					// 获取用户发布的文章
-					apiPath = `/api/user/${props.userId}/articles`;
+					params.type = 'posts';
+					console.log(`加载用户(${props.userId})的发布文章`);
 				}
-				console.log(`加载用户(${props.userId})的文章`);
 			} else {
 				// 根据不同的列表类型设置参数
 				if (props.listType === 'follow') {
