@@ -394,8 +394,14 @@
 		if (articleListRef.value) {
 			console.log('H5环境: 手动触发ArticleList组件加载');
 			nextTick(() => {
+				// 确保组件已挂载并重置
 				articleListRef.value.resetList();
-				articleListRef.value.loadArticles(true);
+				// 使用延时确保DOM已完全渲染
+				setTimeout(() => {
+					// 强制加载文章数据
+					articleListRef.value.loadArticles(true);
+					console.log('H5环境: 已触发文章列表加载');
+				}, 100);
 			});
 		}
 		// #endif
@@ -680,13 +686,31 @@
 		// #ifdef H5
 		// H5环境使用ArticleList组件处理搜索
 		if (articleListRef.value) {
-			// 重置文章列表状态
+			// 重要：先重置文章列表
 			articleListRef.value.resetList();
 			
+			// 设置一个短暂延迟等待DOM更新
+			setTimeout(() => {
+				console.log('H5环境：手动触发ArticleList组件搜索加载，关键词:', data.searchText);
+				// 强制加载文章列表，确保UI更新
+				articleListRef.value.loadArticles(true);
+				
+				// 再次延迟检查是否成功加载
+				setTimeout(() => {
+					console.log('H5环境：检查搜索结果是否正常加载');
+					const articleData = articleListRef.value.getArticleList();
+					if (!articleData || articleData.length === 0) {
+						console.log('H5环境：搜索结果未正常加载，再次尝试加载');
+						articleListRef.value.loadArticles(true);
+					}
+				}, 300);
+			}, 100);
+			
 			// 在H5环境下，同时调用后端搜索API获取准确的搜索结果数量
-			searchArticles(data.searchText, {
+			http.get('/api/article/search', {
 				page: 1,
-				pageSize: 10
+				pageSize: 10,
+				keyword: data.searchText
 			}).then(res => {
 				if (res.code === 200 && res.data) {
 					// 更新搜索结果数量
@@ -725,8 +749,9 @@
 				// 处理搜索结果
 				const searchResults = res.data.list || [];
 				
-				// 更新搜索结果数量
+				// 更新搜索结果数量 - 优先使用total字段，否则使用列表长度
 				data.searchResultCount = res.data.total || searchResults.length;
+				console.log(`非H5环境搜索结果数量更新: ${data.searchResultCount}, 数组长度: ${searchResults.length}`);
 				
 				// 如果没有搜索结果
 				if (searchResults.length === 0) {
@@ -2761,15 +2786,17 @@
 			:deep(.article-list-container) {
 				width: 100%;
 				min-height: 500px;
+				display: block !important; /* 强制显示 */
 				
 				.article-grid.global-scroll {
-					display: flex;
+					display: flex !important; /* 强制显示 */
 					flex-direction: column;
 					width: 100%;
 					
 					.article-grid-item {
 						width: 100%;
 						margin-bottom: 20px;
+						display: block !important; /* 强制显示 */
 					}
 				}
 			}

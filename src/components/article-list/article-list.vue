@@ -655,6 +655,110 @@
 				articleList.value = processArticleData([...articleList.value]);
 			}
 		});
+
+		// 如果是搜索模式且有关键词，立即加载搜索结果
+		if (props.listType === 'search' && props.keyword) {
+			// 计算是否静默加载
+			const silent = currentPage.value > 1;
+			
+			// 设置加载状态
+			isLoading.value = true;
+			
+			// 请求API获取搜索结果
+			http.get('/api/article/search', {
+				page: currentPage.value,
+				pageSize: pageSize.value,
+				keyword: props.keyword
+			})
+			.then(res => {
+				if (isLoading.value) {
+					isLoading.value = false;
+				}
+				
+				if (isRefreshing.value) {
+					isRefreshing.value = false;
+				}
+				
+				if (res.code === 200 && res.data) {
+					const searchResults = res.data.list || [];
+					
+					// 通知父组件搜索结果数量
+					handleSearchResults(res.data);
+					
+					// 添加调试日志
+					console.log(`搜索[${props.keyword}]返回结果:`, searchResults.length, '条');
+					
+					// 如果是第一页且没有结果，设置为空列表
+					if (currentPage.value === 1 && searchResults.length === 0) {
+						articleList.value = [];
+						noMoreData.value = true;
+						
+						if (!silent) {
+							uni.showToast({
+								title: '没有找到相关文章',
+								icon: 'none'
+							});
+						}
+						return;
+					}
+					
+					// 处理搜索结果
+					const processedArticles = processArticleData(searchResults);
+					
+					// 更新文章列表
+					if (currentPage.value === 1) {
+						// 第一页，替换列表
+						articleList.value = processedArticles;
+					} else {
+						// 追加到现有列表
+						articleList.value = [...articleList.value, ...processedArticles];
+					}
+					
+					// 更新页码和加载状态
+					currentPage.value++;
+					
+					// 判断是否还有更多数据
+					if (searchResults.length < pageSize.value) {
+						noMoreData.value = true;
+					} else {
+						noMoreData.value = false;
+					}
+				} else {
+					// 搜索请求出错
+					uni.showToast({
+						title: res.message || '搜索文章失败',
+						icon: 'none'
+					});
+					
+					// 设置为没有更多数据
+					noMoreData.value = true;
+					
+					// 通知父组件搜索结果为空
+					handleSearchResults({ list: [], total: 0 });
+				}
+			})
+			.catch(err => {
+				console.error('搜索文章异常:', err);
+				
+				if (isLoading.value) {
+					isLoading.value = false;
+				}
+				
+				if (isRefreshing.value) {
+					isRefreshing.value = false;
+				}
+				
+				// 出错时也要通知父组件
+				handleSearchResults({ list: [], total: 0 });
+				
+				if (!silent) {
+					uni.showToast({
+						title: '网络异常，请稍后再试',
+						icon: 'none'
+					});
+				}
+			});
+		}
 	});
 
 	// 组件卸载时移除事件监听
@@ -1868,103 +1972,6 @@
 			});
 		}
 	};
-
-	// 如果是搜索模式且有关键词
-	if (props.listType === 'search' && props.keyword) {
-		searchArticles(props.keyword, {
-			page: currentPage.value,
-			pageSize: pageSize.value
-		}).then(res => {
-			if (isLoading.value) {
-				isLoading.value = false;
-			}
-			
-			if (isRefreshing.value) {
-				isRefreshing.value = false;
-			}
-			
-			if (res.code === 200 && res.data) {
-				const searchResults = res.data.list || [];
-				
-				// 通知父组件搜索结果数量
-				handleSearchResults(res.data);
-				
-				// 添加调试日志
-				console.log(`搜索[${props.keyword}]返回结果:`, searchResults.length, '条');
-				
-				// 如果是第一页且没有结果，设置为空列表
-				if (currentPage.value === 1 && searchResults.length === 0) {
-					articleList.value = [];
-					noMoreData.value = true;
-					
-					if (!silent) {
-						uni.showToast({
-							title: '没有找到相关文章',
-							icon: 'none'
-						});
-					}
-					return;
-				}
-				
-				// 处理搜索结果
-				const processedArticles = searchResults.map(article => {
-					// 处理并格式化文章数据
-					return processArticle(article);
-				});
-				
-				// 更新文章列表
-				if (currentPage.value === 1) {
-					// 第一页，替换列表
-					articleList.value = processedArticles;
-				} else {
-					// 追加到现有列表
-					articleList.value = [...articleList.value, ...processedArticles];
-				}
-				
-				// 更新页码和加载状态
-				currentPage.value++;
-				
-				// 判断是否还有更多数据
-				if (searchResults.length < pageSize.value) {
-					noMoreData.value = true;
-				} else {
-					noMoreData.value = false;
-				}
-			} else {
-				// 搜索请求出错
-				uni.showToast({
-					title: res.message || '搜索文章失败',
-					icon: 'none'
-				});
-				
-				// 设置为没有更多数据
-				noMoreData.value = true;
-				
-				// 通知父组件搜索结果为空
-				handleSearchResults({ list: [], total: 0 });
-			}
-		}).catch(err => {
-			console.error('搜索文章异常:', err);
-			
-			if (isLoading.value) {
-				isLoading.value = false;
-			}
-			
-			if (isRefreshing.value) {
-				isRefreshing.value = false;
-			}
-			
-			// 出错时也要通知父组件
-			handleSearchResults({ list: [], total: 0 });
-			
-			if (!silent) {
-				uni.showToast({
-					title: '网络异常，请稍后再试',
-					icon: 'none'
-				});
-			}
-		});
-	}
 </script>
 
 <style lang="scss">
