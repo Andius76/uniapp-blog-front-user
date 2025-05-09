@@ -389,6 +389,17 @@
 		// 使用统一的数据加载入口
 		await loadArticleData();
 		
+		// 确保ArticleList组件在H5环境下加载数据
+		// #ifdef H5
+		if (articleListRef.value) {
+			console.log('H5环境: 手动触发ArticleList组件加载');
+			nextTick(() => {
+				articleListRef.value.resetList();
+				articleListRef.value.loadArticles(true);
+			});
+		}
+		// #endif
+		
 		// 监听收藏状态更新事件
 		uni.$on('article_collect_updated', (data) => {
 			console.log('首页接收到文章收藏更新事件:', data);
@@ -2745,6 +2756,23 @@
 			// #endif
 			margin-right: 0;
 			min-height: 200px;
+			
+			// 添加此样式，确保文章列表可见
+			:deep(.article-list-container) {
+				width: 100%;
+				min-height: 500px;
+				
+				.article-grid.global-scroll {
+					display: flex;
+					flex-direction: column;
+					width: 100%;
+					
+					.article-grid-item {
+						width: 100%;
+						margin-bottom: 20px;
+					}
+				}
+			}
 		}
 
 		.right-sidebar {

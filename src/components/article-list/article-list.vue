@@ -442,7 +442,8 @@
 		'edit',
 		'delete',
 		'follow',
-		'search-results'
+		'search-results',
+		'loaded' // 添加loaded事件
 	]);
 
 	// 响应式数据
@@ -695,12 +696,16 @@
 		// 设置加载状态
 		isLoading.value = true;
 		
+		// 添加调试日志
+		console.log(`文章列表: 开始加载文章 [类型=${props.listType}] [页码=${currentPage.value}] [全局滚动=${props.useGlobalScroll}]`);
+		
 		// 请求API路径
 		let apiPath = '/api/article';
 		
 		// 准备请求参数
 		const params = {
 			page: currentPage.value,
+			
 			pageSize: pageSize.value
 		};
 		
@@ -761,24 +766,94 @@
 			// 发送请求获取文章列表
 			const res = await http.get(apiPath, params);
 			
+			// 添加调试日志
+			console.log(`文章列表: 请求成功 [类型=${props.listType}] [状态码=${res.code}] [数据量=${res.data?.list?.length || 0}]`);
+			
 			// 如果定义了请求后回调，执行它
 			if (afterRequest) {
 				afterRequest(res);
 			}
 			
-			// 处理响应结果
-			// ... 以下是原有的处理逻辑 ...
-		} catch (error) {
-			console.error('加载文章列表异常:', error);
-			
-			if (afterRequest) {
-				// 出错时也要执行回调
-				afterRequest({ code: 500, message: '网络异常', data: { list: [], total: 0 } });
+			// 重置加载状态
+			isLoading.value = false;
+			if (isRefreshing.value) {
+				isRefreshing.value = false;
 			}
 			
-			// ... 以下是原有的错误处理逻辑 ...
-		} finally {
-			// ... 以下是原有的状态重置逻辑 ...
+			// 处理响应结果
+			if (res.code === 200 && res.data) {
+				const newArticles = res.data.list || [];
+				
+				// 如果是第一页且没有数据，设置为没有更多数据
+				if (currentPage.value === 1 && newArticles.length === 0) {
+					articleList.value = [];
+					noMoreData.value = true;
+					
+					console.log(`文章列表: 第一页没有数据 [类型=${props.listType}]`);
+					
+					if (!silent) {
+						uni.showToast({
+							title: '暂无文章',
+							icon: 'none'
+						});
+					}
+					return;
+				}
+				
+				// 处理文章数据
+				const processedArticles = processArticleData(newArticles);
+				
+				// 更新文章列表
+				if (currentPage.value === 1) {
+					// 第一页，替换列表
+					articleList.value = processedArticles;
+				} else {
+					// 追加到现有列表
+					articleList.value = [...articleList.value, ...processedArticles];
+				}
+				
+				// 更新页码和加载状态
+				currentPage.value++;
+				
+				// 判断是否还有更多数据
+				if (newArticles.length < pageSize.value) {
+					noMoreData.value = true;
+				} else {
+					noMoreData.value = false;
+				}
+				
+				console.log(`文章列表: 数据加载完成 [类型=${props.listType}] [文章数量=${articleList.value.length}]`);
+				
+				// 发出加载成功事件
+				emit('loaded', {
+					total: res.data.total || articleList.value.length,
+					page: currentPage.value - 1,
+					pageSize: pageSize.value
+				});
+			} else {
+				console.error(`文章列表: API响应错误 [类型=${props.listType}] [错误=${res.message}]`);
+				
+				if (!silent) {
+					uni.showToast({
+						title: res.message || '加载失败',
+						icon: 'none'
+					});
+				}
+			}
+		} catch (error) {
+			console.error(`文章列表: 请求异常 [类型=${props.listType}]`, error);
+			
+			isLoading.value = false;
+			if (isRefreshing.value) {
+				isRefreshing.value = false;
+			}
+			
+			if (!silent) {
+				uni.showToast({
+					title: '网络异常，请稍后再试',
+					icon: 'none'
+				});
+			}
 		}
 	};
 
@@ -1889,7 +1964,6 @@
 				});
 			}
 		});
-		return;
 	}
 </script>
 
@@ -1901,6 +1975,8 @@
 		box-sizing: border-box;
 		position: relative;
 		overflow: hidden; // 防止内容溢出
+		// 设置最小高度确保容器可见
+		min-height: 200px;
 
 		// 优化滚动区域样式
 		.article-scroll {
@@ -1932,6 +2008,29 @@
 			// 添加弹性滚动效果
 			-webkit-overflow-scrolling: touch;
 			overflow-x: hidden;
+		}
+
+		// 全局滚动模式样式增强
+		.article-grid.global-scroll {
+			width: 100%;
+			min-height: 200px;
+			display: flex;
+			flex-direction: column;
+			
+			// #ifdef H5
+			padding: 10px 0;
+			// #endif
+			
+			.article-grid-item {
+				width: 100%;
+				margin-bottom: 20px;
+				
+				// #ifdef H5
+				box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+				border-radius: 8px;
+				overflow: hidden;
+				// #endif
+			}
 		}
 
 		// 回到顶部按钮
