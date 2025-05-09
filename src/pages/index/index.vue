@@ -56,9 +56,9 @@
 			<!-- 搜索状态显示 -->
 			<view class="search-status" v-if="data.currentNav === -1">
 				<view class="search-info">
-					<text>搜索"{{data.searchText}}"：共{{articleList.length}}条结果</text>
+					<text>搜索"{{data.searchText}}"：共{{data.searchResultCount}}条结果</text>
 					<view class="clear-search" @click="clearSearch">
-						<uni-icons type="clear" size="16" color="#666" />
+						<uni-icons type="clear" size="16" />
 						<text>清除搜索</text>
 					</view>
 				</view>
@@ -77,7 +77,7 @@
 				<!-- 显示搜索状态和结果统计 -->
 				<view class="search-status" v-if="data.currentNav === -1">
 					<view class="search-info">
-						<text>搜索"{{data.searchText}}"：共{{articleList.length}}条结果</text>
+						<text>搜索"{{data.searchText}}"：共{{data.searchResultCount}}条结果</text>
 						<view class="clear-search" @click="clearSearch">
 							<uni-icons type="clear" size="16" />
 							<text>清除搜索</text>
@@ -97,6 +97,7 @@
 					@share="handleShare"
 					@comment="handleComment"
 					@collect="handleCollect"
+					@search-results="updateSearchResults"
 				/>
 			</view>
 
@@ -318,6 +319,7 @@
 	const data = reactive({
 		// 搜索状态
 		searchText: '',
+		searchResultCount: 0, // 添加搜索结果计数变量
 
 		// 文章列表数据与状态
 		isRefreshing: false,
@@ -669,6 +671,24 @@
 		if (articleListRef.value) {
 			// 重置文章列表状态
 			articleListRef.value.resetList();
+			
+			// 在H5环境下，同时调用后端搜索API获取准确的搜索结果数量
+			searchArticles(data.searchText, {
+				page: 1,
+				pageSize: 10
+			}).then(res => {
+				if (res.code === 200 && res.data) {
+					// 更新搜索结果数量
+					data.searchResultCount = res.data.total || (res.data.list ? res.data.list.length : 0);
+					console.log(`H5环境搜索结果数量更新: ${data.searchResultCount}`);
+				} else {
+					data.searchResultCount = 0;
+				}
+			}).catch(err => {
+				console.error('获取搜索结果数量失败:', err);
+				data.searchResultCount = 0;
+			});
+			
 			// 设置延迟让组件有时间重新渲染
 			setTimeout(() => {
 				uni.hideLoading();
@@ -693,6 +713,9 @@
 			if (res.code === 200 && res.data) {
 				// 处理搜索结果
 				const searchResults = res.data.list || [];
+				
+				// 更新搜索结果数量
+				data.searchResultCount = res.data.total || searchResults.length;
 				
 				// 如果没有搜索结果
 				if (searchResults.length === 0) {
@@ -2354,6 +2377,8 @@
 	const clearSearch = () => {
 		// 清空搜索内容
 		data.searchText = '';
+		// 重置搜索结果计数
+		data.searchResultCount = 0;
 		// 切换回推荐标签
 		data.currentNav = 1;
 		// 重置搜索状态栏高度
@@ -2472,6 +2497,26 @@
 			
 			return article;
 		});
+	};
+
+	/**
+	 * 更新搜索结果
+	 * @param {Object} results - 搜索结果对象
+	 * @param {Array} results.list - 搜索结果列表
+	 * @param {Number} results.total - 结果总数
+	 */
+	const updateSearchResults = (results) => {
+		console.log('搜索结果更新:', results);
+		// 更新搜索结果计数
+		if (results && typeof results.total === 'number') {
+			data.searchResultCount = results.total;
+		} else if (results && Array.isArray(results.list)) {
+			data.searchResultCount = results.list.length;
+		} else if (Array.isArray(results)) {
+			data.searchResultCount = results.length;
+		} else {
+			data.searchResultCount = 0;
+		}
 	};
 </script>
 

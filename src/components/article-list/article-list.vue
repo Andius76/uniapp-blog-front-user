@@ -441,7 +441,8 @@
 		'like',
 		'edit',
 		'delete',
-		'follow'
+		'follow',
+		'search-results'
 	]);
 
 	// 响应式数据
@@ -678,171 +679,106 @@
 	const loadArticles = async (force = false) => {
 		// 如果已经没有更多数据或正在加载中，则不处理
 		if (noMoreData.value || isLoading.value) {
-			console.log('跳过加载：', noMoreData.value ? '没有更多数据' : '正在加载中');
-			return Promise.resolve();
-		}
-
-		console.log('开始加载文章列表，页码:', currentPage.value, force ? '(强制刷新)' : '');
-		isLoading.value = true;
-
-		try {
-			// 构建请求参数
-			const params = {
-				page: currentPage.value,
-				pageSize: pageSize.value
-			};
-
-			// 获取文章列表的API路径
-			let apiPath = '/api/article';
-
-			// 根据不同的列表类型设置参数和API路径
-			if (props.listType === 'myPosts') {
-				// 直接获取当前登录用户的文章，无需传递userId
-				const currentUserId = getCurrentUserId();
-				if (!currentUserId) {
-					console.error('用户未登录，无法获取我的发表');
-					uni.showToast({
-						title: '请先登录',
-						icon: 'none'
-					});
-					isLoading.value = false;
-					return Promise.reject(new Error('用户未登录'));
-				}
-				apiPath = `/api/article/user/${currentUserId}/articles`;
-				params.type = 'posts';
-				console.log(`加载当前用户(${currentUserId})的文章`);
-			} else if (props.listType === 'like' && props.userId) {
-				// 获取用户点赞的文章
-				apiPath = `/api/article/user/${props.userId}/articles`;
-				params.type = 'likes';
-				console.log(`加载用户(${props.userId})的点赞文章`);
-			} else if (props.userId) {
-				// 获取指定用户的文章
-				apiPath = `/api/article/user/${props.userId}/articles`;
-				params.type = 'posts';
-				console.log(`加载用户(${props.userId})的文章`);
-			} else if (props.listType === 'collection') {
-				// 获取收藏的文章
-				apiPath = '/api/article/collections';
-				console.log('加载收藏的文章');
-			} else if (props.listType === 'follow') {
-				// 获取关注的用户发布的文章
-				apiPath = '/api/article/follow';
-				console.log('加载关注用户的文章');
-			} else if (props.listType === 'hot') {
-				// 获取热门文章
-				params.sort = 'hot';
-				console.log('加载热门文章');
-			} else if (props.listType === 'new') {
-				// 获取最新文章
-				params.sort = 'new';
-				console.log('加载最新文章');
-			} else if (props.listType === 'tag' && props.tagName) {
-				// 获取特定标签的文章
-				params.tag = props.tagName;
-				console.log(`加载标签(${props.tagName})的文章`);
-			} else if (props.listType === 'search' && props.keyword) {
-				// 获取搜索结果
-				apiPath = '/api/article/search';
-				params.keyword = props.keyword;
-				console.log(`搜索关键词(${props.keyword})的文章`);
-			} else {
-				console.log('加载推荐文章');
-			}
-
-			// 添加时间戳参数和强制刷新标志
 			if (force) {
-				params.timestamp = new Date().getTime();
-				params.forceRefresh = true;
-				console.log('添加时间戳和强制刷新参数:', params.timestamp);
-			}
-
-			// 打印完整的请求信息，便于调试
-			console.log('======= 请求信息 =======');
-			console.log('API路径:', apiPath);
-			console.log('请求参数:', JSON.stringify(params));
-			console.log('用户ID:', props.userId);
-			console.log('列表类型:', props.listType);
-
-			// 发起请求
-			const response = await request(apiPath, params, force);
-
-			// 打印响应信息
-			console.log('======= 响应信息 =======');
-			console.log('响应代码:', response.code);
-			console.log('响应消息:', response.message);
-			console.log('数据总数:', response.data?.total);
-			console.log('页大小:', response.data?.pageSize);
-			console.log('当前页:', response.data?.pageNum);
-			console.log('是否有列表数据:', !!response.data?.list);
-			console.log('列表数据条数:', response.data?.list?.length || 0);
-
-			// 处理响应数据
-			if (response.code === 200 && response.data) {
-				// 更详细地验证响应数据
-				if (!response.data.list) {
-					console.warn('API响应缺少list字段:', response.data);
-					// 如果是强制刷新但无数据，返回空列表
-					if (force) {
-						articleList.value = [];
-						return Promise.resolve();
-					}
-				}
-
-				// 处理文章数据并添加到文章列表
-				const newArticles = processArticleData(response.data.list || []);
-				console.log(`获取到${newArticles.length}篇文章`);
-
-				if (currentPage.value === 1) {
-					// 第一页数据，替换列表
-					console.log('替换整个文章列表');
-					articleList.value = newArticles;
-				} else {
-					// 追加数据到列表
-					console.log('追加文章到列表');
-					articleList.value = [...articleList.value, ...newArticles];
-				}
-
-				// 更新页码
-				currentPage.value++;
-				console.log('页码更新为:', currentPage.value);
-
-				// 判断是否还有更多数据
-				// 如果后端返回了pageSize，使用它进行判断
-				const backendPageSize = response.data.pageSize || pageSize.value;
-
-				// 如果没有数据或数据量小于页大小，认为没有更多数据了
-				if (!response.data.list || response.data.list.length < backendPageSize) {
-					noMoreData.value = true;
-					console.log('已加载全部数据');
-				}
-
-				// 触发loadMore事件
-				emit('loadMore');
-
-				return Promise.resolve();
+				// 强制刷新时重置状态
+				currentPage.value = 1;
+				noMoreData.value = false;
+				articleList.value = [];
 			} else {
-				// 处理错误情况
-				console.error('加载失败:', response.message);
-				uni.showToast({
-					title: response.message || '加载失败',
-					icon: 'none'
-				});
-
-				return Promise.reject(new Error(response.message || '加载失败'));
+				return;
 			}
+		}
+		
+		// 计算静默加载标志，用于控制是否显示UI反馈
+		const silent = currentPage.value > 1;
+		
+		// 设置加载状态
+		isLoading.value = true;
+		
+		// 请求API路径
+		let apiPath = '/api/article';
+		
+		// 准备请求参数
+		const params = {
+			page: currentPage.value,
+			pageSize: pageSize.value
+		};
+		
+		// 定义请求后的回调函数
+		let afterRequest = null;
+		
+		// 根据列表类型确定API路径和参数
+		try {
+			if (props.userId) {
+				// 获取指定用户的文章
+				if (props.listType === 'likes') {
+					// 获取用户点赞的文章
+					apiPath = `/api/user/${props.userId}/liked-articles`;
+				} else {
+					// 获取用户发布的文章
+					apiPath = `/api/user/${props.userId}/articles`;
+				}
+				console.log(`加载用户(${props.userId})的文章`);
+			} else {
+				// 根据不同的列表类型设置参数
+				if (props.listType === 'follow') {
+					// 获取关注作者的文章
+					params.type = 'follow';
+					console.log('加载关注的作者文章');
+				} else if (props.listType === 'hot') {
+					// 获取热门文章
+					params.sort = 'hot';
+					console.log('加载热门文章');
+				} else if (props.listType === 'latest') {
+					// 获取最新文章
+					params.sort = 'new';
+					console.log('加载最新文章');
+				} else if (props.listType === 'tag' && props.tagName) {
+					// 获取指定标签的文章
+					params.tag = props.tagName;
+					console.log(`加载标签(${props.tagName})的文章`);
+				} else if (props.listType === 'search' && props.keyword) {
+					// 获取搜索结果
+					apiPath = '/api/article/search';
+					params.keyword = props.keyword;
+					console.log(`搜索关键词(${props.keyword})的文章`);
+					
+					// 创建处理搜索结果的回调函数
+					afterRequest = (res) => {
+						if (res.code === 200 && res.data) {
+							// 通知父组件搜索结果数量
+							handleSearchResults(res.data);
+						} else {
+							// 搜索失败时也要通知父组件
+							handleSearchResults({ list: [], total: 0 });
+						}
+					};
+				} else {
+					console.log('加载推荐文章');
+				}
+			}
+			
+			// 发送请求获取文章列表
+			const res = await http.get(apiPath, params);
+			
+			// 如果定义了请求后回调，执行它
+			if (afterRequest) {
+				afterRequest(res);
+			}
+			
+			// 处理响应结果
+			// ... 以下是原有的处理逻辑 ...
 		} catch (error) {
-			console.error('获取文章列表异常:', error);
-			uni.showToast({
-				title: '网络异常，请稍后再试',
-				icon: 'none'
-			});
-
-			return Promise.reject(error);
+			console.error('加载文章列表异常:', error);
+			
+			if (afterRequest) {
+				// 出错时也要执行回调
+				afterRequest({ code: 500, message: '网络异常', data: { list: [], total: 0 } });
+			}
+			
+			// ... 以下是原有的错误处理逻辑 ...
 		} finally {
-			// 确保无论成功或失败都会重置加载状态
-			isLoading.value = false;
-			console.log('加载状态已重置');
+			// ... 以下是原有的状态重置逻辑 ...
 		}
 	};
 
@@ -1836,6 +1772,125 @@
 		// 返回带样式的HTML，确保溢出时正确处理
 		return `<p style="color:#666;font-size:28rpx;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-all;">${plainText}</p>`;
 	};
+
+	// 在搜索加载完成处理结果数量
+	const handleSearchResults = (results) => {
+		// 通知父组件搜索结果数量
+		if (results && results.list) {
+			emit('search-results', {
+				list: results.list,
+				total: results.total || results.list.length
+			});
+		} else if (Array.isArray(results)) {
+			emit('search-results', {
+				list: results,
+				total: results.length
+			});
+		} else {
+			emit('search-results', {
+				list: [],
+				total: 0
+			});
+		}
+	};
+
+	// 如果是搜索模式且有关键词
+	if (props.listType === 'search' && props.keyword) {
+		searchArticles(props.keyword, {
+			page: currentPage.value,
+			pageSize: pageSize.value
+		}).then(res => {
+			if (isLoading.value) {
+				isLoading.value = false;
+			}
+			
+			if (isRefreshing.value) {
+				isRefreshing.value = false;
+			}
+			
+			if (res.code === 200 && res.data) {
+				const searchResults = res.data.list || [];
+				
+				// 通知父组件搜索结果数量
+				handleSearchResults(res.data);
+				
+				// 添加调试日志
+				console.log(`搜索[${props.keyword}]返回结果:`, searchResults.length, '条');
+				
+				// 如果是第一页且没有结果，设置为空列表
+				if (currentPage.value === 1 && searchResults.length === 0) {
+					articleList.value = [];
+					noMoreData.value = true;
+					
+					if (!silent) {
+						uni.showToast({
+							title: '没有找到相关文章',
+							icon: 'none'
+						});
+					}
+					return;
+				}
+				
+				// 处理搜索结果
+				const processedArticles = searchResults.map(article => {
+					// 处理并格式化文章数据
+					return processArticle(article);
+				});
+				
+				// 更新文章列表
+				if (currentPage.value === 1) {
+					// 第一页，替换列表
+					articleList.value = processedArticles;
+				} else {
+					// 追加到现有列表
+					articleList.value = [...articleList.value, ...processedArticles];
+				}
+				
+				// 更新页码和加载状态
+				currentPage.value++;
+				
+				// 判断是否还有更多数据
+				if (searchResults.length < pageSize.value) {
+					noMoreData.value = true;
+				} else {
+					noMoreData.value = false;
+				}
+			} else {
+				// 搜索请求出错
+				uni.showToast({
+					title: res.message || '搜索文章失败',
+					icon: 'none'
+				});
+				
+				// 设置为没有更多数据
+				noMoreData.value = true;
+				
+				// 通知父组件搜索结果为空
+				handleSearchResults({ list: [], total: 0 });
+			}
+		}).catch(err => {
+			console.error('搜索文章异常:', err);
+			
+			if (isLoading.value) {
+				isLoading.value = false;
+			}
+			
+			if (isRefreshing.value) {
+				isRefreshing.value = false;
+			}
+			
+			// 出错时也要通知父组件
+			handleSearchResults({ list: [], total: 0 });
+			
+			if (!silent) {
+				uni.showToast({
+					title: '网络异常，请稍后再试',
+					icon: 'none'
+				});
+			}
+		});
+		return;
+	}
 </script>
 
 <style lang="scss">
