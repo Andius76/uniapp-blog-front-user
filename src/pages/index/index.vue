@@ -63,12 +63,24 @@
 
 			<!-- 中间文章列表区域 -->
 			<view class="main-content">
+				<!-- 显示搜索状态和结果统计 -->
+				<view class="search-status" v-if="data.currentNav === -1">
+					<view class="search-info">
+						<text>搜索"{{data.searchText}}"：共{{articleList.length}}条结果</text>
+						<view class="clear-search" @click="clearSearch">
+							<uni-icons type="clear" size="16" />
+							<text>清除搜索</text>
+						</view>
+					</view>
+				</view>
+				
 				<ArticleList 
 					ref="articleListRef"
 					:key="data.currentNav"
 					:list-type="getListType()"
 					:use-global-scroll="true"
 					:empty-text="'暂无文章内容'"
+					:keyword="data.currentNav === -1 ? data.searchText : ''"
 					@article-click="viewArticleDetail"
 					@like="handleLike"
 					@share="handleShare"
@@ -115,6 +127,17 @@
 		<!-- APP和小程序的内容区域 -->
 		<!-- #ifndef H5 -->
 		<view class="content-area mp-content">
+			<!-- 显示搜索状态和结果统计 -->
+			<view class="search-status" v-if="data.currentNav === -1">
+				<view class="search-info">
+					<text>搜索"{{data.searchText}}"：共{{articleList.length}}条结果</text>
+					<view class="clear-search" @click="clearSearch">
+						<uni-icons type="clear" size="16" />
+						<text>清除搜索</text>
+					</view>
+				</view>
+			</view>
+			
 			<scroll-view 
 				scroll-y 
 				class="article-list" 
@@ -242,6 +265,8 @@
 	import BackToTop from '@/components/back-to-top/back-to-top.vue';
 	import http from '@/utils/request';
 	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
+	// 导入SearchArticles API
+	import { searchArticles } from '@/api/article';
 
 	// 添加引用
 	const articleListRef = ref(null);
@@ -501,6 +526,11 @@
 	 * 获取当前导航对应的列表类型
 	 */
 	const getListType = () => {
+		// 如果是搜索状态，返回search
+		if (data.currentNav === -1) {
+			return 'search';
+		}
+		
 		const navType = data.navItems[data.currentNav].type;
 		switch(navType) {
 			case 'follow':
@@ -585,9 +615,87 @@
 			return;
 		}
 
-		// 跳转到搜索结果页面
-		uni.navigateTo({
-			url: `/pages/search/search?keyword=${encodeURIComponent(data.searchText)}`
+		// 显示加载提示
+		uni.showLoading({
+			title: '搜索中...'
+		});
+		
+		// 将当前导航设置为-1，表示当前是搜索模式
+		data.currentNav = -1;
+		
+		// 重置文章列表状态
+		currentPage.value = 1;
+		noMoreData.value = false;
+		articleList.value = [];
+		
+		// 调用搜索API
+		searchArticles(data.searchText, {
+			page: 1,
+			pageSize: 10
+		}).then(res => {
+			uni.hideLoading();
+			
+			if (res.code === 200 && res.data) {
+				// 处理搜索结果
+				const searchResults = res.data.list || [];
+				
+				// 如果没有搜索结果
+				if (searchResults.length === 0) {
+					uni.showToast({
+						title: '没有找到相关文章',
+						icon: 'none'
+					});
+					// 重置为推荐栏目
+					data.currentNav = 1;
+					// 重新加载推荐文章
+					loadArticleList();
+					return;
+				}
+				
+				// 处理搜索结果数据
+				const processedArticles = searchResults.map(article => {
+					// 处理作者头像
+					if (article.author && article.author.avatar) {
+						article.author.avatar = formatAvatarUrl(article.author.avatar);
+					}
+					
+					// 处理封面图片
+					if (article.coverImage) {
+						article.coverImage = formatArticleImage(article.coverImage);
+					}
+					
+					// 处理收藏和点赞状态
+					article.isLiked = !!article.isLiked;
+					article.isCollected = !!article.isCollected;
+					
+					// 其他处理与loadArticleList中相同
+					return article;
+				});
+				
+				// 更新文章列表
+				articleList.value = processedArticles;
+			} else {
+				// 处理搜索失败
+				uni.showToast({
+					title: res.message || '搜索失败',
+					icon: 'none'
+				});
+				// 重置为推荐栏目
+				data.currentNav = 1;
+				// 重新加载推荐文章
+				loadArticleList();
+			}
+		}).catch(err => {
+			uni.hideLoading();
+			uni.showToast({
+				title: '搜索失败，请稍后重试',
+				icon: 'none'
+			});
+			console.error('搜索失败:', err);
+			// 重置为推荐栏目
+			data.currentNav = 1;
+			// 重新加载推荐文章
+			loadArticleList();
 		});
 	};
 
@@ -931,6 +1039,9 @@
 		uni.showLoading({
 			title: '加载中...'
 		});
+
+		// 清空搜索内容
+		data.searchText = '';
 
 		// 由于添加了key属性，组件会重新创建，不需要手动调用重置和加载方法
 		setTimeout(() => {
@@ -1881,18 +1992,160 @@
 		data.isRefreshing = true;
 		currentPage.value = 1;
 		noMoreData.value = false;
-		loadArticleList();
+		
+		// 根据当前模式执行不同的刷新操作
+		if (data.currentNav === -1) {
+			// 搜索模式下重新搜索
+			searchArticles(data.searchText, {
+				page: 1,
+				pageSize: 10
+			}).then(res => {
+				if (res.code === 200 && res.data) {
+					// 处理搜索结果
+					const searchResults = res.data.list || [];
+					
+					// 处理搜索结果数据
+					const processedArticles = searchResults.map(article => {
+						// 处理作者头像
+						if (article.author && article.author.avatar) {
+							article.author.avatar = formatAvatarUrl(article.author.avatar);
+						}
+						
+						// 处理封面图片
+						if (article.coverImage) {
+							article.coverImage = formatArticleImage(article.coverImage);
+						}
+						
+						// 处理收藏和点赞状态
+						article.isLiked = !!article.isLiked;
+						article.isCollected = !!article.isCollected;
+						
+						return article;
+					});
+					
+					// 更新文章列表
+					articleList.value = processedArticles;
+					
+					// 更新页码
+					currentPage.value = 2;
+					
+					// 判断是否还有更多数据
+					if (searchResults.length < 10) {
+						noMoreData.value = true;
+					}
+				} else {
+					// 处理搜索失败
+					uni.showToast({
+						title: res.message || '刷新搜索结果失败',
+						icon: 'none'
+					});
+				}
+			}).catch(err => {
+				console.error('刷新搜索结果失败:', err);
+				uni.showToast({
+					title: '网络异常，请稍后再试',
+					icon: 'none'
+				});
+			}).finally(() => {
+				data.isRefreshing = false;
+			});
+		} else {
+			// 普通模式下刷新文章列表
+			loadArticleList();
+		}
 	};
 
 	/**
 	 * 处理加载更多
 	 */
 	const handleLoadMore = () => {
-		loadArticleList();
+		// 如果处于搜索模式且还有更多数据
+		if (data.currentNav === -1 && !noMoreData.value && !isLoading.value) {
+			// 搜索结果加载更多
+			loadMoreSearchResults();
+		} else {
+			// 普通模式下加载更多
+			loadArticleList();
+		}
+	};
+
+	// 加载更多搜索结果
+	const loadMoreSearchResults = () => {
+		// 如果已经没有更多数据或正在加载中，则不处理
+		if (noMoreData.value || isLoading.value) return;
+		
+		isLoading.value = true;
+		
+		// 调用搜索API
+		searchArticles(data.searchText, {
+			page: currentPage.value,
+			pageSize: 10
+		}).then(res => {
+			if (res.code === 200 && res.data) {
+				// 处理搜索结果
+				const searchResults = res.data.list || [];
+				
+				// 如果没有更多结果
+				if (searchResults.length === 0) {
+					noMoreData.value = true;
+					isLoading.value = false;
+					return;
+				}
+				
+				// 处理搜索结果数据
+				const processedArticles = searchResults.map(article => {
+					// 处理作者头像
+					if (article.author && article.author.avatar) {
+						article.author.avatar = formatAvatarUrl(article.author.avatar);
+					}
+					
+					// 处理封面图片
+					if (article.coverImage) {
+						article.coverImage = formatArticleImage(article.coverImage);
+					}
+					
+					// 处理收藏和点赞状态
+					article.isLiked = !!article.isLiked;
+					article.isCollected = !!article.isCollected;
+					
+					return article;
+				});
+				
+				// 追加到文章列表
+				articleList.value = [...articleList.value, ...processedArticles];
+				
+				// 更新页码
+				currentPage.value++;
+				
+				// 判断是否还有更多数据
+				if (searchResults.length < 10) {
+					noMoreData.value = true;
+				}
+			} else {
+				// 处理搜索失败
+				uni.showToast({
+					title: res.message || '获取更多搜索结果失败',
+					icon: 'none'
+				});
+			}
+		}).catch(err => {
+			console.error('获取更多搜索结果失败:', err);
+			uni.showToast({
+				title: '网络异常，请稍后再试',
+				icon: 'none'
+			});
+		}).finally(() => {
+			isLoading.value = false;
+		});
 	};
 
 	// 监听导航切换，重新加载数据
 	watch(() => data.currentNav, () => {
+		// 如果是搜索状态(-1)，则无需重新加载数据
+		if (data.currentNav === -1) {
+			return;
+		}
+		
 		currentPage.value = 1;
 		noMoreData.value = false;
 		articleList.value = [];
@@ -2050,6 +2303,21 @@
 			syncCollectionStatus();
 		}
 	});
+
+	/**
+	 * 清除搜索内容，返回推荐列表
+	 */
+	const clearSearch = () => {
+		// 清空搜索内容
+		data.searchText = '';
+		// 切换回推荐标签
+		data.currentNav = 1;
+		// 重新加载文章列表
+		currentPage.value = 1;
+		noMoreData.value = false;
+		articleList.value = [];
+		loadArticleList();
+	};
 </script>
 
 <style lang="scss">
@@ -3248,6 +3516,49 @@
 		// 增加点击反馈
 		&:active {
 			transform: scale(0.95);
+		}
+	}
+
+	// 搜索状态
+	.search-status {
+		padding: 20rpx;
+		background-color: #fff;
+		border-radius: 10rpx;
+		margin-bottom: 20rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		
+		.search-info {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			
+			text {
+				font-size: 28rpx;
+				color: #666;
+			}
+			
+			.clear-search {
+				display: flex;
+				align-items: center;
+				cursor: pointer;
+				padding: 10rpx;
+				border-radius: 8rpx;
+				transition: all 0.3s;
+				
+				&:hover {
+					background-color: #f5f5f5;
+				}
+				
+				&:active {
+					transform: scale(0.95);
+				}
+				
+				text {
+					font-size: 24rpx;
+					color: #999;
+					margin-left: 10rpx;
+				}
+			}
 		}
 	}
 </style>

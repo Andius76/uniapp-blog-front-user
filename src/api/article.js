@@ -9,6 +9,7 @@
  * - 获取文章列表
  * - 点赞/取消点赞文章
  * - 收藏/取消收藏文章
+ * - 搜索文章
  * 
  * 所有API都基于/src/utils/request.js中的请求工具，
  * 确保了请求的一致性和错误处理。
@@ -481,5 +482,22 @@ export function getUserLikedArticles(userId, params) {
 }
 
 /**
- * 获取文章收藏列表
+ * 搜索文章 - 根据关键词搜索文章（标题、作者、标签）
+ * @param {string} keyword - 搜索关键词
+ * @param {Object} params - 分页参数
+ * @param {number} params.page - 页码，默认1
+ * @param {number} params.pageSize - 每页数量，默认10
+ * @returns {Promise} - 返回包含搜索结果的Promise
  */
+export function searchArticles(keyword, params = {}) {
+  // 构建查询参数
+  const queryParams = {
+    keyword: keyword,
+    page: params.page || 1,
+    pageSize: params.pageSize || 10,
+    ...params
+  };
+  
+  // 发送搜索请求
+  return http.get('/api/article/search', queryParams);
+}

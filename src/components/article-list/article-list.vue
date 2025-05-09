@@ -376,7 +376,7 @@
 
 	// 定义组件属性
 	const props = defineProps({
-		// 列表类型: recommend(推荐)、follow(关注)、hot(热门)、new(最新)、tag(标签)、collection(收藏)
+		// 列表类型: recommend(推荐)、follow(关注)、hot(热门)、new(最新)、tag(标签)、collection(收藏)、search(搜索)
 		listType: {
 			type: String,
 			default: 'recommend'
@@ -420,6 +420,11 @@
 		useGlobalScroll: {
 			type: Boolean,
 			default: false
+		},
+		// 搜索关键词，当listType为search时使用
+		keyword: {
+			type: String,
+			default: ''
 		}
 	});
 
@@ -736,6 +741,11 @@
 				// 获取特定标签的文章
 				params.tag = props.tagName;
 				console.log(`加载标签(${props.tagName})的文章`);
+			} else if (props.listType === 'search' && props.keyword) {
+				// 获取搜索结果
+				apiPath = '/api/article/search';
+				params.keyword = props.keyword;
+				console.log(`搜索关键词(${props.keyword})的文章`);
 			} else {
 				console.log('加载推荐文章');
 			}
