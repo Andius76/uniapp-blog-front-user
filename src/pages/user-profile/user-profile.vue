@@ -43,9 +43,10 @@
 	import { onLoad } from '@dcloudio/uni-app';
 	import http from '@/utils/request.js';
 	import { checkUserFollow, followUser } from '@/api/user.js';
+	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
 
-	// 基础URL配置
-	const baseURL = 'http://localhost:8080';
+	// 基础URL配置 - 不再使用硬编码的值
+	// const baseURL = 'http://localhost:8080';
 
 	// 是否关注中
 	const isFollowing = ref(false);
@@ -57,13 +58,44 @@
 	// 获取头像完整URL
 	const getAvatarUrl = (avatar) => {
 		if (!avatar) return '/static/images/avatar.png';
-		if (avatar.startsWith('http')) return avatar;
-		// 如果是完整的相对路径（以/uploads开头）
-		if (avatar.startsWith('/uploads')) {
-			return `${baseURL}${avatar}`;
+		
+		// 移除URL中可能存在的多余空格
+		avatar = avatar.trim();
+		
+		// 确保不是null或undefined
+		if (avatar === 'null' || avatar === 'undefined') {
+			return '/static/images/avatar.png';
 		}
-		// 如果只是文件名
-		return `${baseURL}/uploads/avatars/${avatar}`;
+		
+		// 完整URL处理：如果已经是完整URL（包含http）则不处理
+		if (avatar.startsWith('http')) {
+			// 检查并修复双斜杠问题
+			if (avatar.includes('//uploads')) {
+				avatar = avatar.replace('//uploads', '/uploads');
+			}
+			return avatar;
+		}
+		// 静态资源处理：如果是静态资源路径则不处理
+		else if (avatar.startsWith('/static')) {
+			return avatar;
+		}
+		// 其他情况：添加基础URL前缀
+		else {
+			const baseUrl = getBaseUrl(); // 使用统一的获取baseUrl的方法
+			
+			// 处理不同格式的路径
+			if (avatar.startsWith('/')) {
+				return baseUrl + avatar;
+			} else {
+				// 确保路径中有uploads目录
+				if (avatar.includes('uploads/')) {
+					return baseUrl + '/' + avatar;
+				} else {
+					// 如果只是文件名，添加标准路径
+					return baseUrl + '/uploads/avatars/' + avatar;
+				}
+			}
+		}
 	};
 
 	// 用户信息
