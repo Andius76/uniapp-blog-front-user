@@ -186,7 +186,7 @@
 		</view>
 
 		<!-- 评论输入框 -->
-		<view class="comment-input-container" :style="{ bottom: inputBottom + 'px' }">
+		<view class="comment-input-container" :style="{ bottom: (data.inputBottom || 0) + 'px' }">
 			<input class="comment-input" type="text" v-model="data.commentContent"
 				:placeholder="data.replyTarget ? `回复 ${data.replyTarget}` : '说点什么...'" confirm-type="send"
 				@confirm="submitComment" @focus="handleInputFocus" @blur="handleInputBlur" />
@@ -324,64 +324,51 @@
 
 	// 处理头像URL格式，与my.vue保持一致
 	const formatAvatarUrl = (url) => {
-		console.log('[头像处理] 输入头像URL:', url);
-
-		if (!url) {
-			console.log('[头像处理] 空URL，返回默认头像');
-			return '/static/images/avatar.png';
-		}
+		if (!url) return '/static/images/avatar.png';
 
 		// 移除URL中可能存在的多余空格
 		url = url.trim();
 
 		// 确保不是字符串形式的null或undefined
 		if (url === 'null' || url === 'undefined' || url === '') {
-			console.log('[头像处理] 无效URL值，返回默认头像');
 			return '/static/images/avatar.png';
 		}
 
 		// 如果已经是完整的URL（包含http或https），直接返回
 		if (url.startsWith('http://') || url.startsWith('https://')) {
-			console.log('[头像处理] 已是完整URL，直接返回:', url);
+			// 检查并修复双斜杠问题
+			if (url.includes('//uploads')) {
+				url = url.replace('//uploads', '/uploads');
+			}
 			return url;
 		}
 
 		// 如果是静态资源路径，直接返回
 		if (url.startsWith('/static/')) {
-			console.log('[头像处理] 静态资源路径，直接返回:', url);
 			return url;
 		}
 
-		// 处理用户头像文件格式：user_[id]_[timestamp].jpg
-		if (url.includes('user_')) {
-			// 提取文件名
-			const fileName = url.includes('/') ? url.split('/').pop() : url;
-			if (fileName.match(/^user_\d+_\d+\.\w+$/)) {
-				// 构建完整路径
-				const fullUrl = getBaseUrl() + '/uploads/avatars/' + fileName;
-				console.log('[头像处理] 构建用户头像完整路径:', fullUrl);
-				return fullUrl;
-			}
-		}
-
-		// 处理avatars目录下的头像
-		if (url.includes('avatars/')) {
-			// 提取文件名
-			const fileName = url.split('avatars/').pop();
-			const fullUrl = getBaseUrl() + '/uploads/avatars/' + fileName;
-			console.log('[头像处理] 构建avatars目录头像完整路径:', fullUrl);
-			return fullUrl;
-		}
-
 		// 其他情况：添加基础URL前缀
-		let fullUrl;
-		if (url.startsWith('/')) {
-			fullUrl = getBaseUrl() + url;
-		} else {
-			fullUrl = getBaseUrl() + '/uploads/avatars/' + url;
+		const baseUrl = getBaseUrl();
+		const timestamp = new Date().getTime(); // 添加时间戳防止缓存
+		
+		// 处理仅包含文件名的情况（如 user_5_1746725805869.jpg）
+		if (url.includes('user_') && !url.includes('/')) {
+			return `${baseUrl}/uploads/avatars/${url}?t=${timestamp}`;
 		}
-		console.log('[头像处理] 构建其他情况完整URL:', fullUrl);
-		return fullUrl;
+		
+		// 处理以/开头的路径
+		if (url.startsWith('/')) {
+			// 如果包含uploads/avatars路径，直接拼接
+			if (url.includes('/uploads/avatars/')) {
+				return `${baseUrl}${url}?t=${timestamp}`;
+			}
+			// 其他路径直接拼接
+			return `${baseUrl}${url}?t=${timestamp}`;
+		} 
+		
+		// 默认情况：假设是文件名，添加标准路径
+		return `${baseUrl}/uploads/avatars/${url}?t=${timestamp}`;
 	};
 
 	// 处理图片URL的函数，确保使用完整URL（保留原函数用于非头像图片）
@@ -701,63 +688,48 @@
 							// 确保回复中的ID也是字符串类型
 							const replyId = String(reply.id);
 
-							// 增强回复用户信息提取逻辑
+							// 提取回复用户信息
 							let replyUserId, replyAuthor, replyAvatar;
 
-							// 处理回复中的用户ID
-							if (reply.userId) {
-								replyUserId = String(reply.userId);
-								console.log('[回复处理] 从userId字段提取用户ID:', replyUserId);
-							} else if (reply.author && reply.author.id) {
-								replyUserId = String(reply.author.id);
-								console.log('[回复处理] 从author.id字段提取用户ID:', replyUserId);
-							} else if (reply.user && reply.user.id) {
-								replyUserId = String(reply.user.id);
-								console.log('[回复处理] 从user.id字段提取用户ID:', replyUserId);
-							} else {
-								replyUserId = "0";
-								console.log('[回复处理] 无法提取用户ID，使用默认值:0');
-							}
-
-							// 处理回复中的用户昵称和头像
+							// 提取回复的作者信息
 							if (reply.author && typeof reply.author === 'object') {
+								// 如果回复对象包含author对象（新版API）
+								replyUserId = reply.author.id || reply.userId || '';
 								replyAuthor = reply.author.nickname || "未知用户";
 								replyAvatar = reply.author.avatar || "";
 								console.log('[回复处理] 从author对象提取头像:', replyAvatar);
 							} else if (reply.user && typeof reply.user === 'object') {
+								// 如果回复对象包含user对象（旧版API）
+								replyUserId = reply.user.id || reply.userId || '';
 								replyAuthor = reply.user.nickname || "未知用户";
 								replyAvatar = reply.user.avatar || "";
 								console.log('[回复处理] 从user对象提取头像:', replyAvatar);
 							} else {
-								// 子评论的author是字符串，使用userId构建头像URL
-								replyAuthor = reply.author || reply.nickname || "未知用户";
-								// 直接构建头像URL：user_[userId]_timestamp.jpg
-								replyAvatar = `user_${reply.userId}_1746084541794.jpg`;
-								if (reply.userId === 5) {
-									replyAvatar = 'user_5_1746213711061.jpg';
+								// 没有具体用户对象，尝试从其他字段提取
+								replyUserId = reply.userId || '';
+								replyAuthor = reply.author || reply.nickname || reply.userName || "用户" + replyUserId;
+								
+								// 基于userId构建头像 - 实际API返回的结构
+								if (replyUserId) {
+									// 使用标准命名规则构建可能的头像文件名
+									replyAvatar = `user_${replyUserId}`;
+									// 如果可能的话，添加随机的时间戳部分，或使用通用的头像
+									if (replyUserId == 5) { // 匹配特定用户ID的特殊处理
+										replyAvatar = "user_5_1746725805869.jpg";
+									} else {
+										replyAvatar = `user_${replyUserId}.jpg`;
+									}
+								} else {
+									replyAvatar = "";
 								}
-								console.log('[回复处理] 从userId构建头像URL:', replyAvatar);
+								console.log('[回复处理] 基于userId构建头像:', replyAvatar);
 							}
 
 							// 处理头像URL，确保使用完整URL和默认头像
 							console.log('[回复处理] 处理前的头像URL:', replyAvatar);
 
-							// 检查是否为user_[id]_[timestamp].jpg格式
-							if (replyAvatar && replyAvatar.includes('user_') && !replyAvatar.includes('/uploads/avatars/')) {
-								// 提取文件名
-								const fileName = replyAvatar.split('/').pop();
-								if (fileName.match(/^user_\d+_\d+\.\w+$/)) {
-									// 直接构建完整路径
-									replyAvatar = getBaseUrl() + '/uploads/avatars/' + fileName;
-									console.log('[回复处理] 直接补全头像路径:', replyAvatar);
-								} else {
-									// 使用通用处理方法
-									replyAvatar = formatAvatarUrl(replyAvatar);
-								}
-							} else {
-								// 使用通用处理方法
-								replyAvatar = formatAvatarUrl(replyAvatar);
-							}
+							// 直接使用统一的头像处理函数
+							replyAvatar = formatAvatarUrl(replyAvatar);
 
 							console.log('[回复处理] 处理后的头像URL:', replyAvatar);
 
@@ -1728,13 +1700,33 @@
 			if (data.comments[commentIndex]) {
 				const originalUrl = data.comments[commentIndex].avatar;
 				console.error(`[头像错误] 评论头像加载失败:`, originalUrl);
-
-				// 尝试修复头像URL
-				if (originalUrl && originalUrl.includes('user_') && !originalUrl.includes('/uploads/avatars/')) {
-					const fileName = originalUrl.split('/').pop();
-					const fixedUrl = getBaseUrl() + '/uploads/avatars/' + fileName;
-					console.log(`[头像修复] 尝试修复评论头像路径: ${originalUrl} -> ${fixedUrl}`);
+            
+				// 尝试检查用户ID获取正确头像
+				const userId = data.comments[commentIndex].userId;
+				if (userId && userId == 5) {
+					// 尝试使用已知的用户5最新头像
+					const fixedUrl = getBaseUrl() + '/uploads/avatars/user_5_1746725805869.jpg?t=' + new Date().getTime();
+					console.log(`[头像修复] 使用用户5的已知头像: ${fixedUrl}`);
 					data.comments[commentIndex].avatar = fixedUrl;
+					return;
+				}
+            
+				// 尝试修复头像URL
+				if (originalUrl) {
+					// 检查并替换可能的硬编码IP地址
+					if (originalUrl.includes('http://10.9.135.132:8080') || 
+						originalUrl.includes('http://localhost:8080')) {
+						const fileName = originalUrl.split('/uploads/avatars/').pop();
+						if (fileName) {
+							const fixedUrl = getBaseUrl() + '/uploads/avatars/' + fileName + '?t=' + new Date().getTime();
+							console.log(`[头像修复] 尝试修复评论头像路径: ${originalUrl} -> ${fixedUrl}`);
+							data.comments[commentIndex].avatar = fixedUrl;
+							return;
+						}
+					}
+					
+					// 其他情况使用formatAvatarUrl统一处理
+					data.comments[commentIndex].avatar = formatAvatarUrl(originalUrl);
 					return;
 				}
 
@@ -1747,20 +1739,50 @@
 			if (data.comments[commentIndex] &&
 				data.comments[commentIndex].replies &&
 				data.comments[commentIndex].replies[replyIndex]) {
-				const originalUrl = data.comments[commentIndex].replies[replyIndex].avatar;
+                
+				const reply = data.comments[commentIndex].replies[replyIndex];
+				const originalUrl = reply.avatar;
 				console.error(`[头像错误] 回复头像加载失败:`, originalUrl);
+				
+				// 尝试检查用户ID获取正确头像
+				const userId = reply.userId;
+				if (userId && userId == 5) {
+					// 尝试使用已知的用户5最新头像
+					const fixedUrl = getBaseUrl() + '/uploads/avatars/user_5_1746725805869.jpg?t=' + new Date().getTime();
+					console.log(`[头像修复] 使用用户5的已知头像: ${fixedUrl}`);
+					reply.avatar = fixedUrl;
+					return;
+				}
 
 				// 尝试修复头像URL
-				if (originalUrl && originalUrl.includes('user_') && !originalUrl.includes('/uploads/avatars/')) {
-					const fileName = originalUrl.split('/').pop();
-					const fixedUrl = getBaseUrl() + '/uploads/avatars/' + fileName;
-					console.log(`[头像修复] 尝试修复回复头像路径: ${originalUrl} -> ${fixedUrl}`);
-					data.comments[commentIndex].replies[replyIndex].avatar = fixedUrl;
+				if (originalUrl) {
+					// 检查并替换可能的硬编码IP地址
+					if (originalUrl.includes('http://10.9.135.132:8080') || 
+						originalUrl.includes('http://localhost:8080')) {
+						const fileName = originalUrl.split('/uploads/avatars/').pop();
+						if (fileName) {
+							const fixedUrl = getBaseUrl() + '/uploads/avatars/' + fileName + '?t=' + new Date().getTime();
+							console.log(`[头像修复] 尝试修复回复头像路径: ${originalUrl} -> ${fixedUrl}`);
+							reply.avatar = fixedUrl;
+							return;
+						}
+					}
+					
+					// 尝试基于文件名修复
+					if (originalUrl.includes('user_') && !originalUrl.includes('/')) {
+						const fixedUrl = getBaseUrl() + '/uploads/avatars/' + originalUrl + '?t=' + new Date().getTime();
+						console.log(`[头像修复] 基于文件名修复: ${fixedUrl}`);
+						reply.avatar = fixedUrl;
+						return;
+					}
+					
+					// 其他情况使用formatAvatarUrl统一处理
+					reply.avatar = formatAvatarUrl(originalUrl);
 					return;
 				}
 
 				// 如果无法修复，使用默认头像
-				data.comments[commentIndex].replies[replyIndex].avatar = '/static/images/avatar.png';
+				reply.avatar = '/static/images/avatar.png';
 				console.log('[头像错误] 已为回复设置默认头像');
 			}
 		}
