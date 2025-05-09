@@ -52,6 +52,17 @@
 					</view>
 				</view>
 			</scroll-view>
+			
+			<!-- 搜索状态显示 -->
+			<view class="search-status" v-if="data.currentNav === -1">
+				<view class="search-info">
+					<text>搜索"{{data.searchText}}"：共{{articleList.length}}条结果</text>
+					<view class="clear-search" @click="clearSearch">
+						<uni-icons type="clear" size="16" color="#666" />
+						<text>清除搜索</text>
+					</view>
+				</view>
+			</view>
 		</view>
 		<!-- #endif -->
 
@@ -127,17 +138,6 @@
 		<!-- APP和小程序的内容区域 -->
 		<!-- #ifndef H5 -->
 		<view class="content-area mp-content">
-			<!-- 显示搜索状态和结果统计 -->
-			<view class="search-status" v-if="data.currentNav === -1">
-				<view class="search-info">
-					<text>搜索"{{data.searchText}}"：共{{articleList.length}}条结果</text>
-					<view class="clear-search" @click="clearSearch">
-						<uni-icons type="clear" size="16" />
-						<text>清除搜索</text>
-					</view>
-				</view>
-			</view>
-			
 			<scroll-view 
 				scroll-y 
 				class="article-list" 
@@ -623,9 +623,26 @@
 		// 将当前导航设置为-1，表示当前是搜索模式
 		data.currentNav = -1;
 		
+		// 设置搜索状态栏高度
+		setSearchStatusHeight('90rpx');
+		
+		// #ifdef H5
+		// H5环境使用ArticleList组件处理搜索
+		if (articleListRef.value) {
+			// 重置文章列表状态
+			articleListRef.value.resetList();
+			// 设置延迟让组件有时间重新渲染
+			setTimeout(() => {
+				uni.hideLoading();
+			}, 500);
+		}
+		// #endif
+		
+		// #ifndef H5
 		// 重置文章列表状态
 		currentPage.value = 1;
 		noMoreData.value = false;
+		// 重要：清空文章列表，避免重复渲染
 		articleList.value = [];
 		
 		// 调用搜索API
@@ -649,31 +666,24 @@
 					data.currentNav = 1;
 					// 重新加载推荐文章
 					loadArticleList();
+					// 重置搜索状态栏高度
+					setSearchStatusHeight('0rpx');
 					return;
 				}
 				
-				// 处理搜索结果数据
-				const processedArticles = searchResults.map(article => {
-					// 处理作者头像
-					if (article.author && article.author.avatar) {
-						article.author.avatar = formatAvatarUrl(article.author.avatar);
-					}
-					
-					// 处理封面图片
-					if (article.coverImage) {
-						article.coverImage = formatArticleImage(article.coverImage);
-					}
-					
-					// 处理收藏和点赞状态
-					article.isLiked = !!article.isLiked;
-					article.isCollected = !!article.isCollected;
-					
-					// 其他处理与loadArticleList中相同
-					return article;
-				});
+				// 处理搜索结果数据 - 使用processArticleData函数替代手动处理
+				const processedArticles = processArticleData(searchResults);
 				
-				// 更新文章列表
+				// 更新文章列表 - 使用赋值而非拼接，避免重复
 				articleList.value = processedArticles;
+				
+				// 更新页码
+				currentPage.value = 2;
+				
+				// 判断是否还有更多数据
+				if (searchResults.length < 10) {
+					noMoreData.value = true;
+				}
 			} else {
 				// 处理搜索失败
 				uni.showToast({
@@ -684,6 +694,8 @@
 				data.currentNav = 1;
 				// 重新加载推荐文章
 				loadArticleList();
+				// 重置搜索状态栏高度
+				setSearchStatusHeight('0rpx');
 			}
 		}).catch(err => {
 			uni.hideLoading();
@@ -696,7 +708,10 @@
 			data.currentNav = 1;
 			// 重新加载推荐文章
 			loadArticleList();
+			// 重置搜索状态栏高度
+			setSearchStatusHeight('0rpx');
 		});
+		// #endif
 	};
 
 	/**
@@ -2059,14 +2074,21 @@
 	 * 处理加载更多
 	 */
 	const handleLoadMore = () => {
+		// #ifndef H5
 		// 如果处于搜索模式且还有更多数据
 		if (data.currentNav === -1 && !noMoreData.value && !isLoading.value) {
 			// 搜索结果加载更多
 			loadMoreSearchResults();
-		} else {
+		} else if (!noMoreData.value && !isLoading.value) {
 			// 普通模式下加载更多
-		loadArticleList();
+			loadArticleList();
 		}
+		// #endif
+		
+		// #ifdef H5
+		// H5模式下使用ArticleList组件自动处理
+		// 这里不需要做任何事情，组件会自行处理加载更多
+		// #endif
 	};
 
 	// 加载更多搜索结果
@@ -2092,24 +2114,8 @@
 					return;
 				}
 				
-				// 处理搜索结果数据
-				const processedArticles = searchResults.map(article => {
-					// 处理作者头像
-					if (article.author && article.author.avatar) {
-						article.author.avatar = formatAvatarUrl(article.author.avatar);
-					}
-					
-					// 处理封面图片
-					if (article.coverImage) {
-						article.coverImage = formatArticleImage(article.coverImage);
-					}
-					
-					// 处理收藏和点赞状态
-					article.isLiked = !!article.isLiked;
-					article.isCollected = !!article.isCollected;
-					
-					return article;
-				});
+				// 处理搜索结果数据 - 使用统一的处理函数
+				const processedArticles = processArticleData(searchResults);
 				
 				// 追加到文章列表
 				articleList.value = [...articleList.value, ...processedArticles];
@@ -2312,11 +2318,106 @@
 		data.searchText = '';
 		// 切换回推荐标签
 		data.currentNav = 1;
-		// 重新加载文章列表
+		// 重置搜索状态栏高度
+		setSearchStatusHeight('0rpx');
+		
+		// #ifdef H5
+		// H5环境使用ArticleList组件刷新
+		if (articleListRef.value) {
+			articleListRef.value.resetList();
+			nextTick(() => {
+				articleListRef.value.loadArticles();
+			});
+		}
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境直接重新加载文章列表
 		currentPage.value = 1;
 		noMoreData.value = false;
 		articleList.value = [];
-		loadArticleList();
+		
+		// 显示加载提示
+		uni.showLoading({
+			title: '加载中...'
+		});
+		
+		// 延迟加载确保UI状态已更新
+		setTimeout(() => {
+			loadArticleList();
+			setTimeout(() => {
+				uni.hideLoading();
+			}, 500);
+		}, 100);
+		// #endif
+	};
+
+	// 修改CSS变量设置方法
+	const setSearchStatusHeight = (height) => {
+		// #ifndef H5
+		setTimeout(() => {
+			const styleEl = document.querySelector(':root');
+			if (styleEl && styleEl.style) {
+				styleEl.style.setProperty('--search-status-height', height);
+			} else {
+				// 如果无法通过document获取，则尝试通过uni API设置
+				uni.getSystemInfo({
+					success: (res) => {
+						if (res.platform === 'android' || res.platform === 'ios') {
+							// 计算实际像素
+							const actualHeight = parseInt(height) * (res.windowWidth / 750);
+							// APP端使用布局方式实现而不是CSS变量
+							uni.$emit('update-content-padding', actualHeight);
+						}
+					}
+				});
+			}
+		}, 50);
+		// #endif
+	}
+
+	/**
+	 * 统一处理文章数据，确保头像和封面图等格式正确
+	 * @param {Array} articles - 文章数组
+	 * @return {Array} 处理后的文章数组
+	 */
+	const processArticleData = (articles) => {
+		if (!articles || !Array.isArray(articles)) return [];
+		
+		return articles.map(article => {
+			// 处理作者头像
+			if (article.author && article.author.avatar) {
+				article.author.avatar = formatAvatarUrl(article.author.avatar);
+			} else if (article.author) {
+				// 确保author对象存在但avatar为空时也设置默认头像
+				article.author.avatar = '/static/images/avatar.png';
+			} else {
+				// 如果作者信息不存在，创建一个基本的author对象
+				article.author = {
+					nickname: '未知用户',
+					avatar: '/static/images/avatar.png',
+					isFollowed: false
+				};
+			}
+			
+			// 处理封面图片
+			if (article.coverImage) {
+				article.coverImage = formatArticleImage(article.coverImage);
+			} else if (article.cover_image) {
+				article.coverImage = formatArticleImage(article.cover_image);
+			}
+			
+			// 处理点赞数和评论数，确保为数字
+			article.likeCount = parseInt(article.likeCount || article.like_count || 0);
+			article.commentCount = parseInt(article.commentCount || article.comment_count || 0);
+			article.collectCount = parseInt(article.collectCount || article.collect_count || 0);
+			
+			// 处理收藏和点赞状态，确保为布尔值
+			article.isLiked = !!article.isLiked || !!article.is_liked;
+			article.isCollected = !!article.isCollected || !!article.is_collected;
+			
+			return article;
+		});
 	};
 </script>
 
@@ -3458,18 +3559,60 @@
 				}
 			}
 		}
+		
+		// 搜索结果状态显示
+		.search-status {
+			width: 100%;
+			padding: 15rpx 20rpx;
+			background-color: #fff;
+			box-sizing: border-box;
+			
+			.search-info {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				background-color: #f8f9fa;
+				padding: 12rpx 20rpx;
+				border-radius: 8rpx;
+				
+				text {
+					font-size: 26rpx;
+					color: #666;
+				}
+				
+				.clear-search {
+					display: flex;
+					align-items: center;
+					padding: 8rpx 16rpx;
+					background-color: #fff;
+					border-radius: 30rpx;
+					border: 1rpx solid #eee;
+					
+					&:active {
+						background-color: #f0f0f0;
+						transform: scale(0.95);
+					}
+					
+					text {
+						font-size: 24rpx;
+						color: #666;
+						margin-left: 6rpx;
+					}
+				}
+			}
+		}
 	}
 
 	// 内容区域样式调整 - 也需要修改顶部间距以适应更大的搜索框
 	.content-area.mp-content {
 		padding: 20rpx;
-		padding-top: calc(var(--status-bar-height) + 170rpx); /* 进一步增加顶部间距，避免被菜单栏遮挡 */
+		padding-top: calc(var(--status-bar-height) + 170rpx + (var(--search-status-height, 0rpx))); /* 增加顶部间距，考虑搜索状态的高度 */
 		background: #f5f5f5;
 		flex: 1;
 		box-sizing: border-box;
 		
 		.article-list {
-			height: calc(100vh - 170rpx - var(--status-bar-height)); /* 匹配调整后的header高度 */
+			height: calc(100vh - 170rpx - var(--status-bar-height) - (var(--search-status-height, 0rpx))); /* 匹配调整后的header高度 */
 		}
 	}
 	// #endif
