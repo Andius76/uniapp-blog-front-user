@@ -1375,10 +1375,19 @@
 			}, 1500);
 			return;
 		}
-		
+		// #ifdef H5
+		// H5环境下新开窗口跳转到收藏列表
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const collectionUrl = `${baseUrl}#/pages/collection/collection`;
+		window.open(collectionUrl, '_blank');
+		// #endif
+		// #ifndef H5
+		// 非H5环境下正常跳转
 		uni.navigateTo({
 			url: '/pages/collection/collection'
 		});
+		// #endif
 	};
 
 	const navigateToFollows = () => {
