@@ -909,11 +909,21 @@
 			});
 			return;
 		} else if (url.includes('collection')) {
-			uni.showToast({
-				title: '查看我的收藏',
-				icon: 'none'
+			// #ifdef H5
+			// H5环境下新开窗口跳转到收藏列表
+			const currentUrl = window.location.href;
+			const baseUrl = currentUrl.split('#')[0];
+			const collectionUrl = `${baseUrl}#/pages/collection/collection`;
+			window.open(collectionUrl, '_blank');
+			return;
+			// #endif
+			// #ifndef H5
+			// 非H5环境下正常跳转
+			uni.navigateTo({
+				url
 			});
 			return;
+			// #endif
 		} else if (url.includes('edit-profile')) {
 			uni.showToast({
 				title: '编辑个人资料',
