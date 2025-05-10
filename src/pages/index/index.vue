@@ -1895,7 +1895,9 @@
 		if (listType === 'follow') {
 			params.type = 'follow';
 		} else if (listType === 'hot') {
-			params.sort = 'hot';
+			params.sort = 'view_count'; // 修改为view_count，根据浏览量排序
+		} else if (listType === 'recommend') {
+			params.sort = 'popularity'; // 新增推荐模式，根据点赞和评论总数排序
 		} else if (listType === 'new') {
 			params.sort = 'new';
 		}
