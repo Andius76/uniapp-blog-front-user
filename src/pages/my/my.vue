@@ -903,9 +903,19 @@
 			});
 			return;
 		} else if (url.includes('fans')) {
-			uni.showToast({
-				title: '查看我的粉丝',
-				icon: 'none'
+			// #ifdef H5
+			// 获取当前页面的完整URL
+			const currentUrl = window.location.href;
+			// 提取基础URL（去除路径部分）
+			const baseUrl = currentUrl.split('#')[0];
+			// 在H5环境下，使用window.open在新窗口打开粉丝列表页面
+			window.open(`${baseUrl}#/pages/fans/fans`, '_blank');
+			return;
+			// #endif
+
+			// 其他平台使用普通跳转
+			uni.navigateTo({
+				url
 			});
 			return;
 		} else if (url.includes('collection')) {

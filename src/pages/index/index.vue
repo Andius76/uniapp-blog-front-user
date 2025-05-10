@@ -1427,9 +1427,19 @@
 			return;
 		}
 		
+		// #ifdef H5
+		// H5环境下，在新窗口打开粉丝列表页面
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		window.open(`${baseUrl}#/pages/fans/fans`, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转
 		uni.navigateTo({
-			url: '/pages/followers/followers'
+			url: '/pages/fans/fans'
 		});
+		// #endif
 	};
 
 	/**
