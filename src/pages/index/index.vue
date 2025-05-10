@@ -1409,9 +1409,19 @@
 			return;
 		}
 		
+		// #ifdef H5
+		// H5环境下，在新窗口打开关注列表页面
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		window.open(`${baseUrl}#/pages/follows/follows`, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转
 		uni.navigateTo({
 			url: '/pages/follows/follows'
 		});
+		// #endif
 	};
 
 	const navigateToFollowers = () => {

@@ -1518,7 +1518,16 @@
 		
 		console.log('点击文章，准备跳转到详情页:', articleId);
 		
-		// 使用uni.navigateTo跳转到文章详情页
+		// #ifdef H5
+		// H5环境下，在新窗口打开文章详情页
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
+		window.open(detailUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，使用uni.navigateTo跳转到文章详情页
 		uni.navigateTo({
 			url: `/pages/article-detail/article-detail?id=${articleId}`,
 			fail: (err) => {
@@ -1529,6 +1538,7 @@
 				});
 			}
 		});
+		// #endif
 		
 		// 触发文章点击事件
 		emit('articleClick', articleId);
