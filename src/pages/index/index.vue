@@ -2923,6 +2923,24 @@
 			}
 		}
 	};
+
+	// 添加跳转到分类页面的方法
+	const classification = () => {
+		// #ifdef H5
+		// H5环境下，在新窗口打开分类页面
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const classificationUrl = `${baseUrl}#/pages/classification/classification`;
+		window.open(classificationUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转
+		uni.navigateTo({
+			url: '/pages/classification/classification'
+		});
+		// #endif
+	};
 </script>
 
 <style lang="scss">
