@@ -33,8 +33,8 @@
 						<!-- 添加作者头像 -->
 						<image v-if="data.article.author && data.article.author.avatar"
 							:src="formatAvatarUrl(data.article.author.avatar)" class="author-avatar"
-							@error="handleAuthorAvatarError" />
-						<text class="author">{{ data.article.author.nickname }}</text>
+							@error="handleAuthorAvatarError" @click="navigateToUserProfile(data.article.author.id)" />
+						<text class="author" @click="navigateToUserProfile(data.article.author.id)">{{ data.article.author.nickname }}</text>
 						<text class="publish-time">{{ formatDate(data.article.createTime) }}</text>
 					</view>
 				</view>
@@ -94,10 +94,11 @@
 						<view v-for="(comment, index) in data.comments" :key="comment.id" class="comment-card">
 							<view class="comment-item">
 								<image :src="formatAvatarUrl(comment.avatar)" class="comment-avatar"
-									@error="() => handleAvatarError(index, 'comment')" />
+									@error="() => handleAvatarError(index, 'comment')" 
+									@click="navigateToUserProfile(comment.userId)" />
 								<view class="comment-content">
 									<view class="comment-header">
-										<text class="comment-author">{{ comment.author }}</text>
+										<text class="comment-author" @click="navigateToUserProfile(comment.userId)">{{ comment.author }}</text>
 										<view class="comment-actions">
 											<view class="like-action" @click="handleCommentLike(index)">
 												<uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16"
@@ -120,13 +121,14 @@
 							<view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
 								<view v-for="(reply, replyIndex) in comment.replies" :key="reply.id" class="reply-item">
 									<image :src="formatAvatarUrl(reply.avatar)" class="reply-avatar"
-										@error="() => handleAvatarError(index, 'reply', replyIndex)" />
+										@error="() => handleAvatarError(index, 'reply', replyIndex)" 
+										@click="navigateToUserProfile(reply.userId)" />
 									<view class="reply-content-wrapper">
 										<view class="reply-content">
-											<text class="reply-author">{{ reply.author }}</text>
+											<text class="reply-author" @click="navigateToUserProfile(reply.userId)">{{ reply.author }}</text>
 											<text v-if="reply.replyUser" class="reply-to">回复</text>
 											<text v-if="reply.replyUser"
-												class="reply-to-author">@{{ reply.replyUser }}</text>
+												class="reply-to-author" @click="navigateToUserProfile(reply.replyUserId)">@{{ reply.replyUser }}</text>
 											<text class="reply-text selectable"
 												@longpress="copyText(reply.content)">：{{ reply.content }}</text>
 										</view>
@@ -1865,6 +1867,29 @@
 			return;
 		}
 	};
+
+	// 导航到用户资料页
+	const navigateToUserProfile = (userId) => {
+		if (!userId) {
+			console.error('用户ID为空，无法跳转到用户资料页');
+			return;
+		}
+		
+		// #ifdef H5
+		// H5环境下，新窗口打开用户资料页
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		const profileUrl = `${baseUrl}#/pages/user-profile/user-profile?id=${userId}`;
+		window.open(profileUrl, '_blank');
+		// #endif
+		
+		// #ifndef H5
+		// 非H5环境下，正常跳转
+		uni.navigateTo({
+			url: `/pages/user-profile/user-profile?id=${userId}`
+		});
+		// #endif
+	};
 </script>
 
 <style lang="scss">
@@ -1982,48 +2007,67 @@
 		}
 
 		.meta-info {
-			margin-top: 20rpx;
 			display: flex;
 			align-items: center;
+			margin-top: 15rpx;
+		}
 
-			.author-avatar {
-				width: 80rpx;
-				height: 80rpx;
-				border-radius: 50%;
-				margin-right: 16rpx;
-				flex-shrink: 0;
-				background-color: #f0f0f0;
-				/* 添加背景色防止头像加载时的空白 */
-				object-fit: cover;
-				/* 确保头像适当裁剪填充 */
-				border: 1rpx solid #eee;
-				/* 添加边框使头像更清晰 */
+		.author-avatar {
+			width: 80rpx;
+			height: 80rpx;
+			border-radius: 50%;
+			margin-right: 16rpx;
+			flex-shrink: 0;
+			background-color: #f0f0f0;
+			/* 添加背景色防止头像加载时的空白 */
+			object-fit: cover;
+			/* 确保头像适当裁剪填充 */
+			border: 1rpx solid #eee;
+			/* 添加边框使头像更清晰 */
+			cursor: pointer; /* 添加鼠标指针样式 */
+			transition: all 0.2s ease; /* 添加过渡效果 */
 
-				// #ifdef H5
-				width: 48px;
-				height: 48px;
-				// #endif
-			}
+			// #ifdef H5
+			width: 48px;
+			height: 48px;
+			// #endif
+		}
 
-			.author {
-				font-size: 32rpx;
-				color: #666;
-				margin-right: 30rpx;
-				font-weight: 500;
+		.author-avatar:hover {
+			opacity: 0.85; /* 鼠标悬停时透明度变化 */
+			border-color: #3170f9; /* 鼠标悬停时边框变色 */
+			transform: scale(1.05); /* 鼠标悬停时轻微放大 */
+			box-shadow: 0 2rpx 8rpx rgba(49, 112, 249, 0.3); /* 添加阴影效果 */
+		}
 
-				// #ifdef H5
-				font-size: 20px;
-				// #endif
-			}
+		.author {
+			font-size: 32rpx;
+			color: #666;
+			margin-right: 30rpx;
+			font-weight: 500;
+			cursor: pointer; /* 添加鼠标指针样式 */
 
-			.publish-time {
-				font-size: 24rpx;
-				color: #999;
+			// #ifdef H5
+			font-size: 20px;
+			// #endif
+		}
 
-				// #ifdef H5
-				font-size: 14px;
-				// #endif
-			}
+		.author:hover, .comment-author:hover, .reply-author:hover, .reply-to-author:hover {
+			color: #3170f9; /* 鼠标悬停时变色 */
+		}
+
+		.author-avatar:hover, .comment-avatar:hover, .reply-avatar:hover {
+			opacity: 0.8; /* 鼠标悬停时轻微透明效果 */
+			border-color: #3170f9; /* 鼠标悬停时边框变色 */
+		}
+
+		.publish-time {
+			font-size: 24rpx;
+			color: #999;
+
+			// #ifdef H5
+			font-size: 14px;
+			// #endif
 		}
 	}
 
@@ -2239,6 +2283,15 @@
 		/* 确保头像适当裁剪填充 */
 		border: 1rpx solid #eee;
 		/* 添加边框使头像更清晰 */
+		cursor: pointer; /* 添加鼠标指针样式 */
+		transition: all 0.2s ease; /* 添加过渡效果 */
+	}
+
+	.comment-avatar:hover {
+		opacity: 0.85; /* 鼠标悬停时透明度变化 */
+		border-color: #3170f9; /* 鼠标悬停时边框变色 */
+		transform: scale(1.05); /* 鼠标悬停时轻微放大 */
+		box-shadow: 0 2rpx 8rpx rgba(49, 112, 249, 0.3); /* 添加阴影效果 */
 	}
 
 	.comment-content {
@@ -2261,6 +2314,13 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		cursor: pointer; /* 添加鼠标指针样式 */
+		transition: color 0.2s ease; /* 添加过渡效果 */
+	}
+
+	.comment-author:hover {
+		color: #3170f9; /* 鼠标悬停时文字变色 */
+		text-decoration: underline; /* 添加下划线 */
 	}
 
 	.comment-actions {
@@ -2374,6 +2434,15 @@
 		/* 确保头像适当裁剪填充 */
 		border: 1rpx solid #eee;
 		/* 添加边框使头像更清晰 */
+		cursor: pointer; /* 添加鼠标指针样式 */
+		transition: all 0.2s ease; /* 添加过渡效果 */
+	}
+
+	.reply-avatar:hover {
+		opacity: 0.85; /* 鼠标悬停时透明度变化 */
+		border-color: #3170f9; /* 鼠标悬停时边框变色 */
+		transform: scale(1.05); /* 鼠标悬停时轻微放大 */
+		box-shadow: 0 2rpx 6rpx rgba(49, 112, 249, 0.3); /* 添加阴影效果 */
 	}
 
 	.reply-content-wrapper {
@@ -2398,6 +2467,13 @@
 	.reply-author {
 		color: #6495ED;
 		font-weight: bold;
+		cursor: pointer; /* 添加鼠标指针样式 */
+		transition: color 0.2s ease; /* 添加过渡效果 */
+	}
+
+	.reply-author:hover {
+		color: #3170f9; /* 鼠标悬停时文字变色 */
+		text-decoration: underline; /* 添加下划线 */
 	}
 
 	.reply-to {
@@ -2407,6 +2483,13 @@
 
 	.reply-to-author {
 		color: #6495ED;
+		cursor: pointer; /* 添加鼠标指针样式 */
+		transition: color 0.2s ease; /* 添加过渡效果 */
+	}
+
+	.reply-to-author:hover {
+		color: #3170f9; /* 鼠标悬停时文字变色 */
+		text-decoration: underline; /* 添加下划线 */
 	}
 
 	.reply-text {
