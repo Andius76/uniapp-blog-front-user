@@ -127,5 +127,23 @@ export function followUser(userId, isFollow) {
  * @returns {Promise} 关注状态结果
  */
 export function checkUserFollow(userId) {
-  return request.get(`/api/user/check-follow/${userId}`);
+  return new Promise((resolve, reject) => {
+    // 设置超时处理
+    const timeoutId = setTimeout(() => {
+      console.warn(`检查关注状态请求超时: userId=${userId}`);
+      reject(new Error('请求超时，无法获取关注状态'));
+    }, 5000); // 5秒超时
+    
+    // 发起请求
+    request.get(`/api/user/check-follow/${userId}`)
+      .then(result => {
+        clearTimeout(timeoutId); // 清除超时
+        resolve(result);
+      })
+      .catch(error => {
+        clearTimeout(timeoutId); // 清除超时
+        console.error(`检查关注状态失败: userId=${userId}`, error);
+        reject(error);
+      });
+  });
 } 

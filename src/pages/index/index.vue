@@ -465,7 +465,7 @@
 	// #endif
 
 	// 页面显示时刷新数据
-	onShow(() => {
+	onShow(async () => {
 		// 每次页面显示时更新用户数据
 		loadUserData();
 		
@@ -480,6 +480,16 @@
 		if (now - data.lastRequestTime < 1000) {
 			console.log('请求过于频繁，跳过本次刷新');
 			return;
+		}
+		
+		// 如果有文章列表数据，更新所有作者的关注状态
+		if (articleList.value && articleList.value.length > 0) {
+			try {
+				await checkAuthorsFollowStatus(articleList.value);
+				console.log('页面显示：已更新所有作者的关注状态');
+			} catch (error) {
+				console.error('页面显示：检查作者关注状态失败:', error);
+			}
 		}
 		
 		// 刷新文章列表
@@ -663,7 +673,7 @@
 	/**
 	 * 搜索处理
 	 */
-	const handleSearch = () => {
+	const handleSearch = async () => {
 		if (!data.searchText.trim()) {
 			uni.showToast({
 				title: '请输入搜索内容',
@@ -707,11 +717,13 @@
 			}, 100);
 			
 			// 在H5环境下，同时调用后端搜索API获取准确的搜索结果数量
-			http.get('/api/article/search', {
-				page: 1,
-				pageSize: 10,
-				keyword: data.searchText
-			}).then(res => {
+			try {
+				const res = await http.get('/api/article/search', {
+					page: 1,
+					pageSize: 10,
+					keyword: data.searchText
+				});
+				
 				if (res.code === 200 && res.data) {
 					// 更新搜索结果数量
 					data.searchResultCount = res.data.total || (res.data.list ? res.data.list.length : 0);
@@ -719,10 +731,10 @@
 				} else {
 					data.searchResultCount = 0;
 				}
-			}).catch(err => {
+			} catch (err) {
 				console.error('获取搜索结果数量失败:', err);
 				data.searchResultCount = 0;
-			});
+			}
 			
 			// 设置延迟让组件有时间重新渲染
 			setTimeout(() => {
@@ -739,10 +751,12 @@
 		articleList.value = [];
 		
 		// 调用搜索API
-		searchArticles(data.searchText, {
-			page: 1,
-			pageSize: 10
-		}).then(res => {
+		try {
+			const res = await searchArticles(data.searchText, {
+				page: 1,
+				pageSize: 10
+			});
+			
 			uni.hideLoading();
 			
 			if (res.code === 200 && res.data) {
@@ -771,6 +785,14 @@
 				// 处理搜索结果数据 - 使用processArticleData函数替代手动处理
 				const processedArticles = processArticleData(searchResults);
 				
+				// 检查作者关注状态
+				try {
+					await checkAuthorsFollowStatus(processedArticles);
+					console.log('搜索结果：已更新所有作者的关注状态');
+				} catch (error) {
+					console.error('搜索结果：检查作者关注状态失败:', error);
+				}
+				
 				// 更新文章列表 - 使用赋值而非拼接，避免重复
 				articleList.value = processedArticles;
 				
@@ -794,7 +816,7 @@
 				// 重置搜索状态栏高度
 				setSearchStatusHeight('0rpx');
 			}
-		}).catch(err => {
+		} catch (err) {
 			uni.hideLoading();
 			uni.showToast({
 				title: '搜索失败，请稍后重试',
@@ -807,7 +829,7 @@
 			loadArticleList();
 			// 重置搜索状态栏高度
 			setSearchStatusHeight('0rpx');
-		});
+		}
 		// #endif
 	};
 
@@ -1632,30 +1654,219 @@
 		if (!article.author) return;
 		
 		try {
+			// 检查登录状态
+			const token = uni.getStorageSync('token');
+			if (!token) {
+				uni.showToast({
+					title: '请先登录',
+					icon: 'none'
+				});
+				setTimeout(() => {
+					uni.navigateTo({
+						url: '/pages/login/login'
+					});
+				}, 1500);
+				return;
+			}
+			
+			// 检查作者ID是否存在
+			if (!article.author.id) {
+				console.error('作者ID不存在，无法执行关注操作');
+				uni.showToast({
+					title: '操作失败，作者信息不完整',
+					icon: 'none'
+				});
+				return;
+			}
+			
+			// 获取当前关注状态
 			const isFollowed = article.author.isFollowed;
-			await followUser(article.author.id, !isFollowed);
+			console.log(`当前作者[${article.author.id}]的关注状态: ${isFollowed ? '已关注' : '未关注'}`);
 			
-			// 更新当前文章作者的关注状态
-			article.author.isFollowed = !isFollowed;
-			
-			// 更新所有相同作者的文章关注状态
-			articleList.value.forEach(item => {
-				if (item.author && item.author.id === article.author.id) {
-					item.author.isFollowed = !isFollowed;
-				}
-			});
-			
-			uni.showToast({
-				title: !isFollowed ? '关注成功' : '取消关注成功',
-				icon: 'none'
-			});
+			if (isFollowed) {
+				// 已关注状态，执行取消关注操作
+				await handleUnfollow(article);
+			} else {
+				// 未关注状态，执行关注操作
+				await handleDoFollow(article);
+			}
 		} catch (error) {
-			console.error('关注操作失败:', error);
+			uni.hideLoading();
+			console.error('关注操作整体失败:', error);
 			uni.showToast({
-				title: '操作失败，请重试',
+				title: '网络异常，请重试',
 				icon: 'none'
 			});
 		}
+	};
+
+	/**
+	 * 执行关注操作
+	 */
+	const handleDoFollow = async (article) => {
+		uni.showLoading({ title: '关注中...' });
+		
+		try {
+			// 调用关注API
+			const result = await followUser(article.author.id, true);
+			console.log('关注API返回结果:', result);
+			
+			if (result.code === 200) {
+				// 成功关注
+				updateFollowState(article, true);
+				uni.showToast({
+					title: '关注成功',
+					icon: 'success'
+				});
+			} else if (result.code === 409 && result.message.includes('已关注')) {
+				// 已经关注过，更新UI状态
+				updateFollowState(article, true);
+				uni.showToast({
+					title: '已关注该用户',
+					icon: 'none'
+				});
+			} else {
+				// 其他错误
+				uni.showToast({
+					title: result.message || '关注失败，请重试',
+					icon: 'none'
+				});
+			}
+		} catch (error) {
+			console.error('关注操作失败', error);
+			uni.showToast({
+				title: '关注失败，请重试',
+				icon: 'none'
+			});
+		} finally {
+			uni.hideLoading();
+		}
+	};
+
+	/**
+	 * 执行取消关注操作
+	 */
+	const handleUnfollow = async (article) => {
+		// 先显示确认对话框
+		uni.showModal({
+			title: '取消关注',
+			content: `确定不再关注"${article.author.nickname}"吗？`,
+			success: async (res) => {
+				if (res.confirm) {
+					// 显示加载中
+					uni.showLoading({ title: '取消关注中...' });
+					
+					try {
+						// 调用取消关注API
+						const result = await followUser(article.author.id, false);
+						console.log('取消关注API返回结果:', result);
+						
+						// 根据响应处理
+						if (result.code === 200) {
+							// 成功取消关注
+							updateFollowState(article, false);
+							uni.showToast({
+								title: '已取消关注',
+								icon: 'none'
+							});
+						} else if (result.code === 409 && result.message === '未关注该用户') {
+							// 已经是未关注状态，更新UI
+							updateFollowState(article, false);
+							uni.showToast({
+								title: '更新关注状态成功',
+								icon: 'none'
+							});
+						} else {
+							// 其他错误
+							uni.showToast({
+								title: result.message || '操作失败，请重试',
+								icon: 'none'
+							});
+						}
+					} catch (error) {
+						console.error('取消关注失败', error);
+						// 特殊处理409错误，如果是"未关注"错误，我们也更新UI状态
+						if (error.statusCode === 409 || 
+							(error.data && error.data.code === 409) || 
+							(error.response && error.response.status === 409)) {
+							console.log('收到409错误，假设为"未关注该用户"，强制更新UI状态');
+							updateFollowState(article, false);
+							uni.showToast({
+								title: '关注状态已更新',
+								icon: 'none'
+							});
+						} else {
+							uni.showToast({
+								title: '取消关注失败，请重试',
+								icon: 'none'
+							});
+						}
+					} finally {
+						uni.hideLoading();
+					}
+				}
+			}
+		});
+	};
+
+	/**
+	 * 更新关注状态（UI和本地存储）
+	 * @param {Object} article - 文章对象
+	 * @param {Boolean} isFollowed - 是否关注
+	 */
+	const updateFollowState = (article, isFollowed) => {
+		// 更新当前文章作者的关注状态
+		article.author.isFollowed = isFollowed;
+		
+		// 更新所有相同作者的文章关注状态
+		articleList.value.forEach(item => {
+			if (item.author && item.author.id === article.author.id) {
+				item.author.isFollowed = isFollowed;
+			}
+		});
+		
+		// 更新用户关注计数
+		if (isFollowed) {
+			// 关注数+1
+			userInfo.followCount++;
+		} else {
+			// 关注数-1，确保不小于0
+			userInfo.followCount = Math.max(0, userInfo.followCount - 1);
+		}
+		
+		// 更新本地存储的用户信息
+		const localUserInfo = uni.getStorageSync('userInfo');
+		if (localUserInfo) {
+			localUserInfo.followCount = userInfo.followCount;
+			uni.setStorageSync('userInfo', localUserInfo);
+		}
+		
+		// 添加关注记录或移除关注记录到本地存储
+		try {
+			let followedUsers = uni.getStorageSync('followedUsers') || {};
+			if (isFollowed) {
+				followedUsers[article.author.id] = {
+					id: article.author.id,
+					nickname: article.author.nickname,
+					avatar: article.author.avatar
+				};
+			} else {
+				delete followedUsers[article.author.id];
+			}
+			uni.setStorageSync('followedUsers', followedUsers);
+			console.log('更新本地关注状态:', 
+				isFollowed ? '添加关注' : '取消关注', 
+				article.author.id
+			);
+		} catch (e) {
+			console.error('存储关注状态出错:', e);
+		}
+		
+		// 发送关注状态更新事件，通知其他页面
+		uni.$emit('user_follow_updated', {
+			userId: article.author.id,
+			isFollowed: isFollowed
+		});
 	};
 
 	/**
@@ -1697,7 +1908,7 @@
 		
 		// 调用API获取文章列表
 		http.get('/api/article', params)
-			.then(res => {
+			.then(async res => {
 				if (res.code === 200 && res.data && res.data.list) {
 					const newArticles = res.data.list;
 					console.log('获取到文章数据:', newArticles.length, '条');
@@ -1934,6 +2145,14 @@
 						return article;
 					});
 					
+					// 检查作者关注状态
+					try {
+						await checkAuthorsFollowStatus(processedArticles);
+						console.log('已更新所有作者的关注状态');
+					} catch (error) {
+						console.error('检查作者关注状态失败:', error);
+					}
+					
 					// 第一页时替换列表，否则追加
 					if (currentPage.value === 1) {
 						articleList.value = processedArticles;
@@ -2106,7 +2325,7 @@
 	/**
 	 * 处理下拉刷新
 	 */
-	const handleRefresh = () => {
+	const handleRefresh = async () => {
 		data.isRefreshing = true;
 		currentPage.value = 1;
 		noMoreData.value = false;
@@ -2114,10 +2333,12 @@
 		// 根据当前模式执行不同的刷新操作
 		if (data.currentNav === -1) {
 			// 搜索模式下重新搜索
-			searchArticles(data.searchText, {
-				page: 1,
-				pageSize: 10
-			}).then(res => {
+			try {
+				const res = await searchArticles(data.searchText, {
+					page: 1,
+					pageSize: 10
+				});
+				
 				if (res.code === 200 && res.data) {
 					// 处理搜索结果
 					const searchResults = res.data.list || [];
@@ -2141,6 +2362,14 @@
 						return article;
 					});
 					
+					// 检查作者关注状态
+					try {
+						await checkAuthorsFollowStatus(processedArticles);
+						console.log('刷新搜索结果：已更新所有作者的关注状态');
+					} catch (error) {
+						console.error('刷新搜索结果：检查作者关注状态失败:', error);
+					}
+					
 					// 更新文章列表
 					articleList.value = processedArticles;
 					
@@ -2158,18 +2387,18 @@
 						icon: 'none'
 					});
 				}
-			}).catch(err => {
+			} catch (err) {
 				console.error('刷新搜索结果失败:', err);
 				uni.showToast({
 					title: '网络异常，请稍后再试',
 					icon: 'none'
 				});
-			}).finally(() => {
+			} finally {
 				data.isRefreshing = false;
-			});
+			}
 		} else {
 			// 普通模式下刷新文章列表
-		loadArticleList();
+			loadArticleList();
 		}
 	};
 
@@ -2195,17 +2424,19 @@
 	};
 
 	// 加载更多搜索结果
-	const loadMoreSearchResults = () => {
+	const loadMoreSearchResults = async () => {
 		// 如果已经没有更多数据或正在加载中，则不处理
 		if (noMoreData.value || isLoading.value) return;
 		
 		isLoading.value = true;
 		
 		// 调用搜索API
-		searchArticles(data.searchText, {
-			page: currentPage.value,
-			pageSize: 10
-		}).then(res => {
+		try {
+			const res = await searchArticles(data.searchText, {
+				page: currentPage.value,
+				pageSize: 10
+			});
+			
 			if (res.code === 200 && res.data) {
 				// 处理搜索结果
 				const searchResults = res.data.list || [];
@@ -2219,6 +2450,14 @@
 				
 				// 处理搜索结果数据 - 使用统一的处理函数
 				const processedArticles = processArticleData(searchResults);
+				
+				// 检查作者关注状态
+				try {
+					await checkAuthorsFollowStatus(processedArticles);
+					console.log('加载更多搜索结果：已更新所有作者的关注状态');
+				} catch (error) {
+					console.error('加载更多搜索结果：检查作者关注状态失败:', error);
+				}
 				
 				// 追加到文章列表
 				articleList.value = [...articleList.value, ...processedArticles];
@@ -2237,15 +2476,15 @@
 					icon: 'none'
 				});
 			}
-		}).catch(err => {
+		} catch (err) {
 			console.error('获取更多搜索结果失败:', err);
 			uni.showToast({
 				title: '网络异常，请稍后再试',
 				icon: 'none'
 			});
-		}).finally(() => {
+		} finally {
 			isLoading.value = false;
-		});
+		}
 	};
 
 	// 监听导航切换，重新加载数据
@@ -2565,27 +2804,107 @@
 	const checkAuthorsFollowStatus = async (articles) => {
 		if (!articles || articles.length === 0) return;
 		
+		// 获取本地存储的关注状态
+		const followedUsers = uni.getStorageSync('followedUsers') || {};
+		console.log('从本地存储获取已关注用户列表:', Object.keys(followedUsers).length);
+		
 		// 获取所有作者的ID
 		const authorIds = articles.map(article => article.author?.id).filter(id => id);
+		if (authorIds.length === 0) {
+			console.log('没有找到有效的作者ID');
+			return;
+		}
 		
 		// 批量检查关注状态
-		const followStatusPromises = authorIds.map(authorId => 
-			checkUserFollow(authorId)
-				.then(res => ({ authorId, isFollowed: res.data }))
-				.catch(() => ({ authorId, isFollowed: false }))
-		);
-		
-		const followStatuses = await Promise.all(followStatusPromises);
-		
-		// 更新文章列表中作者的关注状态
-		articles.forEach(article => {
-			if (article.author) {
-				const status = followStatuses.find(s => s.authorId === article.author.id);
-				if (status) {
-					article.author.isFollowed = status.isFollowed;
-				}
+		const followStatusPromises = authorIds.map(authorId => {
+			// 先检查本地存储
+			if (followedUsers[authorId]) {
+				console.log(`用户[${authorId}]在本地存储中已关注`);
+				return Promise.resolve({ authorId, isFollowed: true, source: 'local' });
 			}
+			
+			// 如果本地存储没有，再请求API
+			return checkUserFollow(authorId)
+				.then(res => {
+					// 确保正确解析API响应
+					console.log(`检查用户[${authorId}]关注状态API返回:`, res);
+					
+					// 只有当code为200且data为true时才认为已关注
+					const isFollowed = res.code === 200 && res.data === true;
+					
+					// 如果API返回已关注，更新本地存储
+					if (isFollowed) {
+						// 查找作者信息以存储到本地
+						const author = articles.find(a => a.author && a.author.id === authorId)?.author;
+						if (author) {
+							followedUsers[authorId] = {
+								id: authorId,
+								nickname: author.nickname,
+								avatar: author.avatar,
+								updatedAt: new Date().getTime() // 添加更新时间戳
+							};
+							uni.setStorageSync('followedUsers', followedUsers);
+							console.log(`用户[${authorId}]API显示已关注，添加至本地存储`);
+						}
+					} else {
+						// 确保本地存储中移除该用户
+						if (followedUsers[authorId]) {
+							delete followedUsers[authorId];
+							uni.setStorageSync('followedUsers', followedUsers);
+							console.log(`用户[${authorId}]API显示未关注，从本地存储中移除`);
+						}
+					}
+					
+					return { authorId, isFollowed, source: 'api' };
+				})
+				.catch(err => {
+					console.error(`检查用户[${authorId}]关注状态API请求失败:`, err);
+					// 发生错误时，我们只使用本地存储的状态
+					const isFollowed = !!followedUsers[authorId];
+					console.log(`API请求失败，使用本地状态: ${isFollowed ? '已关注' : '未关注'}`);
+					return { authorId, isFollowed, source: 'fallback' };
+				});
 		});
+		
+		try {
+			const followStatuses = await Promise.all(followStatusPromises);
+			console.log('所有作者关注状态检查结果:', followStatuses);
+			
+			// 整合结果，统计来源
+			const sourceCounts = {
+				local: followStatuses.filter(s => s.source === 'local').length,
+				api: followStatuses.filter(s => s.source === 'api').length,
+				fallback: followStatuses.filter(s => s.source === 'fallback').length,
+			};
+			console.log('关注状态来源统计:', sourceCounts);
+			
+			// 更新文章列表中作者的关注状态
+			articles.forEach(article => {
+				if (article.author) {
+					const status = followStatuses.find(s => s.authorId === article.author.id);
+					if (status) {
+						// 确保更新关注状态
+						article.author.isFollowed = status.isFollowed;
+						console.log(`更新作者[${article.author.id}]关注状态为: ${status.isFollowed}, 来源: ${status.source}`);
+					} else {
+						// 默认为未关注
+						article.author.isFollowed = false;
+						console.log(`作者[${article.author.id}]未找到关注状态，默认为未关注`);
+					}
+				}
+			});
+		} catch (error) {
+			console.error('处理关注状态检查结果失败:', error);
+			
+			// 发生错误时，使用本地存储作为备选方案
+			articles.forEach(article => {
+				if (article.author) {
+					const isFollowed = !!followedUsers[article.author.id];
+					article.author.isFollowed = isFollowed;
+					console.log(`发生错误时，作者[${article.author.id}]关注状态从本地读取为: ${isFollowed}`);
+				}
+			});
+		}
 	};
 
 	// 修改获取文章列表的方法
