@@ -9,6 +9,10 @@
 				<!-- 搜索框 -->
 				<view class="search-bar">
 					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
+					<!-- 添加清除按钮 -->
+					<view class="clear-icon" v-if="data.searchText.length > 0" @click="clearSearchText">
+						<uni-icons type="clear" size="18" color="#999"></uni-icons>
+					</view>
 					<button class="search-btn" @click="handleSearch">搜索</button>
 				</view>
 				<!-- 消息通知和用户头像 -->
@@ -40,6 +44,10 @@
 			<view class="header-top">
 				<view class="search-bar">
 					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
+					<!-- 添加清除按钮 -->
+					<view class="clear-icon" v-if="data.searchText.length > 0" @click="clearSearchText">
+						<uni-icons type="clear" size="18" color="#999"></uni-icons>
+					</view>
 					<button class="search-btn" @click="handleSearch">搜索</button>
 				</view>
 			</view>
@@ -2951,6 +2959,11 @@
 		});
 		// #endif
 	};
+
+	// 添加清除搜索框内容的方法
+	const clearSearchText = () => {
+		data.searchText = '';
+	};
 </script>
 
 <style lang="scss">
@@ -3024,25 +3037,42 @@
 				border-radius: 4px;
 				padding: 0 15px;
 				margin: 0 10px;
+				position: relative; /* 添加相对定位 */
+			}
 
-				input {
-					flex: 1;
-					height: 36px;
-					font-size: 14px;
-					background: transparent;
-					border: none;
-				}
+			.search-bar input {
+				flex: 1;
+				height: 36px;
+				font-size: 14px;
+				background: transparent;
+				border: none;
+				padding-right: 40px; /* 为清除图标预留空间 */
+			}
 
-				.search-btn {
-					padding: 0 15px;
-					height: 32px;
-					line-height: 32px;
-					font-size: 14px;
-					color: #fff;
-					background: #4361ee;
-					border-radius: 4px;
-					margin-left: 10px;
-				}
+			.clear-icon {
+				position: absolute;
+				right: 70px; /* 位于搜索按钮左侧 */
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 30px;
+				height: 30px;
+				z-index: 2;
+			}
+
+			.clear-icon:active {
+				opacity: 0.7;
+			}
+
+			.search-btn {
+				padding: 0 15px;
+				height: 32px;
+				line-height: 32px;
+				font-size: 14px;
+				color: #fff;
+				background: #4361ee;
+				border-radius: 4px;
+				margin-left: 10px;
 			}
 
 			.header-right {
@@ -4258,4 +4288,17 @@
 			}
 		}
 	}
+
+	/* 移动端搜索栏样式 */
+	/* #ifndef H5 */
+	.header-top .search-bar {
+		flex: 1;
+		position: relative;
+		margin: 20rpx;
+	}
+
+	.header-top .search-bar input {
+		padding-right: 80rpx; /* 为清除图标预留空间 */
+	}
+	/* #endif */
 </style>

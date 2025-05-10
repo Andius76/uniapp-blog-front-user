@@ -7,6 +7,9 @@
 				<view class="header-top">
 					<view class="search-bar">
 						<input type="text" placeholder="请输入搜索标签" v-model="searchText" @confirm="handleSearch" />
+						<view class="clear-icon" v-if="searchText.length > 0" @click="clearSearch">
+							<uni-icons type="clear" size="18" color="#999"></uni-icons>
+						</view>
 						<button class="search-btn" @click="handleSearch">搜索</button>
 					</view>
 				</view>
@@ -37,9 +40,10 @@
 		<view class="content-area">
 			<ArticleList 
 				ref="articleListRef"
-				:key="'tag-'+currentTag" 
-				list-type="tag"
+				:key="currentTag === searchText.value && searchText.value ? 'search-'+searchText.value : 'tag-'+currentTag" 
+				:list-type="currentTag === searchText.value && searchText.value ? 'search' : 'tag'"
 				:tag-name="currentTag === '全部' ? '' : currentTag"
+				:keyword="currentTag === searchText.value && searchText.value ? searchText.value : ''"
 				:height="'calc(100vh - 180rpx)'"
 				:empty-text="emptyText"
 				@article-click="viewArticleDetail"
@@ -353,36 +357,133 @@ const handleSearch = async () => {
 		return;
 	}
 	
-	// 先在默认标签中搜索
-	const foundInDefault = defaultTagList.value.find(tag => 
-		tag.name.toLowerCase() === searchText.value.toLowerCase()
-	);
+	// 显示加载提示
+	uni.showLoading({
+		title: '搜索中...'
+	});
 	
-	if (foundInDefault) {
-		// 如果在默认标签中找到，直接切换
-		switchCategory(foundInDefault.name);
-		isSearching.value = false;
-		return;
-	}
-	
-	// 在所有标签中搜索
-	const foundInAll = allTags.value.find(tag => 
-		tag.name.toLowerCase() === searchText.value.toLowerCase()
-	);
-	
-	if (foundInAll) {
-		// 如果在所有标签中找到，切换到该标签
-		switchCategory(foundInAll.name);
-		isSearching.value = false;
-	} else {
-		// 如果没有找到，显示提示信息
-		uni.showToast({
-			title: `没有找到"${searchText.value}"相关标签`,
-			icon: 'none'
+	try {
+		// 调用搜索API，根据关键词搜索标签相关的文章
+		const res = await http.get('/api/article/search', {
+			keyword: searchText.value,
+			tag: searchText.value, // 将搜索文本作为标签参数
+			page: 1,
+			pageSize: 10
 		});
 		
-		// 更新空内容提示
-		emptyText.value = `没有找到关于"${searchText.value}"的标签或文章`;
+		uni.hideLoading();
+		
+		if (res.code === 200 && res.data) {
+			// 提取搜索结果中的标签
+			const searchResults = res.data.list || [];
+			let foundTag = false;
+			
+			// 先查找是否有精确匹配的标签
+			// 1. 先在默认标签中搜索
+			const foundInDefault = defaultTagList.value.find(tag => 
+				tag.name.toLowerCase() === searchText.value.toLowerCase()
+			);
+			
+			if (foundInDefault) {
+				// 如果在默认标签中找到，直接切换
+				switchCategory(foundInDefault.name);
+				foundTag = true;
+			} else {
+				// 2. 在所有标签中搜索
+				const foundInAll = allTags.value.find(tag => 
+					tag.name.toLowerCase() === searchText.value.toLowerCase()
+				);
+				
+				if (foundInAll) {
+					// 如果在所有标签中找到，切换到该标签
+					switchCategory(foundInAll.name);
+					foundTag = true;
+				} else {
+					// 3. 如果没有精确匹配的标签，从搜索结果中提取所有标签
+					const tagsFromResults = new Set();
+					
+					// 从搜索结果中收集所有标签
+					searchResults.forEach(article => {
+						if (article.tags && Array.isArray(article.tags)) {
+							article.tags.forEach(tag => {
+								// 检查标签名是否包含搜索文本
+								if (tag.toLowerCase().includes(searchText.value.toLowerCase())) {
+									tagsFromResults.add(tag);
+								}
+							});
+						}
+					});
+					
+					// 如果从搜索结果中找到相关标签
+					if (tagsFromResults.size > 0) {
+						// 使用第一个匹配的标签
+						const matchedTag = Array.from(tagsFromResults)[0];
+						switchCategory(matchedTag);
+						foundTag = true;
+						
+						uni.showToast({
+							title: `已找到相关标签: ${matchedTag}`,
+							icon: 'none'
+						});
+					}
+				}
+			}
+			
+			// 如果没有找到任何相关标签
+			if (!foundTag) {
+				// 如果搜索结果不为空，可能有相关文章但标签不完全匹配
+				if (searchResults.length > 0) {
+					// 创建一个临时标签
+					currentTag.value = searchText.value;
+					
+					// 更新空内容提示信息
+					emptyText.value = `正在显示"${searchText.value}"的搜索结果`;
+					
+					// 在ArticleList组件刷新时，传入搜索关键词
+					if (articleListRef.value) {
+						// 重置当前状态
+						articleListRef.value.resetList();
+						
+						// 等待下一个渲染周期，确保组件能够正确接收新的props
+						nextTick(() => {
+							// 触发ArticleList组件加载搜索结果
+							articleListRef.value.loadArticles(true);
+						});
+					}
+					
+					// #ifndef H5
+					// 在非H5环境下需要手动加载搜索结果
+					loadArticlesWithKeyword(searchText.value);
+					// #endif
+				} else {
+					// 没有找到任何相关标签或文章
+					uni.showToast({
+						title: `没有找到"${searchText.value}"相关标签或文章`,
+						icon: 'none'
+					});
+					
+					// 更新空内容提示信息
+					emptyText.value = `没有找到关于"${searchText.value}"的标签或文章`;
+					
+					// 可以考虑保持在当前标签，或者切换到全部
+					// switchCategory('全部');
+				}
+			}
+		} else {
+			// API请求失败
+			uni.showToast({
+				title: res.message || '搜索失败',
+				icon: 'none'
+			});
+		}
+	} catch (err) {
+		uni.hideLoading();
+		uni.showToast({
+			title: '搜索失败，请稍后重试',
+			icon: 'none'
+		});
+		console.error('搜索标签失败:', err);
+	} finally {
 		isSearching.value = false;
 	}
 };
@@ -727,159 +828,139 @@ const handleFollow = async (article) => {
 	}
 };
 
-// 加载文章列表数据
-const loadArticles = async (refresh = false) => {
-	// 避免重复加载
-	if (isLoading.value) return;
+// 处理文章加载
+const loadArticles = (isRefresh = false) => {
+	// 如果已经在加载中，则不重复加载
+	if (isLoading.value && !isRefresh) return;
 	
-	// 如果刷新，重置页码
-	if (refresh) {
-		currentPage.value = 1;
-		noMoreData.value = false;
-		if (refresh && !isRefreshing.value) {
-			articleList.value = [];
-		}
-	}
-	
-	// 标记加载状态
 	isLoading.value = true;
 	
-	try {
-		// 构建请求参数
-		const params = {
-			page: currentPage.value,
-			pageSize: pageSize.value,
-			sort: 'new',
-			timestamp: new Date().getTime() // 添加时间戳防止缓存
-		};
-		
-		// 添加标签过滤
-		if (currentTag.value !== '全部') {
-			params.tag = currentTag.value;
-		}
-		
-		console.log('请求参数:', params, '当前标签:', currentTag.value);
-		
-		// 发送请求
-		const res = await http.get('/api/article', params);
-		
-		if (res.code === 200 && res.data) {
-			// 获取文章列表
-			let articles = res.data.list || [];
-			console.log(`获取到${articles.length}篇文章数据`);
-			
-			// 处理每篇文章的数据
-			articles = articles.map(article => {
-				// 输出原始数据用于调试
-				console.log(`[文章${article.id}] 标题: ${article.title}`);
-				
-				// 尝试从多种可能的字段名获取封面图片URL
-				let coverImage = null;
-				
-				// 优先级1: coverImage字段
-				if (article.coverImage) {
-					coverImage = article.coverImage;
-					console.log(`[文章${article.id}] 使用coverImage字段:`, coverImage);
-				} 
-				// 优先级2: cover_image字段
-				else if (article.cover_image) {
-					coverImage = article.cover_image;
-					console.log(`[文章${article.id}] 使用cover_image字段:`, coverImage);
-				}
-				// 优先级3: thumbnail字段
-				else if (article.thumbnail) {
-					coverImage = article.thumbnail;
-					console.log(`[文章${article.id}] 使用thumbnail字段:`, coverImage);
-				}
-				// 优先级4: 从文章内容中提取第一张图片
-				else if (article.content && article.content.includes('<img')) {
-					const imgMatch = article.content.match(/<img[^>]+src=['"]([^'"]+)['"]/);
-					if (imgMatch && imgMatch[1]) {
-						coverImage = imgMatch[1];
-						console.log(`[文章${article.id}] 从内容提取图片:`, coverImage);
-					}
-				}
-				
-				// 使用formatArticleImage统一处理封面图片URL
-				if (coverImage) {
-					article.coverImage = formatArticleImage(coverImage);
-					console.log(`[文章${article.id}] 处理后的封面URL:`, article.coverImage);
-				} else {
-					article.coverImage = null; // 确保没有封面时设为null
-					console.log(`[文章${article.id}] 无封面图片`);
-				}
-				
-				// 处理作者头像
-				if (article.author && article.author.avatar) {
-					article.author.avatar = formatAvatarUrl(article.author.avatar);
-				}
-				
-				return article;
-			});
-			
-			// 如果是刷新，直接替换列表；否则，追加数据
-			if (refresh) {
-				articleList.value = articles;
-			} else {
-				articleList.value = [...articleList.value, ...articles];
-			}
-			
-			// 确保每个文章都有基本属性
-			articleList.value.forEach(article => {
-				// 确保有基本的计数字段
-				article.commentCount = article.commentCount || 0;
-				article.likeCount = article.likeCount || 0;
-				article.collectCount = article.collectCount || 0;
-				
-				// 确保有基本的状态字段
-				article.isLiked = !!article.isLiked;
-				article.isCollected = !!article.isCollected;
-				
-				// 确保有标签数组
-				if (!article.tags || !Array.isArray(article.tags)) {
-					article.tags = [];
-				}
-			});
-			
-			// 更新是否有更多数据的标志
-			noMoreData.value = articles.length < pageSize.value;
-			
-			// 如果成功加载，递增页码
-			if (articles.length > 0) {
-				currentPage.value++;
-			}
-		} else {
-			// 显示错误提示
-			uni.showToast({
-				title: res.message || '获取文章列表失败',
-				icon: 'none'
-			});
-		}
-	} catch (error) {
-		console.error('加载文章失败:', error);
-		uni.showToast({
-			title: '网络错误，请稍后再试',
-			icon: 'none'
-		});
-	} finally {
-		// 清除加载状态
-		isLoading.value = false;
-		isRefreshing.value = false;
+	// 如果是刷新，重置页码和数据
+	if (isRefresh) {
+		currentPage.value = 1;
+		noMoreData.value = false;
+		articleList.value = [];
+	}
+	
+	// 确保在搜索模式下使用搜索API
+	if (currentTag.value === searchText.value && searchText.value) {
+		// 搜索模式
+		loadArticlesWithKeyword(searchText.value);
+	} else {
+		// 标签模式
+		loadTagArticles();
 	}
 };
 
 // 处理下拉刷新
 const handleRefresh = () => {
-	if (isRefreshing.value) return; // 避免重复刷新
-	
 	isRefreshing.value = true;
-	loadArticles(true);
+	
+	// 通过setTimeout避免UI卡顿
+	setTimeout(() => {
+		// 根据当前模式决定刷新方法
+		if (currentTag.value === searchText.value && searchText.value) {
+			// 搜索模式刷新
+			loadArticlesWithKeyword(searchText.value);
+		} else {
+			// 标签模式刷新
+			loadArticles(true);
+		}
+		
+		// 在刷新完成后重置状态
+		setTimeout(() => {
+			isRefreshing.value = false;
+		}, 500);
+	}, 300);
 };
 
 // 处理加载更多
-const handleLoadMore = () => {
-	if (isLoading.value || noMoreData.value) return;
-	loadArticles(false);
+const handleLoadMore = async () => {
+	// 如果已经没有更多数据或正在加载中，则不处理
+	if (noMoreData.value || isLoading.value) return;
+	
+	isLoading.value = true;
+	
+	// 判断当前是普通标签还是搜索模式
+	if (currentTag.value === searchText.value && searchText.value) {
+		// 搜索模式下加载更多
+		try {
+			// 调用搜索API
+			const res = await http.get('/api/article/search', {
+				keyword: searchText.value,
+				tag: searchText.value,
+				page: currentPage.value,
+				pageSize: 10
+			});
+			
+			if (res.code === 200 && res.data) {
+				const searchResults = res.data.list || [];
+				
+				// 如果没有更多结果
+				if (searchResults.length === 0) {
+					noMoreData.value = true;
+					isLoading.value = false;
+					return;
+				}
+				
+				// 处理搜索结果数据
+				const processedArticles = searchResults.map(article => {
+					// 处理作者头像
+					if (article.author && article.author.avatar) {
+						article.author.avatar = formatAvatarUrl(article.author.avatar);
+					}
+					
+					// 处理封面图片
+					if (article.coverImage) {
+						article.coverImage = formatArticleImage(article.coverImage);
+					} else if (article.cover_image) {
+						article.coverImage = formatArticleImage(article.cover_image);
+					}
+					
+					// 处理标签
+					if (article.tags && !Array.isArray(article.tags)) {
+						try {
+							if (typeof article.tags === 'string') {
+								article.tags = JSON.parse(article.tags);
+							}
+						} catch (e) {
+							article.tags = [];
+						}
+					}
+					
+					return article;
+				});
+				
+				// 追加到文章列表
+				articleList.value = [...articleList.value, ...processedArticles];
+				
+				// 更新页码
+				currentPage.value++;
+				
+				// 判断是否还有更多数据
+				if (searchResults.length < 10) {
+					noMoreData.value = true;
+				}
+			} else {
+				// 处理搜索失败
+				uni.showToast({
+					title: res.message || '加载更多失败',
+					icon: 'none'
+				});
+			}
+		} catch (err) {
+			console.error('加载更多搜索结果失败:', err);
+			uni.showToast({
+				title: '网络异常，请稍后重试',
+				icon: 'none'
+			});
+		} finally {
+			isLoading.value = false;
+		}
+	} else {
+		// 普通标签模式下加载更多
+		loadTagArticles();
+	}
 };
 
 // 滚动到顶部
@@ -1056,6 +1137,195 @@ const handleTagClick = (tag) => {
 	// 清空搜索框
 	searchText.value = '';
 };
+
+/**
+ * 加载带关键词的文章（用于非H5环境）
+ * @param {String} keyword - 搜索关键词
+ */
+const loadArticlesWithKeyword = async (keyword) => {
+	if (!keyword) return;
+	
+	isLoading.value = true;
+	noMoreData.value = false;
+	currentPage.value = 1;
+	articleList.value = [];
+	
+	try {
+		// 调用搜索API获取文章
+		const res = await http.get('/api/article/search', {
+			keyword: keyword,
+			tag: keyword, // 同时将关键词作为标签搜索
+			page: 1,
+			pageSize: 10
+		});
+		
+		if (res.code === 200 && res.data) {
+			const searchResults = res.data.list || [];
+			
+			// 如果搜索结果为空
+			if (searchResults.length === 0) {
+				emptyText.value = `没有找到关于"${keyword}"的文章`;
+				noMoreData.value = true;
+				isLoading.value = false;
+				return;
+			}
+			
+			// 处理搜索结果数据
+			const processedArticles = searchResults.map(article => {
+				// 处理作者头像
+				if (article.author && article.author.avatar) {
+					article.author.avatar = formatAvatarUrl(article.author.avatar);
+				}
+				
+				// 处理封面图片
+				if (article.coverImage) {
+					article.coverImage = formatArticleImage(article.coverImage);
+				} else if (article.cover_image) {
+					article.coverImage = formatArticleImage(article.cover_image);
+				}
+				
+				// 处理标签，确保都是字符串数组
+				if (article.tags && !Array.isArray(article.tags)) {
+					try {
+						if (typeof article.tags === 'string') {
+							// 尝试解析JSON字符串
+							article.tags = JSON.parse(article.tags);
+						}
+					} catch (e) {
+						// 解析失败则设置为空数组
+						article.tags = [];
+					}
+				}
+				
+				return article;
+			});
+			
+			// 更新文章列表
+			articleList.value = processedArticles;
+			
+			// 更新页码
+			currentPage.value = 2;
+			
+			// 判断是否还有更多数据
+			if (searchResults.length < 10) {
+				noMoreData.value = true;
+			}
+		} else {
+			// 处理搜索失败
+			uni.showToast({
+				title: res.message || '搜索失败',
+				icon: 'none'
+			});
+			
+			// 更新空内容提示
+			emptyText.value = `搜索失败，请稍后重试`;
+		}
+	} catch (err) {
+		console.error('搜索关键词文章失败:', err);
+		uni.showToast({
+			title: '网络异常，请稍后重试',
+			icon: 'none'
+		});
+		emptyText.value = `搜索失败，请稍后重试`;
+	} finally {
+		isLoading.value = false;
+	}
+};
+
+/**
+ * 加载特定标签的文章（用于非H5环境）
+ */
+const loadTagArticles = async () => {
+	// 如果已经没有更多数据或正在加载中，则不处理
+	if (noMoreData.value || isLoading.value) return;
+	
+	isLoading.value = true;
+	
+	try {
+		// 构建请求参数
+		const params = {
+			page: currentPage.value,
+			pageSize: 10
+		};
+		
+		// 如果不是"全部"标签，则加上标签过滤
+		if (currentTag.value !== '全部') {
+			params.tag = currentTag.value;
+		}
+		
+		// 发起请求
+		const res = await http.get('/api/article', params);
+		
+		if (res.code === 200 && res.data) {
+			const newArticles = res.data.list || [];
+			
+			// 如果没有更多文章
+			if (newArticles.length === 0) {
+				noMoreData.value = true;
+				isLoading.value = false;
+				return;
+			}
+			
+			// 处理文章数据
+			const processedArticles = newArticles.map(article => {
+				// 处理作者头像
+				if (article.author && article.author.avatar) {
+					article.author.avatar = formatAvatarUrl(article.author.avatar);
+				}
+				
+				// 处理封面图片
+				if (article.coverImage) {
+					article.coverImage = formatArticleImage(article.coverImage);
+				} else if (article.cover_image) {
+					article.coverImage = formatArticleImage(article.cover_image);
+				}
+				
+				// 处理标签
+				if (article.tags && !Array.isArray(article.tags)) {
+					try {
+						if (typeof article.tags === 'string') {
+							article.tags = JSON.parse(article.tags);
+						}
+					} catch (e) {
+						article.tags = [];
+					}
+				}
+				
+				return article;
+			});
+			
+			// 追加到文章列表
+			articleList.value = [...articleList.value, ...processedArticles];
+			
+			// 更新页码
+			currentPage.value++;
+			
+			// 判断是否还有更多数据
+			if (newArticles.length < 10) {
+				noMoreData.value = true;
+			}
+		} else {
+			// 处理请求失败
+			uni.showToast({
+				title: res.message || '加载失败',
+				icon: 'none'
+			});
+		}
+	} catch (err) {
+		console.error('加载标签文章失败:', err);
+		uni.showToast({
+			title: '网络异常，请稍后重试',
+			icon: 'none'
+		});
+	} finally {
+		isLoading.value = false;
+	}
+};
+
+// 处理清除搜索框
+const clearSearch = () => {
+	searchText.value = '';
+};
 </script>
 
 <style lang="scss" scoped>
@@ -1101,6 +1371,7 @@ const handleTagClick = (tag) => {
 	padding: 0 20rpx;
 	align-items: center;
 	margin: 10rpx 0;
+	position: relative;
 }
 
 .search-bar input {
@@ -1108,6 +1379,22 @@ const handleTagClick = (tag) => {
 	height: 100%;
 	font-size: 28rpx;
 	color: #333;
+	padding-right: 50rpx; /* 为清除图标预留空间 */
+}
+
+.clear-icon {
+	position: absolute;
+	right: 120rpx; /* 位于搜索按钮左侧 */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 50rpx;
+	height: 50rpx;
+	z-index: 2;
+}
+
+.clear-icon:active {
+	opacity: 0.7;
 }
 
 .search-btn {
