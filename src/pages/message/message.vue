@@ -15,13 +15,22 @@
 		<!-- 消息列表 -->
 		<scroll-view scroll-y class="message-list" @scrolltolower="loadMore" refresher-enabled
 			:refresher-triggered="isRefreshing" @refresherrefresh="refreshList">
+			
+			<!-- 标记全部已读按钮 -->
+			<view class="mark-all-read" v-if="messageGroups.length > 0" @click="markAllAsRead">
+				<text>全部标记为已读</text>
+			</view>
+			
 			<!-- 消息分组 -->
 			<block v-for="(group, groupIndex) in messageGroups" :key="groupIndex">
+				<!-- 日期分组标题 -->
+				<view class="date-header">{{ group.date }}</view>
+				
 				<!-- 消息组列表 -->
-				<view v-for="(message, messageIndex) in group.messages" :key="messageIndex" class="message-item"
+				<view v-for="(message, messageIndex) in group.messages" :key="message.id" class="message-item"
 					@click="readMessage(message)">
-					<view class="message-icon">
-						<uni-icons :type="message.icon" size="30" color="#666"></uni-icons>
+					<view class="message-icon" :class="{ 'like-icon': currentTab === 1 }">
+						<uni-icons :type="message.icon" size="30" :color="currentTab === 1 ? '#ff6b6b' : '#666'"></uni-icons>
 					</view>
 					<view class="message-content">
 						<view class="message-title">{{ message.title }}</view>
@@ -35,15 +44,19 @@
 			</block>
 
 			<!-- 无消息提示 -->
-			<view v-if="messageGroups.length === 0 || (messageGroups[0] && messageGroups[0].messages.length === 0)"
-				class="no-message">
+			<view v-if="messageGroups.length === 0 && !isLoading" class="no-message">
 				<uni-icons type="info" size="50" color="#ddd"></uni-icons>
-				<text>暂无消息</text>
+				<text>暂无{{ tabs[currentTab].name }}消息</text>
 			</view>
 
 			<!-- 加载状态 -->
 			<view v-if="isLoading" class="loading-state">
 				<text>加载中...</text>
+			</view>
+			
+			<!-- 加载完毕提示 -->
+			<view v-if="noMoreData && messageGroups.length > 0" class="loading-state">
+				<text>没有更多消息了</text>
 			</view>
 		</scroll-view>
 	</view>
@@ -53,10 +66,14 @@
 	import {
 		reactive,
 		ref,
-		onMounted
+		onMounted,
+		computed
 	} from 'vue';
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
+	// 导入消息API
+	import { getMessages, markMessageRead, markAllMessagesRead } from '@/api/message';
+	import { formatAvatarUrl } from '@/utils/format'; // 引入头像格式化工具方法
 
 	// 当前选中的选项卡
 	const currentTab = ref(0);
@@ -65,311 +82,135 @@
 	const isLoading = ref(false);
 	const noMoreData = ref(false);
 	const currentPage = ref(1);
-	const pageSize = 5; // 每页5条消息
+	const pageSize = 10; // 每页10条消息
 
 	// 选项卡数据
 	const tabs = reactive([{
 			name: '系统公告',
 			icon: 'sound',
-			type: 'announcement'
+			type: 'announcement',
+			apiType: 0 // 对应API的消息类型
 		},
 		{
 			name: '点赞了我',
 			icon: 'heart',
-			type: 'like'
+			type: 'like',
+			apiType: 1 // 对应API的消息类型
 		},
 		{
 			name: '评论通知',
 			icon: 'chat',
-			type: 'comment'
+			type: 'comment',
+			apiType: 3 // 对应API的消息类型
 		},
 		{
 			name: '关注了我',
 			icon: 'plus',
-			type: 'subscribe'
+			type: 'subscribe',
+			apiType: 2 // 对应API的消息类型
 		}
 	]);
 
 	// 消息组数据
-	const messageGroups = reactive([{
-			type: 'system',
-			messages: [{
-				id: 1,
-				title: '系统消息',
-				description: '系统更新',
-				time: '2025-4-20',
-				icon: 'notification',
-				isRead: false
-			}]
-		},
-		{
-			type: 'account',
-			messages: [{
-				id: 2,
-				title: '账号消息',
-				description: '欢迎xxxx，登录系统...',
-				time: '2025-4-20',
-				icon: 'person',
-				isRead: false
-			}]
-		}
-	]);
+	const messageGroups = reactive([]);
 
-	// 原始消息数据（用于模拟不同选项卡下的数据）
-	const allMessages = reactive({
-		announcement: [{
-			type: 'system',
-			messages: [{
-					id: 101,
-					title: '系统升级公告',
-					description: '亲爱的用户，我们将于2025年5月1日凌晨2点-4点进行系统升级维护',
-					time: '2025-4-25',
-					icon: 'sound-filled',
-					isRead: false,
-					relatedId: 'notice_101',
-					sourceType: 'system'
-				},
-				{
-					id: 102,
-					title: '活动公告',
-					description: '五一特别活动：发布原创文章即可参与抽奖，赢取精美礼品',
-					time: '2025-4-23',
-					icon: 'sound-filled',
-					isRead: true
-				},
-				{
-					id: 103,
-					title: '功能更新公告',
-					description: '新增markdown编辑器功能，支持更丰富的文章排版',
-					time: '2025-4-20',
-					icon: 'sound-filled',
-					isRead: false
-				}
-			]
-		}],
-		like: [{
-				type: 'system',
-				messages: [{
-					id: 1,
-					title: '系统消息',
-					description: '您的文章《Vue3新特性解析》获得5个赞',
-					time: '2025-4-20',
-					icon: 'notification',
-					isRead: false
-				}]
-			},
-			{
-				type: 'account',
-				messages: [{
-						id: 2,
-						title: '点赞通知',
-						description: '用户"前端达人"赞了您的文章',
-						time: '2025-4-19',
-						icon: 'heart-filled',
-						isRead: true,
-						relatedId: 'article_123',
-						sourceUser: {
-							id: 'user_001',
-							name: '前端达人',
-							avatar: '/static/avatar/default.png'
-						}
-					},
-					{
-						id: 3,
-						title: '点赞通知',
-						description: '用户"JavaScript专家"赞了您的评论',
-						time: '2025-4-18',
-						icon: 'heart-filled',
-						isRead: false
-					}
-				]
-			}
-		],
-		comment: [{
-				type: 'system',
-				messages: [{
-					id: 201,
-					title: '评论汇总',
-					description: '您的评论收到了3条新回复',
-					time: '2025-4-22',
-					icon: 'notification',
-					isRead: false
-				}]
-			},
-			{
-				type: 'account',
-				messages: [{
-						id: 202,
-						title: '评论回复',
-						description: '用户"Vue学习者"回复了您在《Vue3实战指南》文章下的评论',
-						time: '2025-4-21',
-						icon: 'chat-filled',
-						isRead: false,
-						relatedId: 'article_456',
-						commentId: 'comment_789',
-						sourceUser: {
-							id: 'user_002',
-							name: 'Vue学习者',
-							avatar: '/static/avatar/default.png'
-						},
-						articleTitle: 'Vue3实战指南'
-					},
-					{
-						id: 203,
-						title: '评论回复',
-						description: '用户"前端工程师"回复了您在《JavaScript设计模式》文章下的评论',
-						time: '2025-4-20',
-						icon: 'chat-filled',
-						isRead: true,
-						relatedId: 'article_789',
-						commentId: 'comment_123',
-						sourceUser: {
-							id: 'user_003',
-							name: '前端工程师',
-							avatar: '/static/avatar/default.png'
-						},
-						articleTitle: 'JavaScript设计模式'
-					},
-					{
-						id: 204,
-						title: '评论回复',
-						description: '用户"区块链开发者"回复了您在《Web3入门》文章下的评论',
-						time: '2025-4-19',
-						icon: 'chat-filled',
-						isRead: false,
-						relatedId: 'article_321',
-						commentId: 'comment_456',
-						sourceUser: {
-							id: 'user_004',
-							name: '区块链开发者',
-							avatar: '/static/avatar/default.png'
-						},
-						articleTitle: 'Web3入门'
-					}
-				]
-			}
-		],
-		subscribe: [{
-				type: 'system',
-				messages: [{
-					id: 6,
-					title: '系统消息',
-					description: '恭喜您获得2位新关注者',
-					time: '2025-4-20',
-					icon: 'notification',
-					isRead: true
-				}]
-			},
-			{
-				type: 'account',
-				messages: [{
-						id: 7,
-						title: '新关注者',
-						description: '用户"前端学习者"关注了您',
-						time: '2025-4-18',
-						icon: 'bookmark-filled',
-						isRead: false,
-						sourceUser: {
-							id: 'user_007',
-							name: '前端学习者',
-							avatar: '/static/avatar/default.png'
-						},
-						subscribeType: 'new'
-					},
-					{
-						id: 8,
-						title: '关注通知',
-						description: '用户"CSS大师"关注了您',
-						time: '2025-4-16',
-						icon: 'bookmark-filled',
-						isRead: true
-					}
-				]
-			},
-			{
-				type: 'account',
-				messages: [{
-						id: 7,
-						title: '新关注者',
-						description: '用户"前端学习者"关注了您',
-						time: '2025-4-18',
-						icon: 'bookmark-filled',
-						isRead: false,
-						sourceUser: {
-							id: 'user_007',
-							name: '前端学习者',
-							avatar: '/static/avatar/default.png'
-						},
-						subscribeType: 'new'
-					},
-					{
-						id: 8,
-						title: '关注通知',
-						description: '用户"CSS大师"关注了您',
-						time: '2025-4-16',
-						icon: 'bookmark-filled',
-						isRead: true
-					}
-				]
-			},
-			{
-				type: 'account',
-				messages: [{
-						id: 7,
-						title: '新关注者',
-						description: '用户"前端学习者"关注了您',
-						time: '2025-4-18',
-						icon: 'bookmark-filled',
-						isRead: false,
-						sourceUser: {
-							id: 'user_007',
-							name: '前端学习者',
-							avatar: '/static/avatar/default.png'
-						},
-						subscribeType: 'new'
-					},
-					{
-						id: 8,
-						title: '关注通知',
-						description: '用户"CSS大师"关注了您',
-						time: '2025-4-16',
-						icon: 'bookmark-filled',
-						isRead: true
-					}
-				]
-			},
-			{
-				type: 'account',
-				messages: [{
-						id: 7,
-						title: '新关注者',
-						description: '用户"前端学习者"关注了您',
-						time: '2025-4-18',
-						icon: 'bookmark-filled',
-						isRead: false,
-						sourceUser: {
-							id: 'user_007',
-							name: '前端学习者',
-							avatar: '/static/avatar/default.png'
-						},
-						subscribeType: 'new'
-					},
-					{
-						id: 8,
-						title: '关注通知',
-						description: '用户"CSS大师"关注了您',
-						time: '2025-4-16',
-						icon: 'bookmark-filled',
-						isRead: true
-					}
-				]
-			}
-		]
+	// 当前选中的选项卡类型
+	const currentTabType = computed(() => {
+		return tabs[currentTab.value].apiType;
 	});
 
 	/**
+	 * 将API返回的消息转换为展示格式
+	 * @param {Array} messages - API返回的消息列表
+	 * @returns {Array} - 转换后的消息组
+	 */
+	const formatMessages = (messages) => {
+		if (!messages || !messages.length) return [];
+		
+		// 按日期分组
+		const groupByDate = {};
+		messages.forEach(msg => {
+			// 提取日期部分
+			const dateStr = msg.createTime.split(' ')[0];
+			if (!groupByDate[dateStr]) {
+				groupByDate[dateStr] = [];
+			}
+			
+			// 为不同类型的消息设置不同的图标
+			let icon = 'notification';
+			switch (msg.type) {
+				case 0: // 系统公告
+					icon = 'sound-filled';
+					break;
+				case 1: // 点赞通知
+					icon = 'heart-filled';
+					break;
+				case 2: // 关注通知
+					icon = 'person-filled';
+					break;
+				case 3: // 评论通知
+					icon = 'chat-filled';
+					break;
+			}
+			
+			// 构建展示用的消息对象
+			const formattedMessage = {
+				id: msg.id,
+				title: getMessageTitle(msg),
+				description: msg.content,
+				time: msg.createTime.split(' ')[1], // 只显示时间部分
+				icon: icon,
+				isRead: msg.isRead === 1, // 数据库中 0-未读，1-已读，转为布尔值
+				// 保存原始消息数据，用于点击时跳转
+				originalMessage: msg
+			};
+			
+			groupByDate[dateStr].push(formattedMessage);
+		});
+		
+		// 将分组结果转换为数组格式
+		const result = [];
+		Object.keys(groupByDate).sort((a, b) => new Date(b) - new Date(a)).forEach(date => {
+			result.push({
+				date: date,
+				messages: groupByDate[date]
+			});
+		});
+		
+		return result;
+	};
+	
+	/**
+	 * 根据消息类型生成合适的标题
+	 * @param {Object} message - 消息对象
+	 * @returns {String} - 消息标题
+	 */
+	const getMessageTitle = (message) => {
+		switch (message.type) {
+			case 0: // 系统公告
+				return '系统公告';
+			case 1: // 点赞通知
+				// 从fromUserInfo获取用户信息，如果后端提供
+				const fromUserName = message.fromUserInfo ? message.fromUserInfo.nickname : 
+					(message.fromUserId ? `用户ID:${message.fromUserId}` : '有人');
+				return `${fromUserName}点赞了您`;
+			case 2: // 关注通知
+				// 从fromUserInfo获取用户信息，如果后端提供
+				const followerName = message.fromUserInfo ? message.fromUserInfo.nickname : 
+					(message.fromUserId ? `用户ID:${message.fromUserId}` : '有人');
+				return `${followerName}关注了您`;
+			case 3: // 评论通知
+				// 从fromUserInfo获取用户信息，如果后端提供
+				const commenterName = message.fromUserInfo ? message.fromUserInfo.nickname : 
+					(message.fromUserId ? `用户ID:${message.fromUserId}` : '有人');
+				return `${commenterName}评论了您`;
+			default:
+				return '消息通知';
+		}
+	};
+
+	/**
 	 * 加载消息列表
-	 * TODO: 实际项目中应替换为API调用
 	 */
 	const loadMessages = () => {
 		// 如果已经没有更多数据或正在加载中，则不处理
@@ -377,69 +218,58 @@
 
 		isLoading.value = true;
 
-		// 模拟API请求延迟
-		setTimeout(() => {
-			const tabType = tabs[currentTab.value].type;
-
-			if (allMessages[tabType]) {
-				// 复制对应类型的消息数据
-				Object.keys(messageGroups).forEach(key => {
-					messageGroups.splice(0, messageGroups.length);
-				});
-
-				// 计算本次应加载的消息数据
-				const endIndex = Math.min(currentPage.value * pageSize, allMessages[tabType].length);
-				const startIndex = 0; // 由于我们是替换而非追加，所以从0开始
-
-				// 获取当前页的数据
-				const pageData = allMessages[tabType].slice(startIndex, endIndex);
-
-				// 添加到消息列表
-				pageData.forEach(group => {
-					messageGroups.push({
-						type: group.type,
-						messages: [...group.messages]
+		// 准备请求参数
+		const params = {
+			type: currentTabType.value, // 当前选项卡对应的消息类型
+			page: currentPage.value,
+			pageSize: pageSize
+		};
+		
+		// 调用API获取消息列表
+		getMessages(params)
+			.then(res => {
+				if (res.code === 200) {
+					// 格式化消息数据
+					const formattedGroups = formatMessages(res.data.list);
+					
+					// 如果是首页或刷新操作，替换所有数据
+					if (currentPage.value === 1) {
+						messageGroups.splice(0, messageGroups.length, ...formattedGroups);
+					} else {
+						// 否则追加数据
+						messageGroups.push(...formattedGroups);
+					}
+					
+					// 更新页码
+					currentPage.value++;
+					
+					// 检查是否还有更多数据
+					if (res.data.list.length < pageSize) {
+						noMoreData.value = true;
+					}
+				} else {
+					// 处理API错误
+					uni.showToast({
+						title: res.message || '获取消息失败',
+						icon: 'none'
 					});
-				});
-
-				// 更新页码
-				currentPage.value++;
-
-				// 如果获取的数据比总数少，说明已加载完全部数据
-				if (endIndex >= allMessages[tabType].length) {
-					noMoreData.value = true;
 				}
-			}
-
-			isLoading.value = false;
-
-			// 如果是刷新状态，结束刷新
-			if (isRefreshing.value) {
-				isRefreshing.value = false;
-			}
-		}, 800);
-
-		// TODO: 替换为实际API调用
-		// api.getMessages({
-		//   page: currentPage.value,
-		//   pageSize: pageSize,
-		//   type: tabs[currentTab.value].type
-		// }).then(res => {
-		//   // 处理响应数据
-		//   if (res.data.length > 0) {
-		//     messageGroups.push(...res.data);
-		//     currentPage.value++;
-		//     noMoreData.value = res.data.length < pageSize;
-		//   } else {
-		//     noMoreData.value = true;
-		//   }
-		//   isLoading.value = false;
-		//   if (isRefreshing.value) isRefreshing.value = false;
-		// }).catch(err => {
-		//   console.error('获取消息列表失败', err);
-		//   isLoading.value = false;
-		//   if (isRefreshing.value) isRefreshing.value = false;
-		// });
+			})
+			.catch(err => {
+				console.error('加载消息列表失败:', err);
+				uni.showToast({
+					title: '网络异常，请稍后再试',
+					icon: 'none'
+				});
+			})
+			.finally(() => {
+				isLoading.value = false;
+				
+				// 如果是刷新状态，结束刷新
+				if (isRefreshing.value) {
+					isRefreshing.value = false;
+				}
+			});
 	};
 
 	/**
@@ -450,16 +280,12 @@
 		isRefreshing.value = true;
 
 		// 重置数据
-		Object.keys(messageGroups).forEach(key => {
-			messageGroups.splice(0, messageGroups.length);
-		});
+		messageGroups.splice(0, messageGroups.length);
 		currentPage.value = 1;
 		noMoreData.value = false;
 
 		// 重新加载
 		loadMessages();
-
-		// 提示用户
 	};
 
 	/**
@@ -467,11 +293,6 @@
 	 */
 	const loadMore = () => {
 		if (!noMoreData.value) {
-			uni.showToast({
-				title: '加载更多消息',
-				icon: 'none',
-				duration: 500
-			});
 			loadMessages();
 		} else {
 			uni.showToast({
@@ -492,9 +313,7 @@
 		currentTab.value = index;
 
 		// 重置加载状态
-		Object.keys(messageGroups).forEach(key => {
-			messageGroups.splice(0, messageGroups.length);
-		});
+		messageGroups.splice(0, messageGroups.length);
 		currentPage.value = 1;
 		noMoreData.value = false;
 
@@ -518,69 +337,129 @@
 	 */
 	const readMessage = (message) => {
 		if (!message.isRead) {
+			// 先更新UI状态，优化体验
 			message.isRead = true;
 
-			// 显示提示
-			uni.showToast({
-				title: '已读消息',
-				icon: 'success',
-				duration: 1000
-			});
-
-			// TODO: 实际项目中可以调用API标记消息为已读
-			// api.markMessageRead(message.id).then(res => {
-			//   // 处理返回结果
-			// });
-		}
-
-		// 处理点击消息的其他逻辑
-		// 根据消息类型跳转到不同页面或者执行不同操作
-		switch (tabs[currentTab.value].type) {
-			case 'announcement':
-				uni.navigateTo({
-					url: `/pages/announcement-detail/announcement-detail?id=${message.relatedId}`
-				});
-				break;
-			case 'like':
-				uni.navigateTo({
-					url: `/pages/article-detail/article-detail?id=${message.relatedId}`
-				});
-				break;
-			case 'collect':
-				uni.navigateTo({
-					url: `/pages/collection/collection?id=${message.sourceUser.id}`
-				});
-				break;
-			case 'comment':
-				// 评论跳转，带上评论ID以便高亮显示对应评论
-				uni.navigateTo({
-					url: `/pages/article-detail/article-detail?id=${message.relatedId}&commentId=${message.commentId}`,
-					success: () => {
-						// 成功跳转后的回调，可以用于显示额外信息
-						if (message.articleTitle) {
-							uni.showToast({
-								title: `正在查看《${message.articleTitle}》下的评论`,
-								icon: 'none',
-								duration: 1500
-							});
-						}
+			// 调用API标记消息为已读
+			markMessageRead(message.id)
+				.then(res => {
+					if (res.code !== 200) {
+						// 如果API调用失败，恢复UI状态
+						message.isRead = false;
+						
+						// 显示错误提示
+						uni.showToast({
+							title: res.message || '标记已读失败',
+							icon: 'none'
+						});
 					}
+				})
+				.catch(err => {
+					console.error('标记消息已读失败:', err);
+					// 恢复UI状态
+					message.isRead = false;
+				});
+		}
+
+		// 获取原始消息数据
+		const originalMessage = message.originalMessage;
+		if (!originalMessage) return;
+		
+		// 根据消息类型执行不同的跳转逻辑
+		switch (originalMessage.type) {
+			case 0: // 系统公告
+				// 跳转到公告详情页
+				uni.showToast({
+					title: '暂未实现公告详情页',
+					icon: 'none'
 				});
 				break;
-			case 'subscribe':
+				
+			case 1: // 点赞通知
+				// 由于数据库没有targetType字段，我们需要通过消息内容判断目标类型
+				// 这里假设只有文章点赞，实际情况根据消息内容或其他字段区分
 				uni.navigateTo({
-					url: `/pages/user-profile/user-profile?id=${message.sourceUser.id}`
+					url: `/pages/article-detail/article-detail?id=${originalMessage.targetId}`
+				});
+				break;
+				
+			case 2: // 关注通知
+				// 跳转到关注用户的资料页
+				if (originalMessage.fromUserId) {
+					uni.navigateTo({
+						url: `/pages/user-profile/user-profile?id=${originalMessage.fromUserId}`
+					});
+				}
+				break;
+				
+			case 3: // 评论通知
+				// 跳转到评论所在的文章
+				// 假设targetId是文章ID，如果后端没有提供评论ID，则无法定位到具体评论
+				uni.navigateTo({
+					url: `/pages/article-detail/article-detail?id=${originalMessage.targetId}`
 				});
 				break;
 		}
+	};
+	
+	/**
+	 * 全部标记为已读
+	 */
+	const markAllAsRead = () => {
+		// 确认对话框
+		uni.showModal({
+			title: '标记已读',
+			content: `是否将所有${tabs[currentTab.value].name}标记为已读？`,
+			success: (res) => {
+				if (res.confirm) {
+					// 显示加载提示
+					uni.showLoading({
+						title: '标记中...'
+					});
+					
+					// 调用API标记所有消息为已读
+					markAllMessagesRead(currentTabType.value)
+						.then(res => {
+							if (res.code === 200) {
+								// 更新UI状态
+								messageGroups.forEach(group => {
+									group.messages.forEach(msg => {
+										msg.isRead = true;
+									});
+								});
+								
+								// 显示成功提示
+								uni.showToast({
+									title: `已标记${res.data?.readCount || '所有'}消息为已读`,
+									icon: 'success'
+								});
+							} else {
+								// 显示错误提示
+								uni.showToast({
+									title: res.message || '标记已读失败',
+									icon: 'none'
+								});
+							}
+						})
+						.catch(err => {
+							console.error('标记所有消息已读失败:', err);
+							uni.showToast({
+								title: '网络异常，请稍后再试',
+								icon: 'none'
+							});
+						})
+						.finally(() => {
+							uni.hideLoading();
+						});
+				}
+			}
+		});
 	};
 
 	// 页面初始化
 	onMounted(() => {
 		// 加载默认选项卡的消息
 		loadMessages();
-
-		// TODO: 后续可以添加实时消息通知的功能
 	});
 </script>
 
@@ -659,6 +538,33 @@
 				margin: 20rpx 0;
 				padding: 20rpx 0;
 			}
+			
+			// 标记全部已读按钮
+			.mark-all-read {
+				text-align: center;
+				font-size: 26rpx;
+				color: #4361ee;
+				background-color: #fff;
+				padding: 20rpx 0;
+				margin-bottom: 20rpx;
+				border-radius: 20rpx;
+				box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
+				
+				&:active {
+					opacity: 0.7;
+				}
+			}
+			
+			// 日期分组标题
+			.date-header {
+				font-size: 24rpx;
+				color: #999;
+				padding: 20rpx 30rpx;
+				position: sticky;
+				top: 0;
+				z-index: 1;
+				background-color: #f5f5f5;
+			}
 
 			.message-item {
 				display: flex;
@@ -678,6 +584,10 @@
 					justify-content: center;
 					align-items: center;
 					margin-right: 20rpx;
+					
+					&.like-icon {
+						background-color: rgba(255, 107, 107, 0.1);
+					}
 				}
 
 				.message-content {
@@ -693,6 +603,7 @@
 					.message-desc {
 						font-size: 26rpx;
 						color: #666;
+						line-height: 1.4;
 					}
 				}
 
@@ -701,6 +612,7 @@
 					flex-direction: column;
 					align-items: flex-end;
 					justify-content: space-between;
+					min-width: 120rpx;
 
 					.message-time {
 						font-size: 24rpx;
