@@ -37,7 +37,7 @@
 		<view class="content-area">
 			<ArticleList 
 				ref="articleListRef"
-				:key="currentTag" 
+				:key="'tag-'+currentTag" 
 				list-type="tag"
 				:tag-name="currentTag === '全部' ? '' : currentTag"
 				:height="'calc(100vh - 180rpx)'"
@@ -331,14 +331,9 @@ const switchCategory = (tagName) => {
 		}
 	});
 	
+	// H5环境不需要手动刷新，因为:key的变化会触发组件重新渲染
 	// #ifdef H5
-	// 对于H5环境，使用ArticleList组件刷新
-	nextTick(() => {
-		if (articleListRef.value) {
-			articleListRef.value.resetList(); // 重置列表
-			articleListRef.value.loadArticles(); // 加载文章
-		}
-	});
+	console.log('H5环境切换标签，将通过key触发组件重新渲染');
 	// #endif
 	
 	// #ifndef H5
@@ -930,6 +925,23 @@ onMounted(() => {
 				console.log(`分类页更新文章[${data.articleId}]收藏状态:`, data);
 				article.isCollected = data.isCollected;
 				article.collectCount = data.collectCount;
+			}
+		}
+	});
+	
+	// 初始滚动到激活的标签
+	nextTick(() => {
+		const activeTagElement = document.querySelector('.category-item.active');
+		if (activeTagElement) {
+			const scrollView = document.querySelector('.category-scroll');
+			if (scrollView) {
+				const tagLeft = activeTagElement.offsetLeft;
+				const tagWidth = activeTagElement.offsetWidth;
+				const scrollWidth = scrollView.offsetWidth;
+				
+				// 计算滚动位置，使标签居中
+				const scrollTo = tagLeft - (scrollWidth / 2) + (tagWidth / 2);
+				scrollView.scrollLeft = Math.max(0, scrollTo);
 			}
 		}
 	});
