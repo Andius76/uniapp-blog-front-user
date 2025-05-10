@@ -838,9 +838,13 @@
 					params.type = 'follow';
 					console.log('加载关注的作者文章');
 				} else if (props.listType === 'hot') {
-					// 获取热门文章
-					params.sort = 'hot';
-					console.log('加载热门文章');
+					// 获取热门文章 - 根据浏览量降序排序
+					params.sort = 'view_count';
+					console.log('加载热门文章 - 按浏览量排序');
+				} else if (props.listType === 'recommend') {
+					// 获取推荐文章 - 根据点赞和评论总数降序排序
+					params.sort = 'popularity';
+					console.log('加载推荐文章 - 按点赞和评论数排序');
 				} else if (props.listType === 'latest') {
 					// 获取最新文章
 					params.sort = 'new';
