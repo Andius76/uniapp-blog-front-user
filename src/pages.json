@@ -77,6 +77,12 @@
 			"style": {
 				"navigationBarTitleText": "关注列表"
 			}
+		},
+		{
+			"path": "pages/fans/fans",
+			"style": {
+				"navigationBarTitleText": "粉丝列表"
+			}
 		}
 	],
 	"tabBar": {

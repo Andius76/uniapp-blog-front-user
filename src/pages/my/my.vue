@@ -34,7 +34,7 @@
 							<text class="stat-label">关注</text>
 						</view>
 						<view class="stat-divider">|</view>
-						<view class="stat-item" @click="navigateTo('/pages/followers/followers')">
+						<view class="stat-item" @click="navigateTo('/pages/fans/fans')">
 							<text class="stat-num">{{ data.userInfo.followerCount }}</text>
 							<text class="stat-label">粉丝</text>
 						</view>
@@ -152,7 +152,7 @@
 					<text class="stat-label">关注</text>
 				</view>
 				<view class="stat-divider">|</view>
-				<view class="stat-item" @click="navigateTo('/pages/followers/followers')">
+				<view class="stat-item" @click="navigateTo('/pages/fans/fans')">
 					<text class="stat-num">{{ data.userInfo.followerCount }}</text>
 					<text class="stat-label">粉丝</text>
 				</view>
@@ -902,7 +902,7 @@
 				url
 			});
 			return;
-		} else if (url.includes('followers')) {
+		} else if (url.includes('fans')) {
 			uni.showToast({
 				title: '查看我的粉丝',
 				icon: 'none'
