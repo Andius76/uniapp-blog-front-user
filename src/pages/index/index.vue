@@ -5,6 +5,7 @@
 		<view class="header-fixed">
 			<view class="header-top">
 				<navigator url="/pages/index/index" class="logo">首页</navigator>
+				<navigator @click="classification">分类</navigator>
 				<!-- 搜索框 -->
 				<view class="search-bar">
 					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />

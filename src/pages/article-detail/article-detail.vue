@@ -271,7 +271,8 @@
 		showScrollTopBtn: false, // 是否显示滚动到顶部按钮
 		isScrollingDown: false, // 是否正在向下滚动
 		lastScrollTop: 0, // 上次滚动位置
-		scrollTimer: null // 滚动定时器
+		scrollTimer: null, // 滚动定时器
+		isInputFocused: false // 是否正在输入评论
 	});
 
 	// 日期格式化函数
@@ -1394,6 +1395,9 @@
 	const handleInputFocus = (e) => {
 		// 处理键盘弹出
 		data.inputBottom = e.detail.height || 0;
+		
+		// 设置输入框焦点状态
+		data.isInputFocused = true;
 
 		// #ifdef APP-PLUS || MP-WEIXIN
 		// APP和小程序环境下，使用固定位置，而不是过高的位置
@@ -1410,15 +1414,38 @@
 			}, 100);
 		}
 		// #endif
-	};
+		
+		// 输入框获得焦点时，隐藏回到顶部按钮
+		if (backToTopRef.value) {
+			console.log('输入框获得焦点，隐藏回到顶部按钮');
+			data.showScrollTopBtn = false;
+			// 强制隐藏组件
+			backToTopRef.value.hideButton && backToTopRef.value.hideButton();
+		}
+	}
 
 	// 处理输入框失去焦点
 	const handleInputBlur = () => {
+		// 重置输入框焦点状态
+		data.isInputFocused = false;
+		
 		// 延迟重置输入框位置，避免闪烁
 		setTimeout(() => {
 			data.inputBottom = 0;
 		}, 100);
-	};
+		
+		// 输入框失去焦点后，根据当前滚动位置决定是否显示回到顶部按钮
+		setTimeout(() => {
+			// #ifdef APP-PLUS || MP-WEIXIN
+			if (data.lastScrollTop > 300 && backToTopRef.value) {
+				console.log('输入框失去焦点，当前滚动位置:', data.lastScrollTop);
+				if (backToTopRef.value.showButton) {
+					backToTopRef.value.showButton();
+				}
+			}
+			// #endif
+		}, 300);
+	}
 
 	// 处理下拉刷新事件
 	const onRefresh = () => {
@@ -1509,6 +1536,21 @@
 
 		// 根据滚动位置决定是否显示回到顶部按钮
 		data.showScrollTopBtn = scrollTop > 300;
+		
+		// #ifdef APP-PLUS || MP-WEIXIN
+		// 同步更新回到顶部按钮的显示状态
+		if (backToTopRef.value) {
+			if (scrollTop > 300) {
+				// 如果没有正在输入评论则显示按钮
+				if (!data.isInputFocused) {
+					backToTopRef.value.showButton && backToTopRef.value.showButton();
+				}
+			} else {
+				// 隐藏按钮
+				backToTopRef.value.hideButton && backToTopRef.value.hideButton();
+			}
+		}
+		// #endif
 
 		// 判断滚动方向
 		const isScrollingDown = scrollTop > data.lastScrollTop;

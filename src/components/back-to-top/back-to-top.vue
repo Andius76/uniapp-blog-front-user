@@ -80,6 +80,16 @@ const scrollTop = ref(0);
 const visible = ref(false);
 let scrollListener = null;
 
+// 强制隐藏按钮的方法
+const hideButton = () => {
+	visible.value = false;
+};
+
+// 强制显示按钮的方法
+const showButton = () => {
+	visible.value = true;
+};
+
 // 监听页面滚动
 const handlePageScroll = (e) => {
 	scrollTop.value = e.scrollTop;
@@ -182,7 +192,9 @@ onUnmounted(() => {
 
 // 导出组件方法
 defineExpose({
-	scrollToTop
+	scrollToTop,
+	hideButton,
+	showButton
 });
 </script>
 
