@@ -1002,6 +1002,17 @@
 			// 确保布尔值格式正确
 			article.isLiked = !!article.isLiked;
 			article.isCollected = !!article.isCollected;
+			
+			// 处理作者关注状态字段映射
+			if (article.author) {
+				// 检查后端返回的is_followed字段
+				if (article.author.is_followed !== undefined && article.author.isFollowed === undefined) {
+					article.author.isFollowed = article.author.is_followed;
+					console.log(`修正作者[${article.author.id}]关注状态字段映射: ${article.author.is_followed} -> ${article.author.isFollowed}`);
+				}
+				// 确保关注状态是布尔值
+				article.author.isFollowed = !!article.author.isFollowed;
+			}
 
 			// 检查数据库字段映射 - 后端用cover_image，前端用coverImage
 			if (article.cover_image && !article.coverImage) {

@@ -258,7 +258,7 @@
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	// 导入API接口
 	import { getArticleDetail, likeArticle, collectArticle } from '@/api/article';
-	import { getUserInfo, followUser } from '@/api/user'; // 导入getUserInfo和followUser接口
+	import { getUserInfo, followUser, checkUserFollow } from '@/api/user'; // 导入getUserInfo和followUser接口
 	import { onLoad, onShow } from '@dcloudio/uni-app';
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
@@ -1628,88 +1628,34 @@
 	/**
 	 * 处理用户关注
 	 */
-	const handleFollow = (article) => {
+	const handleFollow = async (article) => {
 		if (!article.author) return;
 		
-		// 检查登录状态
-		const token = uni.getStorageSync('token');
-		if (!token) {
+		try {
+			const isFollowed = article.author.isFollowed;
+			await followUser(article.author.id, !isFollowed);
+			
+			// 更新当前文章作者的关注状态
+			article.author.isFollowed = !isFollowed;
+			
+			// 更新所有相同作者的文章关注状态
+			articleList.value.forEach(item => {
+				if (item.author && item.author.id === article.author.id) {
+					item.author.isFollowed = !isFollowed;
+				}
+			});
+			
 			uni.showToast({
-				title: '请先登录',
+				title: !isFollowed ? '关注成功' : '取消关注成功',
 				icon: 'none'
 			});
-			return;
-		}
-		
-		// 检查作者ID是否存在
-		if (!article.author.id) {
-			console.error('作者ID不存在，无法执行关注操作');
+		} catch (error) {
+			console.error('关注操作失败:', error);
 			uni.showToast({
-				title: '操作失败，作者信息不完整',
+				title: '操作失败，请重试',
 				icon: 'none'
 			});
-			return;
 		}
-		
-		// 获取当前关注状态
-		const currentFollowState = article.author.isFollowed;
-		// 预先切换UI状态，提供即时反馈
-		article.author.isFollowed = !currentFollowState;
-		
-		// 显示操作中提示
-		uni.showLoading({
-			title: currentFollowState ? '取消关注中...' : '关注中...'
-		});
-		
-		// 调用关注/取消关注API
-		followUser(article.author.id, !currentFollowState)
-			.then(res => {
-				// 隐藏加载提示
-				uni.hideLoading();
-				
-				// 显示成功提示
-				uni.showToast({
-					title: !currentFollowState ? '关注成功' : '已取消关注',
-					icon: !currentFollowState ? 'success' : 'none'
-				});
-				
-				// 更新用户关注计数
-				if (!currentFollowState) {
-					// 关注数+1
-					userInfo.followCount++;
-				} else {
-					// 关注数-1，确保不小于0
-					userInfo.followCount = Math.max(0, userInfo.followCount - 1);
-				}
-				
-				// 更新本地存储的用户信息
-				const localUserInfo = uni.getStorageSync('userInfo');
-				if (localUserInfo) {
-					localUserInfo.followCount = userInfo.followCount;
-					uni.setStorageSync('userInfo', localUserInfo);
-				}
-				
-				// 发送关注状态更新事件，通知其他页面
-				uni.$emit('user_follow_updated', {
-					userId: article.author.id,
-					isFollowed: !currentFollowState
-				});
-			})
-			.catch(err => {
-				// 隐藏加载提示
-				uni.hideLoading();
-				
-				// 恢复原始状态
-				article.author.isFollowed = currentFollowState;
-				
-				// 显示错误提示
-				uni.showToast({
-					title: '操作失败，请重试',
-					icon: 'none'
-				});
-				
-				console.error('关注操作失败:', err);
-			});
 	};
 
 	/**
@@ -2612,6 +2558,72 @@
 			data.searchResultCount = results.length;
 		} else {
 			data.searchResultCount = 0;
+		}
+	};
+
+	// 在setup中添加新的方法
+	const checkAuthorsFollowStatus = async (articles) => {
+		if (!articles || articles.length === 0) return;
+		
+		// 获取所有作者的ID
+		const authorIds = articles.map(article => article.author?.id).filter(id => id);
+		
+		// 批量检查关注状态
+		const followStatusPromises = authorIds.map(authorId => 
+			checkUserFollow(authorId)
+				.then(res => ({ authorId, isFollowed: res.data }))
+				.catch(() => ({ authorId, isFollowed: false }))
+		);
+		
+		const followStatuses = await Promise.all(followStatusPromises);
+		
+		// 更新文章列表中作者的关注状态
+		articles.forEach(article => {
+			if (article.author) {
+				const status = followStatuses.find(s => s.authorId === article.author.id);
+				if (status) {
+					article.author.isFollowed = status.isFollowed;
+				}
+			}
+		});
+	};
+
+	// 修改获取文章列表的方法
+	const fetchArticleList = async () => {
+		try {
+			isLoading.value = true;
+			const response = await getArticleList({
+				page: currentPage.value,
+				pageSize: pageSize.value,
+				// ... 其他参数 ...
+			});
+			
+			if (response.code === 200) {
+				const newArticles = response.data.records || [];
+				// 检查作者关注状态
+				await checkAuthorsFollowStatus(newArticles);
+				
+				if (currentPage.value === 1) {
+					articleList.value = newArticles;
+				} else {
+					articleList.value = [...articleList.value, ...newArticles];
+				}
+				
+				total.value = response.data.total;
+				noMoreData.value = articleList.value.length >= total.value;
+			}
+		} catch (error) {
+			console.error('获取文章列表失败:', error);
+			uni.showToast({
+				title: '获取文章列表失败',
+				icon: 'none'
+			});
+		} finally {
+			isLoading.value = false;
+			// 结束下拉刷新状态
+			if (data.isRefreshing) {
+				data.isRefreshing = false;
+			}
 		}
 	};
 </script>
