@@ -119,7 +119,7 @@
 
 							<!-- 评论回复区域 -->
 							<view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
-								<view v-for="(reply, replyIndex) in comment.replies" :key="reply.id" class="reply-item">
+								<view v-for="(reply, replyIndex) in getVisibleReplies(comment)" :key="reply.id" class="reply-item">
 									<image :src="formatAvatarUrl(reply.avatar)" class="reply-avatar"
 										@error="() => handleAvatarError(index, 'reply', replyIndex)" 
 										@click="navigateToUserProfile(reply.userId)" />
@@ -151,7 +151,7 @@
 								<!-- 查看更多回复 -->
 								<view v-if="comment.replies.length > 2 && !comment.showAllReplies" class="more-replies"
 									@click="showAllReplies(index)">
-									<text>查看更多回复</text>
+									<text>查看更多{{ comment.replies.length - 2 }}条回复</text>
 								</view>
 							</view>
 						</view>
@@ -1889,6 +1889,15 @@
 			url: `/pages/user-profile/user-profile?id=${userId}`
 		});
 		// #endif
+	};
+
+	// 获取可见回复
+	const getVisibleReplies = (comment) => {
+		if (comment.showAllReplies) {
+			return comment.replies;
+		} else {
+			return comment.replies.slice(0, 2);
+		}
 	};
 </script>
 
