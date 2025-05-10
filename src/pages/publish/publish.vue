@@ -336,8 +336,8 @@
 		// 对HTML内容进行处理，确保图片宽度不超过容器
 		html = html.replace(/<img/g, '<img style="max-width:100%;height:auto;display:block;margin:20rpx 0;border-radius:8rpx;object-fit:cover;"');
 		
-		// 添加样式到段落
-		html = html.replace(/<p/g, '<p style="margin-bottom:20rpx;width:100%;overflow-wrap:break-word;min-height:30rpx;"');
+		// 增强段落样式，确保段落之间有足够的间距
+		html = html.replace(/<p/g, '<p style="margin-bottom:30rpx;width:100%;overflow-wrap:break-word;min-height:30rpx;display:block;"');
 		
 		// 添加样式到标题
 		html = html.replace(/<h1/g, '<h1 style="font-size:36rpx;font-weight:bold;margin:30rpx 0 20rpx;width:100%;overflow-wrap:break-word;"');
@@ -354,6 +354,9 @@
 		
 		// 添加样式到表格
 		html = html.replace(/<table/g, '<table style="width:100%;border-collapse:collapse;margin:20rpx 0;overflow-x:auto;display:block;"');
+		
+		// 处理换行符，确保每个换行都被转换为段落
+		html = html.replace(/\n(?!<\/p>|<p>|<div|<\/div>|<br>)/g, '<br>');
 		
 		return html;
 	});
@@ -469,6 +472,11 @@
 		articleData.htmlContent = e.detail.html || '';
 		articleData.content = e.detail.text || '';
 		editorContent.value = e.detail.html || '';
+		
+		// 处理空行问题 - 确保换行符被正确转换为HTML标签
+		if (articleData.htmlContent && !articleData.htmlContent.includes('<br>') && articleData.content.includes('\n')) {
+			articleData.htmlContent = articleData.htmlContent.replace(/\n/g, '<br>');
+		}
 		
 		// 更新字数统计
 		articleData.wordCount = e.detail.text ? e.detail.text.length : 0;
@@ -803,8 +811,21 @@
 
 	// 确认标签选择
 	const confirmTagSelection = () => {
-		articleData.tags = [...selectedTags.value];
+		// 优化：过滤空标签，确保格式一致
+		articleData.tags = selectedTags.value
+			.map(tag => String(tag).trim())
+			.filter(tag => tag.length > 0);
+			
+		// 确保没有重复标签
+		articleData.tags = [...new Set(articleData.tags)];
+		
 		closeTagPopup();
+
+		// 查看结果
+		console.log('确认的标签数据:', {
+			tags: JSON.stringify(articleData.tags),
+			count: articleData.tags.length
+		});
 
 		uni.showToast({
 			title: '标签已添加',
@@ -1320,6 +1341,21 @@
 		});
 	};
 
+	/**
+	 * 标签数据统一处理函数 - 优化版本，确保标签数据格式正确
+	 */
+	const prepareTags = (tags) => {
+		if (!Array.isArray(tags) || tags.length === 0) return [];
+		
+		// 过滤空值并转换为字符串
+		const processedTags = tags
+			.map(tag => String(tag).trim())
+			.filter(tag => tag && tag.length > 0);
+		
+		// 去重
+		return [...new Set(processedTags)];
+	};
+
 	// 处理图片并发布文章
 	const processImagesAndPublish = () => {
 		// 设置加载状态
@@ -1364,30 +1400,26 @@
 		}
 		
 		try {
-			// 标签数据统一处理函数
-			const prepareTags = (tags) => {
-				if (!Array.isArray(tags) || tags.length === 0) return [];
-				return tags.map(tag => String(tag).trim()).filter(tag => tag);
-			};
-			
 			// 有图片需要处理，使用API中的方法处理并发布
 			const requestData = {
 				title: articleData.title,
 				content: articleData.content,
-				htmlContent: articleData.htmlContent,
+				htmlContent: ensureCorrectHtmlFormat(articleData.htmlContent), // 使用增强的HTML格式
 				// 确保标签数据是简单的字符串数组，避免复杂对象
 				tags: prepareTags(articleData.tags),
 				images: articleData.images,
 				wordCount: articleData.wordCount
 			};
 			
-			// 并行添加tagNames字段，兼容编辑模式的标签处理方式
-			requestData.tagNames = [...requestData.tags];
+			// 如果标签为空数组，则传递空数组而不是undefined
+			requestData.tagNames = requestData.tags.length > 0 ? [...requestData.tags] : [];
 			
-			// 打印标签数据，帮助调试
+			// 日志记录标签数据，帮助调试
 			console.log('发送的标签数据:', {
-				tags: JSON.stringify(requestData.tags),
-				tagNames: JSON.stringify(requestData.tagNames)
+				tags: JSON.stringify(requestData.tags || []),
+				tagNames: JSON.stringify(requestData.tagNames || []),
+				tagsCount: (requestData.tags || []).length,
+				tagNamesCount: (requestData.tagNames || []).length
 			});
 			
 			// 处理封面图片：如果封面已删除，明确设置为null；如果有新封面，使用新封面；否则保留原封面
@@ -1530,11 +1562,11 @@
 	};
 
 	/**
-	 * 第二级策略：模拟编辑模式的标签处理方式
-	 * 只使用tagNames字段，移除tags字段
+	 * 第二级策略：修正后的标签处理方式
+	 * 使用JSON序列化确保标签数据正确传输
 	 */
 	const tryEditModeTagsStrategy = (originalRequestData) => {
-		console.log('执行第二级策略: 模拟编辑模式标签处理');
+		console.log('执行第二级策略: 修正后的标签处理方式');
 		
 		// 显示加载提示
 		uni.showLoading({
@@ -1542,15 +1574,20 @@
 			mask: true
 		});
 		
-		// 创建新的请求数据，移除tags字段，仅保留tagNames
+		// 创建新的请求数据，使用单一标签字段
 		const newRequestData = {
 			...originalRequestData,
-			// 移除tags字段，仅使用tagNames
-			tags: undefined
+			// 只使用tagNames字段，确保是基本字符串数组
+			tags: undefined,
+			tagNames: Array.isArray(originalRequestData.tagNames) 
+				? originalRequestData.tagNames.map(t => String(t).trim()).filter(t => t)
+				: []
 		};
 		
+		// 打印标签数据，帮助调试
 		console.log('第二级策略使用的标签数据:', {
-			tagNames: JSON.stringify(newRequestData.tagNames)
+			tagNames: JSON.stringify(newRequestData.tagNames || []),
+			count: (newRequestData.tagNames || []).length
 		});
 		
 		// 调用API
@@ -1699,19 +1736,21 @@
 		const requestData = {
 			title: articleData.title,
 			content: articleData.content,
-			htmlContent: articleData.htmlContent,
+			htmlContent: ensureCorrectHtmlFormat(articleData.htmlContent), // 使用增强的HTML格式
 			// 确保标签数据是字符串数组
 			tags: prepareTags(articleData.tags),
 			wordCount: articleData.wordCount
 		};
 		
-		// 并行添加tagNames字段，兼容编辑模式的标签处理方式
-		requestData.tagNames = [...requestData.tags];
+		// 如果标签为空数组，则传递空数组而不是undefined
+		requestData.tagNames = requestData.tags.length > 0 ? [...requestData.tags] : [];
 		
-		// 打印标签数据，帮助调试
+		// 日志记录标签数据
 		console.log('发送的标签数据:', {
-			tags: JSON.stringify(requestData.tags),
-			tagNames: JSON.stringify(requestData.tagNames)
+			tags: JSON.stringify(requestData.tags || []),
+			tagNames: JSON.stringify(requestData.tagNames || []),
+			tagsCount: (requestData.tags || []).length,
+			tagNamesCount: (requestData.tagNames || []).length
 		});
 		
 		// 处理封面图片
@@ -2234,6 +2273,24 @@
 		} catch (error) {
 			console.error('清除草稿失败', error);
 		}
+	};
+
+	/**
+	 * 确保HTML格式正确，特别是处理换行
+	 */
+	const ensureCorrectHtmlFormat = (html) => {
+		if (!html) return '';
+		
+		// 确保段落之间有足够空间
+		let processedHtml = html.replace(/<p/g, '<p style="margin-bottom:30rpx;display:block;"');
+		
+		// 处理文本中的换行符，将它们转换为<br>标签
+		processedHtml = processedHtml.replace(/\n(?!<\/p>|<p>|<div|<\/div>|<br>)/g, '<br>');
+		
+		// 处理空段落
+		processedHtml = processedHtml.replace(/<p>\s*<\/p>/g, '<p><br></p>');
+		
+		return processedHtml;
 	};
 </script>
 
@@ -2917,8 +2974,15 @@
 	}
 	
 	:deep(.rich-text-content) p {
-		margin-bottom: 20rpx;
+		margin-bottom: 30rpx !important; /* 增加段落间距 */
 		min-height: 30rpx;
+		display: block !important; /* 确保段落是块级元素 */
+	}
+	
+	:deep(.rich-text-content) br {
+		display: block !important;
+		content: "" !important;
+		margin-bottom: 10rpx !important; /* 给br标签添加下边距 */
 	}
 	
 	:deep(.rich-text-content) h1,

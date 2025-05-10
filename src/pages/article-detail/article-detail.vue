@@ -1530,13 +1530,34 @@
 	const formatHtmlContent = (htmlContent) => {
 		if (!htmlContent) return '';
 
-		// 当前阶段，仅简单处理掉HTML标签，保留文本
-		// 这种简单处理适用于只有基本p标签的情况
+		// 增强HTML内容处理
 		let content = htmlContent;
 
-		// 清除所有HTML标签，只保留文本
-		content = content.replace(/<\/?[^>]+(>|$)/g, '');
-
+		// 处理段落标签样式
+		content = content.replace(/<p/g, '<p style="margin-bottom:30rpx;display:block;line-height:1.8;"');
+		
+		// 处理图片标签，确保图片响应式
+		content = content.replace(/<img/g, '<img style="max-width:100%;height:auto;display:block;margin:20rpx 0;border-radius:8rpx;"');
+		
+		// 处理标题标签
+		content = content.replace(/<h1/g, '<h1 style="font-size:36rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
+		content = content.replace(/<h2/g, '<h2 style="font-size:32rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
+		content = content.replace(/<h3/g, '<h3 style="font-size:30rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
+		
+		// 确保换行标签正确显示
+		content = content.replace(/<br>/g, '<br style="display:block;margin-bottom:10rpx;content:\'\';height:10rpx;" />');
+		
+		// 为空段落添加高度
+		content = content.replace(/<p>\s*<\/p>/g, '<p style="height:30rpx;margin-bottom:30rpx;display:block;"></p>');
+		
+		// 处理链接样式
+		content = content.replace(/<a/g, '<a style="color:#4361ee;text-decoration:none;"');
+		
+		// 处理列表样式
+		content = content.replace(/<ul/g, '<ul style="padding-left:40rpx;margin-bottom:20rpx;"');
+		content = content.replace(/<ol/g, '<ol style="padding-left:40rpx;margin-bottom:20rpx;"');
+		content = content.replace(/<li/g, '<li style="margin-bottom:10rpx;display:list-item;"');
+		
 		return content;
 	};
 
