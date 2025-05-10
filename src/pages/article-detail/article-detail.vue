@@ -2,7 +2,16 @@
 	<view class="container" :style="{ overflow: 'hidden' }" @touchstart="handleTouchStart" @touchend="handleTouchEnd" @touchmove="handleTouchMove">
 		<!-- 移除scroll-view，使用普通view来盛放内容，让页面自然滚动 -->
 		<view class="article-detail" id="article-detail">
-			<!-- 移除返回按钮，App和小程序有自带返回功能 -->
+			<!-- 添加顶部导航栏 -->
+			<view class="custom-nav-bar">
+				<view class="nav-icon home-icon" @click="navigateToHome">
+					<uni-icons type="home" size="24" color="#4361ee"></uni-icons>
+				</view>
+				<view class="nav-title">文章详情</view>
+				<view class="nav-icon share-icon" @click="shareArticle">
+					<uni-icons type="paperclip" size="24" color="#4361ee"></uni-icons>
+				</view>
+			</view>
 
 			<!-- 刷新成功提示 -->
 			<view class="refresh-success" v-if="data.showRefreshSuccess">
@@ -1920,6 +1929,59 @@
 			return comment.replies.slice(0, 2);
 		}
 	};
+
+	// 在script部分添加导航到首页的方法
+	const navigateToHome = () => {
+		// 跳转到首页
+		uni.switchTab({
+			url: '/pages/index/index'
+		});
+	};
+
+	// 分享文章功能
+	const shareArticle = () => {
+		if (!data.article || !data.article.id) return;
+		
+		try {
+			// 构建分享链接
+			let articleUrl = '';
+			
+			// #ifdef H5
+			// 在浏览器环境中直接获取当前URL
+			articleUrl = window.location.href;
+			// #endif
+			
+			// #ifdef APP-PLUS || MP-WEIXIN
+			// 在APP或小程序中构建完整URL
+			articleUrl = `${getBaseUrl()}/article/${data.article.id}`;
+			// #endif
+			
+			// 复制链接
+			uni.setClipboardData({
+				data: articleUrl,
+				success: () => {
+					uni.showToast({
+						title: '链接已复制',
+						icon: 'success',
+						duration: 2000
+					});
+				},
+				fail: (err) => {
+					console.error('复制失败:', err);
+					uni.showToast({
+						title: '复制失败，请重试',
+						icon: 'none'
+					});
+				}
+			});
+		} catch (error) {
+			console.error('分享错误:', error);
+			uni.showToast({
+				title: '操作失败，请重试',
+				icon: 'none'
+			});
+		}
+	};
 </script>
 
 <style lang="scss">
@@ -1945,6 +2007,13 @@
 		// #ifdef H5
 		// H5环境增加阅读舒适度
 		padding: 0 40px 150rpx !important;
+		// #endif
+
+		// 调整文章详情区域的顶部边距，避免被导航栏遮挡
+		padding-top: 120rpx !important;
+		
+		// #ifdef APP-PLUS || MP-WEIXIN
+		padding-top: calc(var(--status-bar-height) + 120rpx) !important;
 		// #endif
 	}
 
@@ -3033,5 +3102,55 @@
 		// #endif
 
 		// ... existing code ...
+	}
+
+	// 添加样式部分
+	.custom-nav-bar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 90rpx;
+		background-color: #fff;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 30rpx;
+		z-index: 999;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.08);
+		
+		// #ifdef H5
+		max-width: 800px;
+		left: 50%;
+		transform: translateX(-50%);
+		border-radius: 0 0 12px 12px;
+		// #endif
+		
+		// #ifdef APP-PLUS || MP-WEIXIN
+		padding-top: calc(var(--status-bar-height) + 10rpx);
+		height: calc(var(--status-bar-height) + 90rpx);
+		// #endif
+	}
+
+	.nav-icon {
+		width: 80rpx;
+		height: 80rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		border-radius: 50%;
+		background-color: rgba(67, 97, 238, 0.1);
+		transition: all 0.2s ease;
+		
+		&:active {
+			transform: scale(0.9);
+			background-color: rgba(67, 97, 238, 0.2);
+		}
+	}
+
+	.nav-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333;
 	}
 </style>

@@ -2983,16 +2983,13 @@
 	.container {
 		display: flex;
 		flex-direction: column;
-		min-height: 100vh;
-		// #ifdef H5
-		min-width: 1000px;
-		// #endif
-		// #ifndef H5
-		min-width: 100%;
 		width: 100%;
-		overflow-x: hidden;
+		min-height: 100vh;
+		background-color: #f5f5f5;
+		// #ifdef H5
+		min-width: 1100px; // 设置最小宽度防止内容区挤压
+		overflow-x: auto; // 当屏幕小于最小宽度时允许横向滚动
 		// #endif
-		overflow: visible;
 	}
 
 	// 顶部导航栏
@@ -3005,7 +3002,7 @@
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
 		// #ifdef H5
-		min-width: 1000px;
+		min-width: 1100px; // 增加最小宽度与container一致
 		// #endif
 
 		.header-top {
@@ -3014,8 +3011,9 @@
 			height: 60px;
 			padding: 0 20px;
 			// #ifdef H5
+			width: 1200px; // 固定宽度
 			max-width: 1200px;
-			min-width: 960px;
+			min-width: 1100px;
 			// #endif
 			margin: 0 auto;
 			justify-content: center;
@@ -3178,14 +3176,21 @@
 		display: flex;
 		justify-content: space-between;
 		// #ifdef H5
-		max-width: 1200px;
-		min-width: 960px;
+		width: 1200px; // 固定宽度而不是最大宽度
+		min-width: 1100px; // 增加最小宽度
 		// #endif
 		margin: 0 auto;
 		padding: 106px 20px 20px;
 		gap: 0;
 		position: relative;
 		min-height: calc(100vh - 106px);
+		
+		// #ifdef H5
+		// 增加适应性和一致性
+		@media screen and (max-width: 1200px) {
+			width: 1100px; // 小屏幕下使用固定宽度
+		}
+		// #endif
 
 		.left-sidebar {
 			position: sticky;
@@ -3193,12 +3198,18 @@
 			width: 110px;
 			height: calc(100vh - 106px);
 			background: transparent;
+			// #ifdef H5
+			flex-shrink: 0; // 防止压缩
+			// #endif
 		}
 
 		.main-content {
 			flex: 1;
 			// #ifdef H5
-			min-width: 600px;
+			min-width: 640px; // 增加最小宽度
+			max-width: 640px; // 增加最大宽度
+			width: 640px; // 固定宽度，增加一致性
+			flex-shrink: 0; // 防止压缩
 			// #endif
 			background: #fff;
 			border-radius: 4px 0 0 4px;
@@ -3232,9 +3243,11 @@
 		.right-sidebar {
 			position: sticky;
 			top: 106px;
-			width: 300px;
 			// #ifdef H5
-			min-width: 280px;
+			width: 300px;
+			min-width: 300px; // 固定最小宽度
+			max-width: 300px; // 固定最大宽度
+			flex-shrink: 0; // 防止压缩
 			// #endif
 			height: fit-content;
 			background: transparent;
@@ -3266,7 +3279,7 @@
 					display: flex;
 					align-items: center;
 					justify-content: center;
-					margin: 10px 20px 0 20px;
+					margin: 10px 20px 20px 20px;
 					height: 40px;
 					background: #4361ee;
 					color: #fff;
@@ -3290,6 +3303,7 @@
 				top: 286px;
 				background: #fff;
 				border-radius: 0 4px 4px 0;
+				margin-top: 20px; // 增加与上面元素的间距
 				margin-bottom: 20px;
 				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 				padding: 20px;
