@@ -869,6 +869,10 @@
 							handleSearchResults({ list: [], total: 0 });
 						}
 					};
+				} else if (props.listType === 'collection') {
+					// 获取收藏的文章
+					apiPath = '/api/article/collections';
+					console.log('加载收藏的文章');
 				} else {
 					console.log('加载推荐文章');
 				}
@@ -1588,7 +1592,6 @@
 				title: '请先登录',
 				icon: 'none'
 			});
-
 			// 可选：跳转到登录页
 			// uni.navigateTo({ url: '/pages/login/login' });
 			return;
@@ -1618,6 +1621,12 @@
 				success: (res) => {
 					if (res.statusCode === 200) {
 						// 请求成功，收藏状态已更新
+
+						// 如果当前是收藏列表，且是取消收藏，则移除该文章
+						if (props.listType === 'collection' && !article.isCollected) {
+							// 从列表中移除该文章
+							articleList.value.splice(index, 1);
+						}
 
 						// 显示提示
 						uni.showToast({
