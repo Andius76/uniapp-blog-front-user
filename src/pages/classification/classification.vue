@@ -77,9 +77,13 @@
 					<view class="user-info">
 						<image class="avatar" :src="article.author && formatAvatarUrl(article.author?.avatar) || '/static/images/avatar.png'" mode="aspectFill" @error="handleUserAvatarError(index)"></image>
 						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
-						<button class="follow-btn" :class="{'followed': article.author?.isFollowed}" @click.stop="handleFollow(article)">
-							{{ article.author?.isFollowed ? '已关注' : '+ 关注' }}
-						</button>
+						<follow-button 
+							:user-id="article.author?.id" 
+							:nickname="article.author?.nickname || '该用户'" 
+							:followed="article.author?.isFollowed"
+							:auto-check="true"
+							@follow-change="handleFollowChange($event, article)"
+						/>
 					</view>
 
 					<!-- 文章内容 -->
@@ -144,9 +148,11 @@ import { ref, computed, onMounted, nextTick, reactive, watch, onUnmounted } from
 import http from '@/utils/request'; // 修改为默认导入
 import { getBaseUrl } from '@/utils/request'; // 保留命名导入
 import { collectArticle, likeArticle, getArticleTags } from '@/api/article'; // 导入文章操作API
+import { checkUserFollow } from '@/api/user.js'; // 导入检查关注状态的API
 import ArticleList from '@/components/article-list/article-list.vue'; // 引入ArticleList组件
 import BackToTop from '@/components/back-to-top/back-to-top.vue'; // 引入BackToTop组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue'; // 引入uni-icons组件
+import FollowButton from '@/components/follow-button/follow-button.vue'; // 引入关注按钮组件
 
 // 声明articleListRef在组件顶部
 const articleListRef = ref(null);
@@ -796,9 +802,28 @@ const handleLike = async (article) => {
 };
 
 /**
- * 处理关注/取消关注
+ * 处理关注状态变化
+ * @param {Boolean} isFollowed - 新的关注状态
+ * @param {Object} article - 文章对象
  */
-const handleFollow = async (article) => {
+const handleFollowChange = (isFollowed, article) => {
+	if (article && article.author) {
+		article.author.isFollowed = isFollowed;
+	}
+};
+
+// 保留原来的handleFollow方法，以便在H5环境中使用
+const handleFollow = (article) => {
+	// 检查参数
+	if (!article || !article.author || !article.author.id) {
+		console.error('关注失败：缺少用户信息');
+		uni.showToast({
+			title: '操作失败，用户信息不完整',
+			icon: 'none'
+		});
+		return;
+	}
+
 	// 检查登录状态
 	const token = uni.getStorageSync('token');
 	if (!token) {
@@ -806,6 +831,8 @@ const handleFollow = async (article) => {
 			title: '请先登录',
 			icon: 'none'
 		});
+		
+		// 延迟跳转到登录页
 		setTimeout(() => {
 			uni.navigateTo({
 				url: '/pages/login/login'
@@ -813,39 +840,69 @@ const handleFollow = async (article) => {
 		}, 1500);
 		return;
 	}
-	
-	// 获取作者ID
-	const authorId = article.author?.id;
-	if (!authorId) {
-		uni.showToast({
-			title: '操作失败，作者信息不完整',
-			icon: 'none'
+
+	// 当前关注状态
+	const isFollowed = article.author.isFollowed;
+
+	// 如果是取消关注，显示确认框
+	if (isFollowed) {
+		uni.showModal({
+			title: '取消关注',
+			content: `确定不再关注"${article.author.nickname || '该用户'}"吗？`,
+			success: function(res) {
+				if (res.confirm) {
+					// 执行取消关注操作
+					performFollow(article, false);
+				}
+			}
 		});
+	} else {
+		// 直接执行关注操作
+		performFollow(article, true);
+	}
+};
+
+/**
+ * 执行关注/取消关注操作
+ * @param {Object} article - 文章对象
+ * @param {Boolean} followAction - true表示关注，false表示取消关注
+ */
+const performFollow = async (article, followAction) => {
+	// 防止重复请求
+	if (globalLoadingLock.isActive()) {
+		console.warn('操作过于频繁，请稍后再试');
 		return;
 	}
-	
+	globalLoadingLock.lock(2000);
+
+	// 显示加载提示
+	uni.showLoading({
+		title: followAction ? '关注中...' : '取消关注中...'
+	});
+
 	try {
-		// 当前关注状态
-		const isFollowed = article.author.isFollowed;
+		// 构建请求路径
+		const url = `/api/user/follow/${article.author.id}`;
 		
-		// 发送关注/取消关注请求
-		const url = `/api/user/follow/${authorId}`;
-		const method = isFollowed ? 'delete' : 'post';
+		// 执行请求
+		const result = followAction ? 
+			await http.post(url) : 
+			await http.delete(url);
 		
-		const res = await http[method](url);
-		
-		if (res.code === 200) {
-			// 更新关注状态
-			article.author.isFollowed = !isFollowed;
+		// 处理响应
+		if (result.code === 200) {
+			// 更新UI状态
+			article.author.isFollowed = followAction;
 			
-			// 显示操作成功提示
+			// 显示成功提示
 			uni.showToast({
-				title: isFollowed ? '已取消关注' : '关注成功',
-				icon: 'none'
+				title: followAction ? '关注成功' : '已取消关注',
+				icon: followAction ? 'success' : 'none'
 			});
 		} else {
+			// 显示错误提示
 			uni.showToast({
-				title: res.message || '操作失败',
+				title: result.message || '操作失败',
 				icon: 'none'
 			});
 		}
@@ -855,6 +912,8 @@ const handleFollow = async (article) => {
 			title: '网络错误，请稍后再试',
 			icon: 'none'
 		});
+	} finally {
+		uni.hideLoading();
 	}
 };
 
@@ -970,6 +1029,9 @@ const handleLoadMore = async () => {
 					
 					return article;
 				});
+				
+				// 检查作者关注状态
+				await checkArticleAuthorsFollowStatus(processedArticles);
 				
 				// 追加到文章列表
 				articleList.value = [...articleList.value, ...processedArticles];
@@ -1180,6 +1242,52 @@ const handleTagClick = (tag) => {
 };
 
 /**
+ * 检查文章作者的关注状态
+ * @param {Array} articles - 文章列表
+ */
+const checkArticleAuthorsFollowStatus = async (articles) => {
+	// 检查登录状态
+	const token = uni.getStorageSync('token');
+	if (!token) {
+		console.log('用户未登录，不检查关注状态');
+		return;
+	}
+	
+	// 收集所有需要检查关注状态的作者ID
+	const authorIds = articles
+		.filter(article => article.author && article.author.id)
+		.map(article => article.author.id);
+	
+	// 去重
+	const uniqueAuthorIds = [...new Set(authorIds)];
+	
+	if (uniqueAuthorIds.length === 0) {
+		console.log('没有需要检查关注状态的作者');
+		return;
+	}
+	
+	console.log(`需要检查${uniqueAuthorIds.length}个作者的关注状态`);
+	
+	// 为每个作者检查关注状态
+	for (const authorId of uniqueAuthorIds) {
+		try {
+			const result = await checkUserFollow(authorId);
+			if (result.code === 200) {
+				// 更新所有该作者的文章
+				articles.forEach(article => {
+					if (article.author && article.author.id === authorId) {
+						article.author.isFollowed = result.data;
+						console.log(`作者 ${authorId} 的关注状态: ${result.data}`);
+					}
+				});
+			}
+		} catch (error) {
+			console.error(`检查作者 ${authorId} 关注状态失败:`, error);
+		}
+	}
+};
+
+/**
  * 加载带关键词的文章（用于非H5环境）
  * @param {String} keyword - 搜索关键词
  */
@@ -1248,6 +1356,9 @@ const loadArticlesWithKeyword = async (keyword) => {
 			// 更新文章列表
 			articleList.value = processedArticles;
 			console.log('[loadArticlesWithKeyword] 加载搜索结果数量:', articleList.value.length);
+			
+			// 检查作者关注状态
+			await checkArticleAuthorsFollowStatus(articleList.value);
 			
 			// 更新页码
 			currentPage.value = 2;
@@ -1346,9 +1457,18 @@ const loadTagArticles = async () => {
 				return article;
 			});
 			
-			// 追加到文章列表
-			articleList.value = [...articleList.value, ...processedArticles];
+			// 如果是第一页，先清空列表
+			if (currentPage.value === 1) {
+				articleList.value = processedArticles;
+			} else {
+				// 否则追加到文章列表
+				articleList.value = [...articleList.value, ...processedArticles];
+			}
+			
 			console.log('[loadTagArticles] 加载后的文章数量:', articleList.value.length);
+			
+			// 检查作者关注状态
+			await checkArticleAuthorsFollowStatus(processedArticles);
 			
 			// 更新页码
 			currentPage.value++;
@@ -1644,21 +1764,6 @@ const clearSearch = () => {
 	font-size: 28rpx;
 	color: #333;
 	flex: 1;
-}
-
-.follow-btn {
-	font-size: 24rpx;
-	padding: 6rpx 20rpx;
-	background-color: #f0f2f7;
-	color: #3170f9;
-	border-radius: 30rpx;
-	margin: 0;
-	line-height: 1.5;
-}
-
-.follow-btn.followed {
-	background-color: #e6f0ff;
-	color: #3170f9;
 }
 
 /* 文章内容样式 */
