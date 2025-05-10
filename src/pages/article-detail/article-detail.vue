@@ -191,10 +191,19 @@
 				:placeholder="data.replyTarget ? `回复 ${data.replyTarget}` : '说点什么...'" confirm-type="send"
 				@confirm="submitComment" @focus="handleInputFocus" @blur="handleInputBlur" />
 			<button class="send-btn" :disabled="!data.commentContent.trim()" @click="submitComment">发送</button>
+			
+			<!-- #ifdef APP-PLUS || MP-WEIXIN -->
+			<!-- 回到顶部按钮，固定在发送按钮右侧 -->
+			<view class="fixed-top-btn" v-if="data.lastScrollTop > 300 && !data.isInputFocused" @click="scrollToTop">
+				<uni-icons type="top" size="20" color="#ffffff"></uni-icons>
+			</view>
+			<!-- #endif -->
 		</view>
 
-		<!-- 使用通用的回到顶部组件，确保点击后隐藏并立即滚动到顶部 -->
-		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" />
+		<!-- 只在H5环境中使用浮动的回到顶部组件 -->
+		<!-- #ifdef H5 -->
+		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
+		<!-- #endif -->
 	</view>
 </template>
 
@@ -2541,6 +2550,27 @@
 				color: #ffffff;
 			}
 		}
+		
+		// APP和小程序环境中的固定顶部按钮样式
+		// #ifdef APP-PLUS || MP-WEIXIN
+		.fixed-top-btn {
+			width: 70rpx;
+			height: 70rpx;
+			border-radius: 35rpx;
+			background-color: #4361ee;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			margin-left: 20rpx;
+			box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.1);
+			transition: all 0.2s ease;
+			
+			&:active {
+				transform: scale(0.9);
+				background-color: #3651d4;
+			}
+		}
+		// #endif
 	}
 
 	// 刷新成功提示
@@ -2856,4 +2886,39 @@
 	}
 
 	// #endif
+
+	// APP和小程序环境中的固定顶部按钮样式
+	// #ifdef APP-PLUS || MP-WEIXIN
+	.fixed-top-btn {
+		width: 70rpx;
+		height: 70rpx;
+		border-radius: 35rpx;
+		background-color: #4361ee;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-left: 20rpx;
+		box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.1);
+		transition: all 0.2s ease;
+		
+		&:active {
+			transform: scale(0.9);
+			background-color: #3651d4;
+		}
+	}
+	// #endif
+
+	// 调整评论输入框右侧间距
+	.comment-input-container {
+		// ... existing code ...
+		
+		// #ifdef APP-PLUS || MP-WEIXIN
+		// 调整元素对齐方式，确保三个元素在一行
+		display: flex;
+		align-items: center;
+		padding-right: 30rpx; // 增加右侧内边距
+		// #endif
+
+		// ... existing code ...
+	}
 </style>
