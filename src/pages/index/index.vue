@@ -699,28 +699,21 @@
 			// 重要：先重置文章列表
 			articleListRef.value.resetList();
 			
-			// 设置一个短暂延迟等待DOM更新
+			// 使用单一的延迟确保DOM更新后再加载
 			setTimeout(() => {
-				console.log('H5环境：手动触发ArticleList组件搜索加载，关键词:', data.searchText);
-				// 强制加载文章列表，确保UI更新
+				console.log('H5环境：触发ArticleList组件搜索加载，关键词:', data.searchText);
+				// 进行一次性加载，避免多次触发导致的重复渲染
 				articleListRef.value.loadArticles(true);
 				
-				// 再次延迟检查是否成功加载
-				setTimeout(() => {
-					console.log('H5环境：检查搜索结果是否正常加载');
-					const articleData = articleListRef.value.getArticleList();
-					if (!articleData || articleData.length === 0) {
-						console.log('H5环境：搜索结果未正常加载，再次尝试加载');
-						articleListRef.value.loadArticles(true);
-					}
-				}, 300);
-			}, 100);
+				// 移除检查和二次加载的逻辑，避免重复渲染
+			}, 200);
 			
 			// 在H5环境下，同时调用后端搜索API获取准确的搜索结果数量
 			try {
 				const res = await http.get('/api/article/search', {
 					page: 1,
 					pageSize: 10,
+					
 					keyword: data.searchText
 				});
 				
@@ -736,7 +729,7 @@
 				data.searchResultCount = 0;
 			}
 			
-			// 设置延迟让组件有时间重新渲染
+			// 统一设置延迟让组件有时间重新渲染
 			setTimeout(() => {
 				uni.hideLoading();
 			}, 500);
