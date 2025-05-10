@@ -2547,3 +2547,121 @@
    ```
 
 通过以上修复，解决了用户设置面板在H5环境中的交互问题，使用户可以在设置面板中流畅地完成头像修改、昵称修改和退出登录确认等操作，而不会意外关闭整个设置面板。同时，增强了设置面板在不同平台上的兼容性和一致性。
+
+## 关注状态管理与检查
+
+### 关注状态检查功能
+
+**功能说明：** 实现关注状态检查的多种方案，确保关注按钮状态在各个页面中的一致性。
+
+1. **关注状态检查API：**
+   - 通过 `checkUserFollow(userId)` API检查当前登录用户是否关注了指定用户
+   - API路径：`/api/user/check-follow/{userId}`
+   - 根据后端返回的boolean值更新关注状态
+   - 该API支持降级处理，当API调用失败时仍能保持应用正常工作
+
+2. **关注按钮组件化：**
+   - 创建单独的`follow-button`组件封装关注/取消关注逻辑
+   - 组件支持传入初始关注状态`followed`和自动检查属性`auto-check`
+   - 组件在挂载时可以自动检查关注状态，确保UI状态与后端一致
+   ```html
+   <follow-button 
+     :user-id="userId" 
+     :nickname="nickname" 
+     :followed="isFollowed"
+     :auto-check="true"
+     @follow-change="handleFollowChange"
+   />
+   ```
+
+3. **实现方式：**
+   - **单个状态检查：** 在关注按钮组件内部实现，通过`checkFollowStatus`方法：
+   ```js
+   // 组件内部关注状态检查方法
+   const checkFollowStatus = async () => {
+     // 如果没有登录或没有用户ID，不检查
+     if (!isLoggedIn() || !props.userId) return;
+     
+     try {
+       const result = await checkUserFollow(props.userId);
+       if (result.code === 200) {
+         // 后端返回的关注状态与当前状态不同，更新状态
+         if (isFollowed.value !== result.data) {
+           isFollowed.value = result.data;
+           // 通知父组件状态已更新
+           emit('follow-change', result.data);
+           emit('update:followed', result.data);
+         }
+       }
+     } catch (error) {
+       console.error('检查关注状态失败:', error);
+     }
+   };
+   
+   // 组件挂载时，自动检查关注状态
+   onMounted(() => {
+     if (props.autoCheck) {
+       checkFollowStatus();
+     }
+   });
+   ```
+   
+   - **批量状态检查：** 在列表页面批量检查作者关注状态：
+   ```js
+   /**
+    * 批量检查文章作者的关注状态
+    * @param {Array} articles - 文章列表
+    */
+   const checkArticleAuthorsFollowStatus = async (articles) => {
+     // 检查登录状态
+     const token = uni.getStorageSync('token');
+     if (!token) return;
+     
+     // 收集所有需要检查关注状态的作者ID并去重
+     const authorIds = [...new Set(
+       articles
+         .filter(article => article.author && article.author.id)
+         .map(article => article.author.id)
+     )];
+     
+     if (authorIds.length === 0) return;
+     
+     // 为每个作者检查关注状态
+     for (const authorId of authorIds) {
+       try {
+         const result = await checkUserFollow(authorId);
+         if (result.code === 200) {
+           // 更新所有该作者的文章
+           articles.forEach(article => {
+             if (article.author && article.author.id === authorId) {
+               article.author.isFollowed = result.data;
+             }
+           });
+         }
+       } catch (error) {
+         console.error(`检查作者 ${authorId} 关注状态失败:`, error);
+       }
+     }
+   };
+   ```
+
+4. **状态检查触发时机：**
+   - 关注按钮组件挂载时（通过`autoCheck`属性控制）
+   - 文章列表加载完成后（通过`checkArticleAuthorsFollowStatus`函数）
+   - 关注/取消关注操作后（通过组件的内部状态更新）
+   - 特定页面（如分类页）加载新文章数据时
+   - 加载更多文章数据时对新加载的文章进行检查
+
+5. **数据一致性策略：**
+   - 双重检查机制：组件级别检查 + 页面级别批量检查
+   - 关注/取消关注操作时广播状态变更，确保其他页面同步更新
+   - 使用`follow-change`事件通知父组件状态变化，实现跨组件状态同步
+   - 合理的错误处理和降级逻辑，确保网络问题不影响用户体验
+
+6. **最佳实践：**
+   - 组件设计应遵循单一职责原则，专注于关注状态管理
+   - 关注按钮组件应处理自己的状态检查和UI更新，减轻页面负担
+   - 在列表页面初始化时进行批量检查，减少API请求次数
+   - 使用事件系统（uni.$emit/uni.$on）实现全局状态同步
+
+此关注状态检查机制确保了用户在不同页面（如文章列表、文章详情、用户资料页等）看到的关注状态始终一致，提高了用户体验和应用的可靠性。
