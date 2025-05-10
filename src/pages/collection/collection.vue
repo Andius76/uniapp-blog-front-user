@@ -7,11 +7,9 @@
 			<view class="navbar-title">{{ userInfo.nickname || '我的' }}的收藏</view>
 			<view class="navbar-right"></view>
 		</view>
+		<!-- 移除多余的嵌套容器，简化结构 -->
 		<view class="article-width-container">
-			<view class="content-area">
-				<!-- 收藏文章列表，复用article-list组件，listType设为collection -->
-				<article-list listType="collection" emptyText="暂无收藏文章" />
-			</view>
+			<article-list listType="collection" emptyText="暂无收藏文章" />
 		</view>
 	</view>
 	<!-- #endif -->
@@ -44,6 +42,9 @@
 		background-color: #f5f5f5;
 		min-height: 100vh;
 		min-width: 1000px;
+		// 设置为flex布局以便更好地控制内容区域
+		display: flex;
+		flex-direction: column;
 	}
 	.navbar {
 		display: flex;
@@ -77,15 +78,10 @@
 		box-sizing: border-box;
 		background-color: #fff;
 		border-radius: 4px;
-		min-height: 200px;
+		flex: 1; // 填充剩余空间
 		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 		margin-top: 0;
-	}
-	.content-area {
-		padding: 0;
-		width: 100%;
-		box-sizing: border-box;
-		overflow-y: auto;
+		// 移除overflow-y属性，防止创建嵌套滚动区域
 	}
 	/* #endif */
 	
@@ -94,6 +90,8 @@
 		background-color: #f5f5f5;
 		min-height: 100vh;
 		padding: 20rpx;
+		// 设置position为relative，便于子元素定位
+		position: relative;
 	}
 	/* #endif */
 </style>
