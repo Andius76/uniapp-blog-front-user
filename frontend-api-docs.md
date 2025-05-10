@@ -828,17 +828,17 @@
 
 ### 7. 获取用户粉丝列表
 
-**接口说明：** 获取指定用户的粉丝列表
+**接口说明：** 获取当前登录用户的粉丝列表
 
-- **请求URL：** `/api/user/followers/{userId}`
+- **请求URL：** `/api/user/fans`
 - **请求方式：** GET
 - **请求参数：**
 
 | 参数名   | 类型   | 必选 | 说明                              |
 |----------|--------|------|-----------------------------------|
-| userId   | number | 是   | 用户ID，包含在URL路径中           |
 | page     | number | 否   | 页码，默认1                       |
 | pageSize | number | 否   | 每页条数，默认10，最大50          |
+| keyword  | string | 否   | 搜索关键词，用于按昵称搜索粉丝用户 |
 
 - **响应参数：**
 
@@ -854,8 +854,6 @@
 |-------------|---------|-------------------|
 | total       | number  | 总记录数          |
 | pages       | number  | 总页数            |
-| currentPage | number  | 当前页码          |
-| pageSize    | number  | 每页条数          |
 | list        | array   | 粉丝用户列表      |
 
 - **list数组元素结构：**
@@ -866,9 +864,49 @@
 | nickname      | string  | 用户昵称         |
 | avatar        | string  | 用户头像URL      |
 | bio           | string  | 用户个人简介     |
-| isFollowing   | boolean | 当前登录用户是否关注此用户 |
+| isFollowed    | boolean | 当前用户是否已关注此用户 |
 
-- **✅ 当前状态：已实现**
+- **响应示例：**
+
+```json
+{
+    "code": 200,
+    "message": "success",
+    "data": {
+        "total": 15,
+        "pages": 2,
+        "list": [
+            {
+                "id": 2,
+                "nickname": "用户昵称",
+                "avatar": "user_2_avatar.jpg",
+                "bio": "这是个人简介",
+                "isFollowed": true
+            },
+            // 更多用户...
+        ]
+    }
+}
+```
+
+- **错误码说明：**
+
+| 错误码 | 说明                           |
+|--------|--------------------------------|
+| 200    | 成功                           |
+| 401    | 未登录或token无效              |
+| 500    | 服务器错误                     |
+
+- **其他说明：**
+  - 该接口需要在请求头中携带token才能访问
+  - 返回的avatar字段可能存在三种形式：
+    1. 仅文件名，如：`user_2_avatar.jpg`
+    2. 完整相对路径，如：`/uploads/avatars/user_2_avatar.jpg`
+    3. 完整URL，如：`http://example.com/uploads/avatars/user_2_avatar.jpg`
+  - 前端需要根据不同情况处理头像URL，确保正确显示
+  - 支持通过keyword参数搜索用户昵称
+  - 可配合关注/取消关注接口实现粉丝管理
+  - **✅ 当前状态：已实现**
 
 ### 8. 获取用户资料
 
