@@ -12,20 +12,23 @@
 				</view>
 
 				<!-- 分类标签导航 -->
-				<scroll-view class="category-scroll" scroll-x show-scrollbar="false">
-					<view class="category-list">
-						<view 
-							v-for="(tag, index) in defaultTagList" 
-							:key="index" 
-							class="category-item" 
-							:class="{ 'active': currentTag === tag.name }"
-							@click="switchCategory(tag.name)"
-						>
-							{{ tag.name }}
-							<text class="tag-count" v-if="tag.count !== undefined">({{ tag.count }})</text>
+				<view class="category-scroll-container">
+					<scroll-view class="category-scroll" scroll-x show-scrollbar="false" scroll-with-animation @scroll="handleTagsScroll">
+						<view class="category-list">
+							<view 
+								v-for="(tag, index) in defaultTagList" 
+								:key="index" 
+								class="category-item" 
+								:class="{ 'active': currentTag === tag.name }"
+								@click="switchCategory(tag.name)"
+							>
+								<text class="tag-name">{{ tag.name }}</text>
+							</view>
 						</view>
-					</view>
-				</scroll-view>
+					</scroll-view>
+					<view class="scroll-indicator-left" v-if="showLeftIndicator"></view>
+					<view class="scroll-indicator-right" v-if="showRightIndicator"></view>
+				</view>
 			</view>
 		</view>
 
@@ -136,7 +139,7 @@
 import { ref, computed, onMounted, nextTick, reactive, watch, onUnmounted } from 'vue';
 import http from '@/utils/request'; // 修改为默认导入
 import { getBaseUrl } from '@/utils/request'; // 保留命名导入
-import { collectArticle, likeArticle } from '@/api/article'; // 导入文章操作API
+import { collectArticle, likeArticle, getArticleTags } from '@/api/article'; // 导入文章操作API
 import ArticleList from '@/components/article-list/article-list.vue'; // 引入ArticleList组件
 import BackToTop from '@/components/back-to-top/back-to-top.vue'; // 引入BackToTop组件
 import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue'; // 引入uni-icons组件
@@ -190,6 +193,17 @@ const globalLoadingLock = (() => {
 const searchText = ref('');
 const isSearching = ref(false);
 
+// 滚动指示器状态
+const showLeftIndicator = ref(false);
+const showRightIndicator = ref(true);
+
+// 监听标签栏滚动事件
+const handleTagsScroll = (e) => {
+	const { scrollLeft, scrollWidth, width } = e.detail;
+	showLeftIndicator.value = scrollLeft > 20;
+	showRightIndicator.value = scrollLeft < scrollWidth - width - 20;
+};
+
 // 默认推荐标签（与发布页面保持一致）
 const defaultTags = [
 	'全部', '技术', '前端开发', '后端开发', '移动开发', '设计',
@@ -223,25 +237,39 @@ const loadTags = async () => {
 		}));
 		
 		// 从服务器获取标签数据
-		const res = await http.get('/api/article/tags');
+		const res = await getArticleTags();
 		if (res.code === 200 && Array.isArray(res.data)) {
 			// 保存所有标签数据（包括用户创建的）
 			allTags.value = res.data;
 			
+			// 计算所有文章的总数量（用于"全部"标签）
+			let totalCount = 0;
+			
 			// 更新默认标签的文章数量
-			defaultTagList.value.forEach(tag => {
+			defaultTagList.value.forEach((tag, index) => {
+				if (tag.name === '全部') return; // 先跳过全部标签
+				
 				const serverTag = res.data.find(t => t.name === tag.name);
 				if (serverTag) {
 					tag.count = serverTag.count || 0;
+					totalCount += tag.count; // 累加计数到总数
 				}
 			});
 			
-			// 计算"全部"的文章数量（所有标签的文章数量之和）
-			const totalCount = res.data.reduce((sum, tag) => sum + (tag.count || 0), 0);
+			// 另外遍历一次服务器标签，累加非默认标签的数量
+			res.data.forEach(tag => {
+				if (!defaultTags.includes(tag.name)) {
+					totalCount += tag.count || 0;
+				}
+			});
+			
+			// 更新"全部"标签的计数
 			const allTag = defaultTagList.value.find(t => t.name === '全部');
 			if (allTag) {
 				allTag.count = totalCount;
 			}
+			
+			console.log('标签数量统计完成，全部标签数量:', totalCount);
 		}
 	} catch (error) {
 		console.error('获取标签列表失败:', error);
@@ -274,6 +302,34 @@ const switchCategory = (tagName) => {
 	
 	// 更新空列表提示文字
 	emptyText.value = tagName === '全部' ? '暂无文章内容' : `没有找到关于"${tagName}"的文章`;
+	
+	// 下一帧滚动到选中的标签
+	nextTick(() => {
+		// 获取所有标签元素
+		const tagElements = document.querySelectorAll('.category-item');
+		// 找到当前选中的标签索引
+		let activeIndex = -1;
+		tagElements.forEach((el, index) => {
+			if (el.classList.contains('active')) {
+				activeIndex = index;
+			}
+		});
+		
+		// 如果找到了当前标签，滚动到它的位置
+		if (activeIndex >= 0 && tagElements[activeIndex]) {
+			const scrollView = document.querySelector('.category-scroll');
+			if (scrollView) {
+				const tagElement = tagElements[activeIndex];
+				const tagLeft = tagElement.offsetLeft;
+				const tagWidth = tagElement.offsetWidth;
+				const scrollWidth = scrollView.offsetWidth;
+				
+				// 计算滚动位置，使标签居中
+				const scrollTo = tagLeft - (scrollWidth / 2) + (tagWidth / 2);
+				scrollView.scrollLeft = Math.max(0, scrollTo);
+			}
+		}
+	});
 	
 	// #ifdef H5
 	// 对于H5环境，使用ArticleList组件刷新
@@ -991,6 +1047,7 @@ const handleTagClick = (tag) => {
 </script>
 
 <style lang="scss" scoped>
+/* 主容器样式 */
 .container {
 	display: flex;
 	flex-direction: column;
@@ -999,6 +1056,7 @@ const handleTagClick = (tag) => {
 	background-color: #f8f9fa;
 }
 
+/* 顶部固定区域 */
 .header-fixed {
 	position: sticky;
 	top: 0;
@@ -1021,6 +1079,7 @@ const handleTagClick = (tag) => {
 	padding: 0 10rpx;
 }
 
+/* 搜索栏样式 */
 .search-bar {
 	display: flex;
 	flex: 1;
@@ -1030,75 +1089,169 @@ const handleTagClick = (tag) => {
 	padding: 0 20rpx;
 	align-items: center;
 	margin: 10rpx 0;
-	
-	input {
-		flex: 1;
-		height: 100%;
-		font-size: 28rpx;
-		color: #333;
-	}
-	
-	.search-btn {
-		height: 56rpx;
-		line-height: 56rpx;
-		font-size: 26rpx;
-		padding: 0 20rpx;
-		background-color: #3170f9;
-		color: #fff;
-		border-radius: 28rpx;
-		margin: 0;
-	}
+}
+
+.search-bar input {
+	flex: 1;
+	height: 100%;
+	font-size: 28rpx;
+	color: #333;
+}
+
+.search-btn {
+	height: 56rpx;
+	line-height: 56rpx;
+	font-size: 26rpx;
+	padding: 0 20rpx;
+	background-color: #3170f9;
+	color: #fff;
+	border-radius: 28rpx;
+	margin: 0;
+}
+
+/* 分类列表区域 */
+.category-scroll-container {
+	position: relative;
+	overflow: hidden;
+}
+
+.scroll-indicator-left,
+.scroll-indicator-right {
+	position: absolute;
+	top: 0;
+	height: 100%;
+	width: 40rpx;
+	z-index: 2;
+	pointer-events: none;
+}
+
+.scroll-indicator-left {
+	left: 0;
+	background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
+}
+
+.scroll-indicator-right {
+	right: 0;
+	background: linear-gradient(to left, #fff, rgba(255, 255, 255, 0));
 }
 
 .category-scroll {
 	width: 100%;
 	white-space: nowrap;
-	padding: 5rpx 0;
+	padding: 10rpx 0;
+	background-color: #fff;
+	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
+	position: relative;
+}
+
+.category-scroll:after {
+	content: '';
+	position: absolute;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 40rpx;
+	background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
+	pointer-events: none;
+	z-index: 1;
 }
 
 .category-list {
 	display: inline-flex;
-	padding: 0 10rpx;
+	padding: 0 20rpx;
 }
 
 .category-item {
 	display: inline-flex;
 	align-items: center;
-	padding: 10rpx 20rpx;
-	margin: 0 10rpx;
+	justify-content: center;
+	padding: 12rpx 24rpx;
+	margin: 0 8rpx;
 	font-size: 28rpx;
 	color: #666;
-	border-radius: 30rpx;
+	border-radius: 40rpx;
 	background-color: #f5f5f5;
-	transition: all 0.3s;
-	
-	&.active {
-		background-color: #3170f9;
-		color: #fff;
-		
-		.tag-count {
-			color: rgba(255, 255, 255, 0.8);
-		}
-	}
-	
-	&.default-tag {
-		border: 1px solid #3170f9;
-		background-color: rgba(49, 112, 249, 0.1);
-	}
-	
-	&.custom-tag {
-		border: 1px solid #ff6b6b;
-		background-color: rgba(255, 107, 107, 0.1);
-	}
-	
-	.tag-count {
-		font-size: 22rpx;
-		color: #999;
-		margin-left: 6rpx;
-	}
+	transition: all 0.3s ease;
+	box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+	min-width: 100rpx;
+	position: relative;
 }
 
-/* APP和小程序文章列表样式 */
+.category-item:first-child {
+	margin-left: 0;
+}
+
+.category-item:active {
+	transform: scale(0.96);
+	opacity: 0.9;
+}
+
+.category-item.active {
+	background-color: #3170f9;
+	color: #fff;
+	font-weight: 500;
+	box-shadow: 0 4rpx 8rpx rgba(49, 112, 249, 0.2);
+}
+
+.category-item.active:after {
+	content: '';
+	position: absolute;
+	bottom: -8rpx;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 16rpx;
+	height: 6rpx;
+	background-color: #3170f9;
+	border-radius: 3rpx;
+}
+
+.category-item.default-tag {
+	border: 1px solid #3170f9;
+	background-color: rgba(49, 112, 249, 0.05);
+}
+
+.category-item.custom-tag {
+	border: 1px solid #ff6b6b;
+	background-color: rgba(255, 107, 107, 0.05);
+}
+
+.tag-name {
+	font-size: 28rpx;
+	color: #333;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.active .tag-name {
+	color: #fff;
+}
+
+.tag-count {
+	font-size: 22rpx;
+	color: #999;
+	margin-left: 8rpx;
+	background-color: #f0f2f7;
+	border-radius: 16rpx;
+	padding: 2rpx 10rpx;
+	min-width: 36rpx;
+	text-align: center;
+	font-weight: normal;
+}
+
+.active .tag-count {
+	color: #fff;
+	background-color: rgba(255, 255, 255, 0.25);
+	box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 文章列表区域 */
+.content-area {
+	flex: 1;
+	overflow: hidden;
+}
+
 .mp-content {
 	padding: 0;
 }
@@ -1108,164 +1261,164 @@ const handleTagClick = (tag) => {
 	width: 100%;
 }
 
+/* 文章卡片样式 */
 .article-card {
 	margin: 20rpx;
 	padding: 20rpx;
 	background-color: #fff;
 	border-radius: 12rpx;
 	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
-	// 设置合理的最小高度
 	min-height: 200rpx;
-	// 限制最大高度，防止卡片过高
 	max-height: 600rpx;
-	// 允许内容溢出时滚动
 	overflow: hidden;
 }
 
+/* 用户信息样式 */
 .user-info {
 	display: flex;
 	align-items: center;
 	margin-bottom: 15rpx;
-	
-	.avatar {
-		width: 64rpx;
-		height: 64rpx;
-		border-radius: 50%;
-		margin-right: 15rpx;
-		background-color: #f2f2f2;
-	}
-	
-	.nickname {
-		font-size: 28rpx;
-		color: #333;
-		flex: 1;
-	}
-	
-	.follow-btn {
-		font-size: 24rpx;
-		padding: 6rpx 20rpx;
-		background-color: #f0f2f7;
-		color: #3170f9;
-		border-radius: 30rpx;
-		margin: 0;
-		line-height: 1.5;
-		
-		&.followed {
-			background-color: #e6f0ff;
-			color: #3170f9;
-		}
-	}
 }
 
+.avatar {
+	width: 64rpx;
+	height: 64rpx;
+	border-radius: 50%;
+	margin-right: 15rpx;
+	background-color: #f2f2f2;
+}
+
+.nickname {
+	font-size: 28rpx;
+	color: #333;
+	flex: 1;
+}
+
+.follow-btn {
+	font-size: 24rpx;
+	padding: 6rpx 20rpx;
+	background-color: #f0f2f7;
+	color: #3170f9;
+	border-radius: 30rpx;
+	margin: 0;
+	line-height: 1.5;
+}
+
+.follow-btn.followed {
+	background-color: #e6f0ff;
+	color: #3170f9;
+}
+
+/* 文章内容样式 */
 .article-content {
 	padding: 10rpx 0;
-	
-	// 针对无封面文章的样式调整
-	&.no-cover {
-		.article-title {
-			font-size: 34rpx;
-			margin-bottom: 20rpx;
-		}
-		
-		.article-summary {
-			font-size: 30rpx;
-			margin-bottom: 20rpx;
-		}
-		
-		.article-tags {
-			margin-top: 15rpx;
-		}
-	}
-	
-	.article-title {
-		font-size: 32rpx;
-		font-weight: bold;
-		color: #222;
-		line-height: 1.4;
-		margin-bottom: 15rpx;
-		display: block;
-		// 添加文本溢出处理
-		overflow: hidden;
-		text-overflow: ellipsis;
-		display: -webkit-box;
-		-webkit-line-clamp: 2; // 最多显示2行
-		-webkit-box-orient: vertical;
-	}
-	
-	.article-summary {
-		font-size: 28rpx;
-		color: #666;
-		line-height: 1.5;
-		margin-bottom: 15rpx;
-		display: block;
-		// 添加文本溢出处理
-		overflow: hidden;
-		text-overflow: ellipsis;
-		display: -webkit-box;
-		-webkit-line-clamp: 3; // 最多显示3行
-		-webkit-box-orient: vertical;
-		word-break: break-all; // 允许在任意字符间断行
-	}
 }
 
+.article-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #222;
+	line-height: 1.4;
+	margin-bottom: 15rpx;
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.article-summary {
+	font-size: 28rpx;
+	color: #666;
+	line-height: 1.5;
+	margin-bottom: 15rpx;
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	word-break: break-all;
+}
+
+/* 针对无封面文章的样式调整 */
+.no-cover .article-title {
+	font-size: 34rpx;
+	margin-bottom: 20rpx;
+}
+
+.no-cover .article-summary {
+	font-size: 30rpx;
+	margin-bottom: 20rpx;
+}
+
+.no-cover .article-tags {
+	margin-top: 15rpx;
+}
+
+/* 文章图片样式 */
 .article-image {
 	width: 100%;
 	margin: 15rpx 0;
 	border-radius: 8rpx;
 	overflow: hidden;
-	
-	.single-image {
-		width: 100%;
-		height: 340rpx;
-		display: block;
-		object-fit: cover; // 确保图片正确裁剪，不变形
-	}
 }
 
+.single-image {
+	width: 100%;
+	height: 340rpx;
+	display: block;
+	object-fit: cover;
+}
+
+/* 文章标签样式 */
 .article-tags {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 10rpx 0;
-	
-	.tag-item {
-		display: inline-block;
-		padding: 5rpx 15rpx;
-		font-size: 22rpx;
-		color: #3170f9;
-		background-color: #f0f2f7;
-		border-radius: 20rpx;
-		margin-right: 15rpx;
-		margin-bottom: 10rpx;
-	}
 }
 
+.tag-item {
+	display: inline-block;
+	padding: 5rpx 15rpx;
+	font-size: 22rpx;
+	color: #3170f9;
+	background-color: #f0f2f7;
+	border-radius: 20rpx;
+	margin-right: 15rpx;
+	margin-bottom: 10rpx;
+}
+
+/* 文章操作区域样式 */
 .article-actions {
 	display: flex;
 	justify-content: space-between;
 	padding-top: 15rpx;
 	border-top: 1rpx solid #f0f2f7;
-	
-	.action-item {
-		display: flex;
-		align-items: center;
-		padding: 0 10rpx;
-		
-		text {
-			font-size: 24rpx;
-			color: #666;
-			margin-left: 8rpx;
-			
-			&.liked {
-				color: #ff6b6b;
-			}
-			
-			&.collected {
-				color: #ffc107;
-			}
-		}
-	}
 }
 
+.action-item {
+	display: flex;
+	align-items: center;
+	padding: 0 10rpx;
+}
+
+.action-item text {
+	font-size: 24rpx;
+	color: #666;
+	margin-left: 8rpx;
+}
+
+.liked {
+	color: #ff6b6b !important;
+}
+
+.collected {
+	color: #ffc107 !important;
+}
+
+/* 加载状态样式 */
 .loading-state {
 	padding: 30rpx;
 	text-align: center;
@@ -1273,6 +1426,7 @@ const handleTagClick = (tag) => {
 	font-size: 26rpx;
 }
 
+/* 动画效果 */
 .animate-icon {
 	animation: scale-animation 0.5s;
 }
@@ -1289,25 +1443,37 @@ const handleTagClick = (tag) => {
 	}
 }
 
-/* 媒体查询适配不同设备 */
+/* 响应式布局 */
 @media screen and (min-width: 768px) {
 	.category-item {
 		font-size: 30rpx;
-		padding: 12rpx 24rpx;
+		padding: 14rpx 28rpx;
+		margin: 0 12rpx;
+		min-width: 120rpx;
+	}
+	
+	.tag-name {
+		font-size: 30rpx;
+	}
+	
+	.tag-count {
+		font-size: 24rpx;
+		padding: 2rpx 12rpx;
+		min-width: 40rpx;
 	}
 	
 	.search-bar {
 		height: 80rpx;
-		
-		input {
-			font-size: 30rpx;
-		}
-		
-		.search-btn {
-			height: 64rpx;
-			line-height: 64rpx;
-			font-size: 28rpx;
-		}
+	}
+	
+	.search-bar input {
+		font-size: 30rpx;
+	}
+	
+	.search-btn {
+		height: 64rpx;
+		line-height: 64rpx;
+		font-size: 28rpx;
 	}
 }
 </style>
