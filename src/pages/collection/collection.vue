@@ -16,7 +16,7 @@
 	</view>
 	<!-- #endif -->
 	<!-- #ifndef H5 -->
-	<view>
+	<view class="container-mobile">
 		<article-list listType="collection" emptyText="暂无收藏文章" />
 	</view>
 	<!-- #endif -->
@@ -86,6 +86,14 @@
 		width: 100%;
 		box-sizing: border-box;
 		overflow-y: auto;
+	}
+	/* #endif */
+	
+	/* #ifndef H5 */
+	.container-mobile {
+		background-color: #f5f5f5;
+		min-height: 100vh;
+		padding: 20rpx;
 	}
 	/* #endif */
 </style>
