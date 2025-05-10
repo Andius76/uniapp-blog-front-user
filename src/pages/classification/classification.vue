@@ -40,10 +40,10 @@
 		<view class="content-area">
 			<ArticleList 
 				ref="articleListRef"
-				:key="currentTag === searchText.value && searchText.value ? 'search-'+searchText.value : 'tag-'+currentTag" 
-				:list-type="currentTag === searchText.value && searchText.value ? 'search' : 'tag'"
+				:key="currentTag === searchText && searchText ? 'search-'+searchText : 'tag-'+currentTag" 
+				:list-type="currentTag === searchText && searchText ? 'search' : 'tag'"
 				:tag-name="currentTag === '全部' ? '' : currentTag"
-				:keyword="currentTag === searchText.value && searchText.value ? searchText.value : ''"
+				:keyword="currentTag === searchText && searchText ? searchText : ''"
 				:height="'calc(100vh - 180rpx)'"
 				:empty-text="emptyText"
 				@article-click="viewArticleDetail"
@@ -275,12 +275,28 @@ const loadTags = async () => {
 			
 			console.log('标签数量统计完成，全部标签数量:', totalCount);
 		}
+		
+		// 延迟执行加载文章，确保标签已经加载完成
+		// #ifndef H5
+		setTimeout(() => {
+			// 初始加载全部分类的文章
+			loadArticles(true);
+		}, 100);
+		// #endif
+		
 	} catch (error) {
 		console.error('获取标签列表失败:', error);
 		uni.showToast({
 			title: '获取标签列表失败',
 			icon: 'none'
 		});
+		
+		// 即使标签加载失败，也加载默认的全部文章
+		// #ifndef H5
+		setTimeout(() => {
+			loadArticles(true);
+		}, 100);
+		// #endif
 	}
 };
 
@@ -307,6 +323,7 @@ const switchCategory = (tagName) => {
 	// 更新空列表提示文字
 	emptyText.value = tagName === '全部' ? '暂无文章内容' : `没有找到关于"${tagName}"的文章`;
 	
+	// #ifdef H5
 	// 下一帧滚动到选中的标签
 	nextTick(() => {
 		// 获取所有标签元素
@@ -334,6 +351,7 @@ const switchCategory = (tagName) => {
 			}
 		}
 	});
+	// #endif
 	
 	// H5环境不需要手动刷新，因为:key的变化会触发组件重新渲染
 	// #ifdef H5
@@ -342,7 +360,19 @@ const switchCategory = (tagName) => {
 	
 	// #ifndef H5
 	// 对于APP和小程序环境，直接刷新文章列表
-	handleRefresh();
+	// 重置分页数据
+	currentPage.value = 1;
+	noMoreData.value = false;
+	articleList.value = [];
+	
+	// 手动触发加载新标签的文章
+	loadArticles(true);
+	
+	// APP和小程序环境下，需要把滚动条移到顶部
+	setTimeout(() => {
+		// 滚动到顶部
+		scrollToTop();
+	}, 100);
 	// #endif
 };
 
@@ -833,6 +863,8 @@ const loadArticles = (isRefresh = false) => {
 	// 如果已经在加载中，则不重复加载
 	if (isLoading.value && !isRefresh) return;
 	
+	console.log('[loadArticles] 开始加载文章, 当前标签:', currentTag.value, '是否刷新:', isRefresh);
+	
 	isLoading.value = true;
 	
 	// 如果是刷新，重置页码和数据
@@ -855,15 +887,23 @@ const loadArticles = (isRefresh = false) => {
 // 处理下拉刷新
 const handleRefresh = () => {
 	isRefreshing.value = true;
+	console.log('[handleRefresh] 开始下拉刷新, 当前标签:', currentTag.value);
+	
+	// 重置分页数据
+	currentPage.value = 1;
+	noMoreData.value = false;
 	
 	// 通过setTimeout避免UI卡顿
 	setTimeout(() => {
 		// 根据当前模式决定刷新方法
 		if (currentTag.value === searchText.value && searchText.value) {
 			// 搜索模式刷新
+			console.log('[handleRefresh] 刷新搜索结果:', searchText.value);
 			loadArticlesWithKeyword(searchText.value);
 		} else {
 			// 标签模式刷新
+			console.log('[handleRefresh] 刷新标签文章:', currentTag.value);
+			articleList.value = []; // 清空当前列表
 			loadArticles(true);
 		}
 		
@@ -991,9 +1031,8 @@ onMounted(() => {
 	// 加载标签数据
 	loadTags();
 	
-	// #ifndef H5
-	// 仅在非H5环境加载文章列表
-	loadArticles(true);
+	// #ifdef H5
+	// H5环境中，使用ArticleList组件加载文章
 	// #endif
 	
 	// 监听收藏状态更新事件
@@ -1010,6 +1049,7 @@ onMounted(() => {
 		}
 	});
 	
+	// #ifdef H5
 	// 初始滚动到激活的标签
 	nextTick(() => {
 		const activeTagElement = document.querySelector('.category-item.active');
@@ -1026,6 +1066,7 @@ onMounted(() => {
 			}
 		}
 	});
+	// #endif
 });
 
 /**
@@ -1145,6 +1186,8 @@ const handleTagClick = (tag) => {
 const loadArticlesWithKeyword = async (keyword) => {
 	if (!keyword) return;
 	
+	console.log('[loadArticlesWithKeyword] 开始搜索关键词:', keyword);
+	
 	isLoading.value = true;
 	noMoreData.value = false;
 	currentPage.value = 1;
@@ -1158,6 +1201,8 @@ const loadArticlesWithKeyword = async (keyword) => {
 			page: 1,
 			pageSize: 10
 		});
+		
+		console.log('[loadArticlesWithKeyword] 搜索结果:', res);
 		
 		if (res.code === 200 && res.data) {
 			const searchResults = res.data.list || [];
@@ -1202,6 +1247,7 @@ const loadArticlesWithKeyword = async (keyword) => {
 			
 			// 更新文章列表
 			articleList.value = processedArticles;
+			console.log('[loadArticlesWithKeyword] 加载搜索结果数量:', articleList.value.length);
 			
 			// 更新页码
 			currentPage.value = 2;
@@ -1221,7 +1267,7 @@ const loadArticlesWithKeyword = async (keyword) => {
 			emptyText.value = `搜索失败，请稍后重试`;
 		}
 	} catch (err) {
-		console.error('搜索关键词文章失败:', err);
+		console.error('[loadArticlesWithKeyword] 搜索关键词文章失败:', err);
 		uni.showToast({
 			title: '网络异常，请稍后重试',
 			icon: 'none'
@@ -1237,7 +1283,10 @@ const loadArticlesWithKeyword = async (keyword) => {
  */
 const loadTagArticles = async () => {
 	// 如果已经没有更多数据或正在加载中，则不处理
-	if (noMoreData.value || isLoading.value) return;
+	if (noMoreData.value && currentPage.value > 1) {
+		isLoading.value = false;
+		return;
+	}
 	
 	isLoading.value = true;
 	
@@ -1253,8 +1302,11 @@ const loadTagArticles = async () => {
 			params.tag = currentTag.value;
 		}
 		
+		console.log('[loadTagArticles] 请求参数:', params);
+		
 		// 发起请求
 		const res = await http.get('/api/article', params);
+		console.log('[loadTagArticles] 响应结果:', res);
 		
 		if (res.code === 200 && res.data) {
 			const newArticles = res.data.list || [];
@@ -1296,6 +1348,7 @@ const loadTagArticles = async () => {
 			
 			// 追加到文章列表
 			articleList.value = [...articleList.value, ...processedArticles];
+			console.log('[loadTagArticles] 加载后的文章数量:', articleList.value.length);
 			
 			// 更新页码
 			currentPage.value++;
@@ -1312,7 +1365,7 @@ const loadTagArticles = async () => {
 			});
 		}
 	} catch (err) {
-		console.error('加载标签文章失败:', err);
+		console.error('[loadTagArticles] 加载标签文章失败:', err);
 		uni.showToast({
 			title: '网络异常，请稍后重试',
 			icon: 'none'
