@@ -175,7 +175,7 @@
 					<!-- 文章内容 -->
 					<view class="article-content" @click="viewArticleDetail(article.id)">
 						<text class="article-title">{{article.title}}</text>
-						<text class="article-summary">{{formatArticleSummary(article.summary)}}...全文</text>
+						<text class="article-summary">{{formatArticleSummary(article.summary)}}</text>
 
 						<!-- 文章封面图片 -->
 						<view class="article-image" v-if="article.coverImage">
@@ -1673,9 +1673,9 @@
 		// 去除HTML标签
 		let plainText = summary.replace(/<\/?[^>]+(>|$)/g, '');
 		// 限制字数
-		const maxLength = 100;
+		const maxLength = 80; // 减少字数限制，从100改为80
 		if (plainText.length > maxLength) {
-			plainText = plainText.substring(0, maxLength);
+			plainText = plainText.substring(0, maxLength) + '...';
 		} 
 		return plainText;
 	};
@@ -3551,6 +3551,13 @@
 					margin-bottom: 20rpx;
 					line-height: 1.5;
 					display: block;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					display: -webkit-box;
+					-webkit-line-clamp: 3;
+					-webkit-box-orient: vertical;
+					word-break: break-all;
+					max-height: 126rpx; /* 添加最大高度限制，防止内容溢出 */
 				}
 				
 				// 单图布局
@@ -3975,6 +3982,13 @@
 					margin-bottom: 20rpx;
 					line-height: 1.5;
 					display: block;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					display: -webkit-box;
+					-webkit-line-clamp: 3;
+					-webkit-box-orient: vertical;
+					word-break: break-all;
+					max-height: 126rpx; /* 添加最大高度限制，防止内容溢出 */
 				}
 				
 				// 单图布局

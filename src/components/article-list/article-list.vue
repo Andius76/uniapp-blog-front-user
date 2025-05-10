@@ -1968,11 +1968,9 @@
 		let plainText = summary.replace(/<\/?[^>]+(>|$)/g, '');
 
 		// 统一所有平台的摘要字数限制，使用H5的标准
-		const maxLength = 100; // 增加字数限制，使其与H5一致
+		const maxLength = 80; // 减少字数限制，防止溢出
 		if (plainText.length > maxLength) {
-			plainText = plainText.substring(0, maxLength) + '...全文';
-		} else {
-			plainText += '...全文';
+			plainText = plainText.substring(0, maxLength) + '...';
 		}
 
 		return plainText;
@@ -1986,15 +1984,13 @@
 		let plainText = summary.replace(/<\/?[^>]+(>|$)/g, '');
 		
 		// 统一所有平台的摘要字数限制
-		const maxLength = 100;
+		const maxLength = 80; // 减少字数限制，与formatArticleSummary保持一致
 		if (plainText.length > maxLength) {
-			plainText = plainText.substring(0, maxLength) + '...全文';
-		} else {
-			plainText += '...全文';
+			plainText = plainText.substring(0, maxLength) + '...';
 		}
 		
 		// 返回带样式的HTML，确保溢出时正确处理
-		return `<p style="color:#666;font-size:28rpx;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-all;">${plainText}</p>`;
+		return `<p style="color:#666;font-size:28rpx;line-height:1.5;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-all;max-height:140rpx;">${plainText}</p>`;
 	};
 
 	// 在搜索加载完成处理结果数量
@@ -2295,9 +2291,11 @@
 							flex: 1;
 							word-break: break-all;  /* 添加自动换行 */
 							white-space: normal;    /* 移除单行显示设置 */
+							max-height: 120rpx;     /* 添加最大高度限制 */
 
 							// #ifdef H5
 							font-size: 28rpx; // H5环境下增大字体
+							max-height: 140rpx; /* H5环境下增加最大高度 */
 							// #endif
 						}
 
@@ -2509,6 +2507,7 @@
 		white-space: normal;
 		width: 100%;
 		min-height: 126rpx; /* 添加最小高度，确保空间足够显示3行 */
+		max-height: 126rpx; /* 添加最大高度，防止内容溢出 */
 	}
 
 	/* 封面图片样式 */

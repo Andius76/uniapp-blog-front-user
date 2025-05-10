@@ -542,7 +542,7 @@ const viewAuthorProfile = (authorId) => {
  * 格式化文章摘要
  */
 const formatArticleSummary = (summary) => {
-	if (!summary) return '暂无摘要...全文';
+	if (!summary) return '暂无摘要...';
 	
 	// 去除HTML标签
 	summary = summary.replace(/<[^>]+>/g, '');
@@ -553,8 +553,8 @@ const formatArticleSummary = (summary) => {
 	// 限制长度
 	const maxLength = 80;
 	return summary.length > maxLength ? 
-		summary.substring(0, maxLength) + '...全文' : 
-		summary + '...全文';
+		summary.substring(0, maxLength) + '...' : 
+		summary;
 };
 
 /**
@@ -1797,6 +1797,7 @@ const clearSearch = () => {
 	-webkit-line-clamp: 3;
 	-webkit-box-orient: vertical;
 	word-break: break-all;
+	max-height: 126rpx; /* 添加最大高度限制，防止内容溢出 */
 }
 
 /* 针对无封面文章的样式调整 */
