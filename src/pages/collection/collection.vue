@@ -1,30 +1,14 @@
 <template>
 	<view>
-		<button @click="login">跳转到登录</button>
-		<button @click="index">跳转到首页</button>
+		<!-- 收藏文章列表，复用article-list组件，listType设为collection -->
+		<article-list listType="collection" emptyText="暂无收藏文章" />
 	</view>
 </template>
 
 <script setup>
-	
-const login = () => {
-	uni.navigateTo({
-		url: '/pages/login/login'
-	});
-}
-const index = () => {
-	uni.navigateTo({
-		url: '/pages/index/index'
-	});
-}
+	// 导入文章列表组件
+	import ArticleList from '@/components/article-list/article-list.vue'
 </script>
 
 <style lang="scss">
-	button {
-		width: 100%;
-		height: 40px;
-		border: 1px solid #ccc;
-		border-radius: 5px;
-		margin-bottom: 10px;
-	}
 </style>
