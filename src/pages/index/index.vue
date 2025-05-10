@@ -167,9 +167,14 @@
 						<!-- 添加更多安全性检查，确保即使formatAvatarUrl函数有问题也能显示默认头像 -->
 						<image class="avatar" :src="article.author && formatAvatarUrl(article.author?.avatar) || '/static/images/avatar.png'" mode="aspectFill" @error="handleUserAvatarError(index)"></image>
 						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
-						<button class="follow-btn" :class="{'followed': article.author?.isFollowed}" @click.stop="handleFollow(article)">
-							{{ article.author?.isFollowed ? '已关注' : '+ 关注' }}
-						</button>
+						<!-- 将直接使用按钮替换为关注按钮组件 -->
+						<follow-button
+							:userId="article.author?.id"
+							:nickname="article.author?.nickname"
+							:followed="article.author?.isFollowed"
+							:autoCheck="false"
+							@follow-change="(isFollowed) => updateFollowState(article, isFollowed)"
+						/>
 					</view>
 
 					<!-- 文章内容 -->
@@ -280,6 +285,7 @@
 	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
 	// 导入SearchArticles API
 	import { searchArticles } from '@/api/article';
+	import FollowButton from '@/components/follow-button/follow-button.vue';
 
 	// 添加引用
 	const articleListRef = ref(null);
@@ -1681,171 +1687,6 @@
 	};
 
 	/**
-	 * 处理用户关注
-	 */
-	const handleFollow = async (article) => {
-		if (!article.author) return;
-		
-		try {
-			// 检查登录状态
-			const token = uni.getStorageSync('token');
-			if (!token) {
-				uni.showToast({
-					title: '请先登录',
-					icon: 'none'
-				});
-				setTimeout(() => {
-					uni.navigateTo({
-						url: '/pages/login/login'
-					});
-				}, 1500);
-				return;
-			}
-			
-			// 检查作者ID是否存在
-			if (!article.author.id) {
-				console.error('作者ID不存在，无法执行关注操作');
-				uni.showToast({
-					title: '操作失败，作者信息不完整',
-					icon: 'none'
-				});
-				return;
-			}
-			
-			// 获取当前关注状态
-			const isFollowed = article.author.isFollowed;
-			console.log(`当前作者[${article.author.id}]的关注状态: ${isFollowed ? '已关注' : '未关注'}`);
-			
-			if (isFollowed) {
-				// 已关注状态，执行取消关注操作
-				await handleUnfollow(article);
-			} else {
-				// 未关注状态，执行关注操作
-				await handleDoFollow(article);
-			}
-		} catch (error) {
-			uni.hideLoading();
-			console.error('关注操作整体失败:', error);
-			uni.showToast({
-				title: '网络异常，请重试',
-				icon: 'none'
-			});
-		}
-	};
-
-	/**
-	 * 执行关注操作
-	 */
-	const handleDoFollow = async (article) => {
-		uni.showLoading({ title: '关注中...' });
-		
-		try {
-			// 调用关注API
-			const result = await followUser(article.author.id, true);
-			console.log('关注API返回结果:', result);
-			
-			if (result.code === 200) {
-				// 成功关注
-				updateFollowState(article, true);
-				uni.showToast({
-					title: '关注成功',
-					icon: 'success'
-				});
-			} else if (result.code === 409) {
-				// 已经关注过，更新UI状态
-				console.log('服务器返回已关注过该用户:', result.message);
-				updateFollowState(article, true);
-				uni.showToast({
-					title: '已关注该用户',
-					icon: 'none'
-				});
-			} else {
-				// 其他错误
-				uni.showToast({
-					title: result.message || '关注失败，请重试',
-					icon: 'none'
-				});
-			}
-		} catch (error) {
-			console.error('关注操作失败', error);
-			uni.showToast({
-				title: '关注失败，请重试',
-				icon: 'none'
-			});
-		} finally {
-			uni.hideLoading();
-		}
-	};
-
-	/**
-	 * 执行取消关注操作
-	 */
-	const handleUnfollow = async (article) => {
-		// 先显示确认对话框
-		uni.showModal({
-			title: '取消关注',
-			content: `确定不再关注"${article.author.nickname}"吗？`,
-			success: async (res) => {
-				if (res.confirm) {
-					// 显示加载中
-					uni.showLoading({ title: '取消关注中...' });
-					
-					try {
-						// 调用取消关注API
-						const result = await followUser(article.author.id, false);
-						console.log('取消关注API返回结果:', result);
-						
-						// 根据响应处理
-						if (result.code === 200) {
-							// 成功取消关注
-							updateFollowState(article, false);
-							uni.showToast({
-								title: '已取消关注',
-								icon: 'none'
-							});
-						} else if (result.code === 409) {
-							// 已经是未关注状态，更新UI
-							console.log('服务器返回未关注该用户:', result.message);
-							updateFollowState(article, false);
-							uni.showToast({
-								title: '更新关注状态成功',
-									icon: 'none'
-							});
-						} else {
-							// 其他错误
-							uni.showToast({
-								title: result.message || '操作失败，请重试',
-								icon: 'none'
-							});
-						}
-					} catch (error) {
-						console.error('取消关注失败', error);
-						// 特殊处理409错误，如果是"未关注"错误，我们也更新UI状态
-						if (error.code === 409 || 
-							(error.data && error.data.code === 409) || 
-							(error.statusCode === 409) || 
-							(error.status === 409)) {
-							console.log('收到409错误，假设为"未关注该用户"，强制更新UI状态');
-							updateFollowState(article, false);
-							uni.showToast({
-								title: '关注状态已更新',
-								icon: 'none'
-							});
-						} else {
-							uni.showToast({
-								title: '取消关注失败，请重试',
-								icon: 'none'
-							});
-						}
-					} finally {
-						uni.hideLoading();
-					}
-				}
-			}
-		});
-	};
-
-	/**
 	 * 更新关注状态（UI和本地存储）
 	 * @param {Object} article - 文章对象
 	 * @param {Boolean} isFollowed - 是否关注
@@ -1861,48 +1702,11 @@
 			}
 		});
 		
-		// 更新用户关注计数
-		if (isFollowed) {
-			// 关注数+1
-			userInfo.followCount++;
-		} else {
-			// 关注数-1，确保不小于0
-			userInfo.followCount = Math.max(0, userInfo.followCount - 1);
+		// 尝试更新用户头像右上角关注状态
+		if (userInfo.value.id && userInfo.value.followCount !== undefined) {
+			// 刷新用户数据，获取最新的关注数量
+			refreshUserInfo();
 		}
-		
-		// 更新本地存储的用户信息
-		const localUserInfo = uni.getStorageSync('userInfo');
-		if (localUserInfo) {
-			localUserInfo.followCount = userInfo.followCount;
-			uni.setStorageSync('userInfo', localUserInfo);
-		}
-		
-		// 添加关注记录或移除关注记录到本地存储
-		try {
-			let followedUsers = uni.getStorageSync('followedUsers') || {};
-			if (isFollowed) {
-				followedUsers[article.author.id] = {
-					id: article.author.id,
-					nickname: article.author.nickname,
-					avatar: article.author.avatar
-				};
-			} else {
-				delete followedUsers[article.author.id];
-			}
-			uni.setStorageSync('followedUsers', followedUsers);
-			console.log('更新本地关注状态:', 
-				isFollowed ? '添加关注' : '取消关注', 
-				article.author.id
-			);
-		} catch (e) {
-			console.error('存储关注状态出错:', e);
-		}
-		
-		// 发送关注状态更新事件，通知其他页面
-		uni.$emit('user_follow_updated', {
-			userId: article.author.id,
-			isFollowed: isFollowed
-		});
 	};
 
 	/**
@@ -2838,69 +2642,57 @@
 		}
 	};
 
-	// 在setup中添加新的方法
+	/**
+	 * 检查作者关注状态
+	 * @param {Array} articles - 文章数组
+	 */
 	const checkAuthorsFollowStatus = async (articles) => {
-		if (!articles || articles.length === 0) return;
+		// 获取token，如果未登录则不检查
+		const token = uni.getStorageSync('token');
+		if (!token) return;
 		
-		// 获取本地存储的关注状态
-		const followedUsers = uni.getStorageSync('followedUsers') || {};
-		console.log('从本地存储获取已关注用户列表:', Object.keys(followedUsers).length);
+		// 从文章列表中提取不重复的作者ID
+		const authorIds = [...new Set(
+			articles
+				.filter(article => article.author && article.author.id)
+				.map(article => article.author.id)
+		)];
 		
-		// 获取所有作者的ID
-		const authorIds = articles.map(article => article.author?.id).filter(id => id);
-		if (authorIds.length === 0) {
-			console.log('没有找到有效的作者ID');
-			return;
-		}
+		if (authorIds.length === 0) return;
 		
-		// 串行处理每个作者的关注状态，避免并发请求问题
-		for (const article of articles) {
-			if (!article.author || !article.author.id) continue;
-			
-			const authorId = article.author.id;
-			
-			// 先检查本地存储
-			if (followedUsers[authorId]) {
-				console.log(`用户[${authorId}]在本地存储中已关注`);
-				article.author.isFollowed = true;
-				continue;
-			}
-			
-			// 本地无记录，单独请求API
+		console.log(`检查${authorIds.length}个作者的关注状态`);
+		
+		// 批量检查关注状态 - 使用Promise.all并发请求
+		const checkPromises = authorIds.map(async authorId => {
 			try {
 				const res = await checkUserFollow(authorId);
-				console.log(`检查用户[${authorId}]关注状态API返回:`, res);
-				
-				// 只有当code为200且data为true时才认为已关注
-				const isFollowed = res.code === 200 && res.data === true;
-				article.author.isFollowed = isFollowed;
-				
-				// 如果API返回已关注，更新本地存储
-				if (isFollowed) {
-					followedUsers[authorId] = {
-						id: authorId,
-						nickname: article.author.nickname,
-						avatar: article.author.avatar,
-						updatedAt: new Date().getTime()
-					};
-					uni.setStorageSync('followedUsers', followedUsers);
-					console.log(`用户[${authorId}]API显示已关注，添加至本地存储`);
-				} else if (followedUsers[authorId]) {
-					// 确保本地存储中移除该用户
-					delete followedUsers[authorId];
-					uni.setStorageSync('followedUsers', followedUsers);
-					console.log(`用户[${authorId}]API显示未关注，从本地存储中移除`);
+				if (res.code === 200) {
+					return { authorId, isFollowed: res.data };
 				}
+				return { authorId, isFollowed: false };
 			} catch (error) {
-				console.error(`检查用户[${authorId}]关注状态失败:`, error);
-				// 发生错误时，使用本地存储状态，默认为未关注
-				article.author.isFollowed = !!followedUsers[authorId];
-				console.log(`API请求失败，使用本地状态: ${article.author.isFollowed ? '已关注' : '未关注'}`);
+				console.error(`检查作者${authorId}的关注状态失败:`, error);
+				return { authorId, isFollowed: false };
 			}
-			
-			// 添加延迟，避免并发请求导致的问题
-			await new Promise(resolve => setTimeout(resolve, 50));
-		}
+		});
+		
+		// 等待所有检查完成
+		const results = await Promise.all(checkPromises);
+		
+		// 创建关注状态映射表
+		const followMap = {};
+		results.forEach(result => {
+			followMap[result.authorId] = result.isFollowed;
+		});
+		
+		// 更新文章列表中的作者关注状态
+		articles.forEach(article => {
+			if (article.author && article.author.id && followMap.hasOwnProperty(article.author.id)) {
+				article.author.isFollowed = followMap[article.author.id];
+			}
+		});
+		
+		return articles;
 	};
 
 	// 修改获取文章列表的方法
@@ -3508,27 +3300,26 @@
 				}
 				
 				.nickname {
-					flex: 1;
 					font-size: 28rpx;
 					color: #333;
-					font-weight: 500;
+					margin-left: 20rpx;
+					max-width: 220rpx;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+					flex: 1;
 				}
 				
-				.follow-btn {
+				/* 移除旧的关注按钮样式 */
+				
+				/* 添加关注按钮组件样式 */
+				:deep(.follow-btn) {
 					height: 50rpx;
 					line-height: 50rpx;
-					background-color: #fff;
-					color: #4361ee;
 					font-size: 24rpx;
-					border: 2rpx solid #4361ee;
-					border-radius: 25rpx;
 					padding: 0 20rpx;
-					margin: 0;
-					
-					&.followed {
-						color: #999;
-						border-color: #999;
-					}
+					min-width: 120rpx;
+					margin-left: 10rpx;
 				}
 			}
 			
