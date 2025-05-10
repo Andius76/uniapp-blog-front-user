@@ -1511,19 +1511,27 @@
 
 	// 处理文章点击
 	const handleArticleClick = (articleId) => {
-		// #ifdef H5
-		// H5环境下，新窗口打开文章详情页
-		// 获取正确的基础路径
-		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
-		window.open(detailUrl, '_blank');
-		// #endif
-
-		// #ifndef H5
-		// 非H5环境下，触发父组件处理
+		if (!articleId) {
+			console.error('文章ID为空，无法跳转到详情页');
+			return;
+		}
+		
+		console.log('点击文章，准备跳转到详情页:', articleId);
+		
+		// 使用uni.navigateTo跳转到文章详情页
+		uni.navigateTo({
+			url: `/pages/article-detail/article-detail?id=${articleId}`,
+			fail: (err) => {
+				console.error('跳转文章详情页失败:', err);
+				uni.showToast({
+					title: '页面跳转失败',
+					icon: 'none'
+				});
+			}
+		});
+		
+		// 触发文章点击事件
 		emit('articleClick', articleId);
-		// #endif
 	};
 
 	// 处理作者点击
