@@ -147,6 +147,8 @@
 				@refresherrefresh="handleRefresh"
 				@scrolltolower="handleLoadMore"
 				:refresher-threshold="100"
+				refresher-default-style="black"
+				refresher-background="#f5f5f5"
 				:style="{ height: mpArticleListHeight }"
 			>
 				<!-- 文章列表循环显示 -->
