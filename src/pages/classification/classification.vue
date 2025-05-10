@@ -15,10 +15,10 @@
 				<scroll-view class="category-scroll" scroll-x show-scrollbar="false">
 					<view class="category-list">
 						<view 
-							v-for="(tag, index) in filteredTags" 
+							v-for="(tag, index) in defaultTagList" 
 							:key="index" 
 							class="category-item" 
-							:class="{ active: currentTag === tag.name }"
+							:class="{ 'active': currentTag === tag.name }"
 							@click="switchCategory(tag.name)"
 						>
 							{{ tag.name }}
@@ -190,12 +190,13 @@ const globalLoadingLock = (() => {
 const searchText = ref('');
 const isSearching = ref(false);
 
-// 标签数据
-const allTags = ref([
-	{ name: '全部', count: 0 }
-]);
-const currentTag = ref('全部');
-const emptyText = ref('该分类下暂无文章');
+// 默认推荐标签（与发布页面保持一致）
+const defaultTags = [
+	'全部', '技术', '前端开发', '后端开发', '移动开发', '设计',
+	'生活', '旅行', '美食', '教育', '学习',
+	'健康', '时尚', '科技', '游戏', '娱乐',
+	'艺术', '体育', '音乐', '电影', '书籍'
+];
 
 // 文章列表数据（小程序和APP环境使用）
 const articleList = ref([]);
@@ -205,19 +206,42 @@ const noMoreData = ref(false);
 const currentPage = ref(1);
 const pageSize = ref(10);
 
+// 标签相关
+const allTags = ref([]); // 存储所有标签数据
+const defaultTagList = ref([]); // 存储默认标签列表（用于显示）
+const currentTag = ref('全部');
+const emptyText = ref('该分类下暂无文章');
+
 // 获取文章标签列表
 const loadTags = async () => {
 	try {
+		// 先使用默认标签初始化
+		defaultTagList.value = defaultTags.map(tag => ({
+			name: tag,
+			count: 0,
+			isDefault: true
+		}));
+		
+		// 从服务器获取标签数据
 		const res = await http.get('/api/article/tags');
 		if (res.code === 200 && Array.isArray(res.data)) {
-			// 将返回的标签加入到allTags中，保留'全部'为第一项
-			const tags = [{ name: '全部', count: 0 }, ...res.data];
+			// 保存所有标签数据（包括用户创建的）
+			allTags.value = res.data;
+			
+			// 更新默认标签的文章数量
+			defaultTagList.value.forEach(tag => {
+				const serverTag = res.data.find(t => t.name === tag.name);
+				if (serverTag) {
+					tag.count = serverTag.count || 0;
+				}
+			});
 			
 			// 计算"全部"的文章数量（所有标签的文章数量之和）
 			const totalCount = res.data.reduce((sum, tag) => sum + (tag.count || 0), 0);
-			tags[0].count = totalCount;
-			
-			allTags.value = tags;
+			const allTag = defaultTagList.value.find(t => t.name === '全部');
+			if (allTag) {
+				allTag.count = totalCount;
+			}
 		}
 	} catch (error) {
 		console.error('获取标签列表失败:', error);
@@ -230,12 +254,14 @@ const loadTags = async () => {
 
 // 根据搜索文本过滤标签
 const filteredTags = computed(() => {
-	if (!searchText.value) return allTags.value;
-	
-	// 只有输入了搜索文本才过滤
-	return allTags.value.filter(tag => 
-		tag.name === '全部' || tag.name.toLowerCase().includes(searchText.value.toLowerCase())
-	);
+	// 如果有搜索文本，过滤标签
+	if (searchText.value) {
+		return defaultTagList.value.filter(tag => 
+			tag.name.toLowerCase().includes(searchText.value.toLowerCase())
+		);
+	}
+	// 没有搜索文本，返回所有默认标签
+	return defaultTagList.value;
 });
 
 // 切换分类
@@ -266,7 +292,7 @@ const switchCategory = (tagName) => {
 };
 
 // 处理搜索
-const handleSearch = () => {
+const handleSearch = async () => {
 	isSearching.value = true;
 	
 	// 如果搜索框为空，则重置为全部分类
@@ -276,30 +302,38 @@ const handleSearch = () => {
 		return;
 	}
 	
-	// 在标签中搜索
-	const found = allTags.value.find(tag => 
-		tag.name !== '全部' && tag.name.toLowerCase() === searchText.value.toLowerCase()
+	// 先在默认标签中搜索
+	const foundInDefault = defaultTagList.value.find(tag => 
+		tag.name.toLowerCase() === searchText.value.toLowerCase()
 	);
 	
-	// 如果找到完全匹配的标签，切换到该标签
-	if (found) {
-		switchCategory(found.name);
-	} else {
-		// 否则，显示搜索结果
-		emptyText.value = `没有找到关于"${searchText.value}"的标签`;
-		// 这里可以根据需要添加更多搜索逻辑
+	if (foundInDefault) {
+		// 如果在默认标签中找到，直接切换
+		switchCategory(foundInDefault.name);
+		isSearching.value = false;
+		return;
 	}
 	
-	isSearching.value = false;
-};
-
-// 处理标签点击事件
-const handleTagClick = (tag) => {
-	// 切换到被点击的标签
-	switchCategory(tag);
+	// 在所有标签中搜索
+	const foundInAll = allTags.value.find(tag => 
+		tag.name.toLowerCase() === searchText.value.toLowerCase()
+	);
 	
-	// 可选：清空搜索框
-	searchText.value = '';
+	if (foundInAll) {
+		// 如果在所有标签中找到，切换到该标签
+		switchCategory(foundInAll.name);
+		isSearching.value = false;
+	} else {
+		// 如果没有找到，显示提示信息
+		uni.showToast({
+			title: `没有找到"${searchText.value}"相关标签`,
+			icon: 'none'
+		});
+		
+		// 更新空内容提示
+		emptyText.value = `没有找到关于"${searchText.value}"的标签或文章`;
+		isSearching.value = false;
+	}
 };
 
 // 查看文章详情
@@ -945,6 +979,15 @@ const formatArticleImage = (url) => {
 		}
 	}
 };
+
+// 处理标签点击事件
+const handleTagClick = (tag) => {
+	// 切换到被点击的标签
+	switchCategory(tag);
+	
+	// 清空搜索框
+	searchText.value = '';
+};
 </script>
 
 <style lang="scss" scoped>
@@ -1036,6 +1079,16 @@ const formatArticleImage = (url) => {
 		.tag-count {
 			color: rgba(255, 255, 255, 0.8);
 		}
+	}
+	
+	&.default-tag {
+		border: 1px solid #3170f9;
+		background-color: rgba(49, 112, 249, 0.1);
+	}
+	
+	&.custom-tag {
+		border: 1px solid #ff6b6b;
+		background-color: rgba(255, 107, 107, 0.1);
 	}
 	
 	.tag-count {
