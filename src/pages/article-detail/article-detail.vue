@@ -186,7 +186,7 @@
 		</view>
 
 		<!-- 评论输入框 -->
-		<view class="comment-input-container" :style="{ bottom: (data.inputBottom || 0) + 'px' }">
+		<view class="comment-input-container">
 			<input class="comment-input" type="text" v-model="data.commentContent"
 				:placeholder="data.replyTarget ? `回复 ${data.replyTarget}` : '说点什么...'" confirm-type="send"
 				@confirm="submitComment" @focus="handleInputFocus" @blur="handleInputBlur" />
@@ -1395,22 +1395,20 @@
 		// 处理键盘弹出
 		data.inputBottom = e.detail.height || 0;
 
-		// #ifdef APP-PLUS
-		// APP环境下，额外添加一些顶部间距，避免被键盘遮挡
+		// #ifdef APP-PLUS || MP-WEIXIN
+		// APP和小程序环境下，使用固定位置，而不是过高的位置
 		if (data.inputBottom > 0) {
-			data.inputBottom += 10; // 增加额外间距
-		}
-
-		// 如果在APP中键盘弹出，滚动页面确保内容可见
-		setTimeout(() => {
-			const commentSection = document.querySelector('.comment-section');
-			if (commentSection) {
-				commentSection.scrollIntoView({
-					behavior: 'smooth',
-					block: 'end'
+			// 使用较小的固定值，确保输入框就在键盘上方
+			data.inputBottom = 0;
+			
+			// 延迟滚动到评论区，确保视图已更新
+			setTimeout(() => {
+				uni.pageScrollTo({
+					selector: '.comment-section',
+					duration: 300
 				});
-			}
-		}, 300);
+			}, 100);
+		}
 		// #endif
 	};
 
@@ -2449,9 +2447,10 @@
 		bottom: 0 !important; // 确保在H5中固定在底部
 		// #endif
 
-		// #ifdef APP-PLUS
-		// APP环境优化键盘弹出体验
-		transition: bottom 0.3s;
+		// #ifdef APP-PLUS || MP-WEIXIN
+		// APP和小程序环境优化键盘弹出体验
+		transition: none; // 取消过渡效果
+		bottom: 0 !important; // 强制固定在底部
 		padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); // 增加安全区域
 		// #endif
 
@@ -2697,6 +2696,10 @@
 		margin-top: 30px;
 		border-top: 1px solid #eee;
 		padding-top: 40px;
+		// #endif
+		
+		// #ifdef APP-PLUS || MP-WEIXIN
+		padding-bottom: 120rpx; // 确保底部有足够空间，不被输入框遮挡
 		// #endif
 	}
 
