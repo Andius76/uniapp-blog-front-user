@@ -1718,8 +1718,9 @@
 					title: '关注成功',
 					icon: 'success'
 				});
-			} else if (result.code === 409 && result.message.includes('已关注')) {
+			} else if (result.code === 409) {
 				// 已经关注过，更新UI状态
+				console.log('服务器返回已关注过该用户:', result.message);
 				updateFollowState(article, true);
 				uni.showToast({
 					title: '已关注该用户',
@@ -1769,12 +1770,13 @@
 								title: '已取消关注',
 								icon: 'none'
 							});
-						} else if (result.code === 409 && result.message === '未关注该用户') {
+						} else if (result.code === 409) {
 							// 已经是未关注状态，更新UI
+							console.log('服务器返回未关注该用户:', result.message);
 							updateFollowState(article, false);
 							uni.showToast({
 								title: '更新关注状态成功',
-								icon: 'none'
+									icon: 'none'
 							});
 						} else {
 							// 其他错误
@@ -1786,9 +1788,10 @@
 					} catch (error) {
 						console.error('取消关注失败', error);
 						// 特殊处理409错误，如果是"未关注"错误，我们也更新UI状态
-						if (error.statusCode === 409 || 
+						if (error.code === 409 || 
 							(error.data && error.data.code === 409) || 
-							(error.response && error.response.status === 409)) {
+							(error.statusCode === 409) || 
+							(error.status === 409)) {
 							console.log('收到409错误，假设为"未关注该用户"，强制更新UI状态');
 							updateFollowState(article, false);
 							uni.showToast({
@@ -2815,95 +2818,53 @@
 			return;
 		}
 		
-		// 批量检查关注状态
-		const followStatusPromises = authorIds.map(authorId => {
+		// 串行处理每个作者的关注状态，避免并发请求问题
+		for (const article of articles) {
+			if (!article.author || !article.author.id) continue;
+			
+			const authorId = article.author.id;
+			
 			// 先检查本地存储
 			if (followedUsers[authorId]) {
 				console.log(`用户[${authorId}]在本地存储中已关注`);
-				return Promise.resolve({ authorId, isFollowed: true, source: 'local' });
+				article.author.isFollowed = true;
+				continue;
 			}
 			
-			// 如果本地存储没有，再请求API
-			return checkUserFollow(authorId)
-				.then(res => {
-					// 确保正确解析API响应
-					console.log(`检查用户[${authorId}]关注状态API返回:`, res);
-					
-					// 只有当code为200且data为true时才认为已关注
-					const isFollowed = res.code === 200 && res.data === true;
-					
-					// 如果API返回已关注，更新本地存储
-					if (isFollowed) {
-						// 查找作者信息以存储到本地
-						const author = articles.find(a => a.author && a.author.id === authorId)?.author;
-						if (author) {
-							followedUsers[authorId] = {
-								id: authorId,
-								nickname: author.nickname,
-								avatar: author.avatar,
-								updatedAt: new Date().getTime() // 添加更新时间戳
-							};
-							uni.setStorageSync('followedUsers', followedUsers);
-							console.log(`用户[${authorId}]API显示已关注，添加至本地存储`);
-						}
-					} else {
-						// 确保本地存储中移除该用户
-						if (followedUsers[authorId]) {
-							delete followedUsers[authorId];
-							uni.setStorageSync('followedUsers', followedUsers);
-							console.log(`用户[${authorId}]API显示未关注，从本地存储中移除`);
-						}
-					}
-					
-					return { authorId, isFollowed, source: 'api' };
-				})
-				.catch(err => {
-					console.error(`检查用户[${authorId}]关注状态API请求失败:`, err);
-					// 发生错误时，我们只使用本地存储的状态
-					const isFollowed = !!followedUsers[authorId];
-					console.log(`API请求失败，使用本地状态: ${isFollowed ? '已关注' : '未关注'}`);
-					return { authorId, isFollowed, source: 'fallback' };
-				});
-		});
-		
-		try {
-			const followStatuses = await Promise.all(followStatusPromises);
-			console.log('所有作者关注状态检查结果:', followStatuses);
-			
-			// 整合结果，统计来源
-			const sourceCounts = {
-				local: followStatuses.filter(s => s.source === 'local').length,
-				api: followStatuses.filter(s => s.source === 'api').length,
-				fallback: followStatuses.filter(s => s.source === 'fallback').length,
-			};
-			console.log('关注状态来源统计:', sourceCounts);
-			
-			// 更新文章列表中作者的关注状态
-			articles.forEach(article => {
-				if (article.author) {
-					const status = followStatuses.find(s => s.authorId === article.author.id);
-					if (status) {
-						// 确保更新关注状态
-						article.author.isFollowed = status.isFollowed;
-						console.log(`更新作者[${article.author.id}]关注状态为: ${status.isFollowed}, 来源: ${status.source}`);
-					} else {
-						// 默认为未关注
-						article.author.isFollowed = false;
-						console.log(`作者[${article.author.id}]未找到关注状态，默认为未关注`);
-					}
+			// 本地无记录，单独请求API
+			try {
+				const res = await checkUserFollow(authorId);
+				console.log(`检查用户[${authorId}]关注状态API返回:`, res);
+				
+				// 只有当code为200且data为true时才认为已关注
+				const isFollowed = res.code === 200 && res.data === true;
+				article.author.isFollowed = isFollowed;
+				
+				// 如果API返回已关注，更新本地存储
+				if (isFollowed) {
+					followedUsers[authorId] = {
+						id: authorId,
+						nickname: article.author.nickname,
+						avatar: article.author.avatar,
+						updatedAt: new Date().getTime()
+					};
+					uni.setStorageSync('followedUsers', followedUsers);
+					console.log(`用户[${authorId}]API显示已关注，添加至本地存储`);
+				} else if (followedUsers[authorId]) {
+					// 确保本地存储中移除该用户
+					delete followedUsers[authorId];
+					uni.setStorageSync('followedUsers', followedUsers);
+					console.log(`用户[${authorId}]API显示未关注，从本地存储中移除`);
 				}
-			});
-		} catch (error) {
-			console.error('处理关注状态检查结果失败:', error);
+			} catch (error) {
+				console.error(`检查用户[${authorId}]关注状态失败:`, error);
+				// 发生错误时，使用本地存储状态，默认为未关注
+				article.author.isFollowed = !!followedUsers[authorId];
+				console.log(`API请求失败，使用本地状态: ${article.author.isFollowed ? '已关注' : '未关注'}`);
+			}
 			
-			// 发生错误时，使用本地存储作为备选方案
-			articles.forEach(article => {
-				if (article.author) {
-					const isFollowed = !!followedUsers[article.author.id];
-					article.author.isFollowed = isFollowed;
-					console.log(`发生错误时，作者[${article.author.id}]关注状态从本地读取为: ${isFollowed}`);
-				}
-			});
+			// 添加延迟，避免并发请求导致的问题
+			await new Promise(resolve => setTimeout(resolve, 50));
 		}
 	};
 

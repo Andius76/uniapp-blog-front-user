@@ -105,6 +105,11 @@ function responseInterceptor(response) {
 		// 处理业务状态码
 		if (data.code === 200) {
 			return data;
+		} else if (data.code === 409) {
+			// 特殊处理409冲突状态码，直接返回原始数据而不是reject
+			// 这样上层代码可以根据code判断如何处理冲突情况
+			console.log('业务冲突(409):', data.message);
+			return data;
 		} else {
 			// 处理业务错误
 			uni.showToast({
