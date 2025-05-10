@@ -167,7 +167,11 @@
 						<!-- 添加更多安全性检查，确保即使formatAvatarUrl函数有问题也能显示默认头像 -->
 						<image class="avatar" :src="article.author && formatAvatarUrl(article.author?.avatar) || '/static/images/avatar.png'" mode="aspectFill" @error="handleUserAvatarError(index)"></image>
 						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
-						<!-- 将直接使用按钮替换为关注按钮组件 -->
+						<!-- 将关注按钮移到最右侧 -->
+					</view>
+					
+					<!-- 添加关注按钮到最右侧 -->
+					<view class="follow-button-container">
 						<follow-button
 							:userId="article.author?.id"
 							:nickname="article.author?.nickname"
@@ -4120,4 +4124,104 @@
 		padding-right: 80rpx; /* 为清除图标预留空间 */
 	}
 	/* #endif */
+
+	// 微信小程序卡片布局样式
+	.mp-content {
+		background-color: #f5f5f5;
+		
+		.article-list {
+			width: 100%;
+		}
+
+		.article-card {
+			margin-bottom: 20rpx;
+			padding: 24rpx;
+			background-color: #fff;
+			border-radius: 12rpx;
+			position: relative;
+		}
+
+		.user-info {
+			display: flex;
+			align-items: center;
+			margin-bottom: 20rpx;
+
+			.avatar {
+				width: 60rpx;
+				height: 60rpx;
+				border-radius: 50%;
+				margin-right: 16rpx;
+			}
+
+			.nickname {
+				font-size: 28rpx;
+				color: #333;
+				flex: 1;
+			}
+		}
+		
+		/* 添加关注按钮容器样式 */
+		.follow-button-container {
+			position: absolute;
+			top: 24rpx;
+			right: 24rpx;
+			z-index: 1;
+		}
+
+		.article-content {
+			margin-bottom: 20rpx;
+
+			.article-title {
+				font-size: 32rpx;
+				font-weight: bold;
+				color: #333;
+				margin-bottom: 16rpx;
+				line-height: 1.4;
+				display: -webkit-box;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 2;
+				overflow: hidden;
+			}
+
+			.article-summary {
+				font-size: 28rpx;
+				color: #666;
+				line-height: 1.5;
+				margin-bottom: 16rpx;
+				display: -webkit-box;
+				-webkit-box-orient: vertical;
+				-webkit-line-clamp: 3;
+				overflow: hidden;
+			}
+
+			.article-image {
+				width: 100%;
+				border-radius: 8rpx;
+				overflow: hidden;
+				margin-bottom: 16rpx;
+
+				.single-image {
+					width: 100%;
+					height: 320rpx;
+					background-color: #f5f5f5;
+				}
+			}
+
+			.article-tags {
+				display: flex;
+				flex-wrap: wrap;
+				margin-bottom: 16rpx;
+
+				.tag-item {
+					font-size: 24rpx;
+					color: #4361ee;
+					background-color: rgba(67, 97, 238, 0.1);
+					padding: 4rpx 16rpx;
+					border-radius: 16rpx;
+					margin-right: 16rpx;
+					margin-bottom: 8rpx;
+				}
+			}
+		}
+	}
 </style>
