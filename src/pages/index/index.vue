@@ -2314,9 +2314,11 @@
 	// 页面加载时初始化数据
 	onLoad(() => {
 		console.log('页面加载:');
+		// 确保默认选中推荐标签（第二个选项）
+		data.currentNav = 1;
 		// 先加载文章列表
 		loadArticleList();
-
+		
 		// 文章列表加载完成后，同步收藏状态
 		setTimeout(() => {
 			syncCollectionStatus();
@@ -2474,14 +2476,14 @@
 	const clearSearch = () => {
 		// 清空搜索内容
 		data.searchText = '';
-		// 切换回推荐标签
-		data.currentNav = 0;
-
+		// 切换回推荐标签（第二个选项）
+		data.currentNav = 1;
+		
 		// 重置文章列表
 		currentPage.value = 1;
 		noMoreData.value = false;
 		articleList.value = [];
-
+		
 		// 重新加载文章列表
 		loadArticleList();
 	};
@@ -2938,6 +2940,12 @@
 					// #ifndef H5
 					margin-left: 0;
 					// #endif
+				}
+
+				&:nth-child(2) {
+					// 默认让第二个标签（推荐）显示为选中状态
+					color: #4361ee;
+					font-weight: bold;
 				}
 
 				&.active {
