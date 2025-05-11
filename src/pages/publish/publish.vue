@@ -1416,6 +1416,29 @@
 		onBeforeUnmount(() => {
 			clearInterval(autoSaveInterval);
 		});
+		
+		// #ifdef MP-WEIXIN
+		// 监听页面卸载事件
+		const currentPages = getCurrentPages();
+		const curPage = currentPages[currentPages.length - 1];
+		
+		// 保存原始的onUnload事件处理函数
+		const originalOnUnload = curPage.onUnload;
+		
+		// 重写onUnload事件
+		curPage.onUnload = function() {
+			// 只有在确认退出后才执行原始的onUnload
+			if (isConfirmedExit) {
+				if (originalOnUnload) {
+					originalOnUnload.call(this);
+				}
+			} else if (hasContent()) {
+				// 如果有未保存内容，尝试阻止退出
+				showExitConfirm();
+				return false;
+			}
+		};
+		// #endif
 	});
 
 	// 监听页面后退按钮
@@ -1428,6 +1451,17 @@
 		currentWebview.addEventListener('backpress', (e) => {
 			e.preventDefault();
 			showExitConfirm();
+		});
+		// #endif
+		
+		// #ifdef MP-WEIXIN
+		uni.enableAlertBeforeUnload(() => {
+			// 如果有内容，拦截并显示确认
+			if (hasContent()) {
+				showExitConfirm();
+				return true; // 拦截退出行为
+			}
+			return false; // 不拦截
 		});
 		// #endif
 	};
@@ -1443,6 +1477,37 @@
 					return false; // 阻止跳转
 				}
 				return true; // 允许跳转
+			}
+		});
+		
+		// 拦截导航API，确保用户无法离开页面
+		uni.addInterceptor('navigateTo', {
+			invoke(e) {
+				if (hasContent()) {
+					showExitConfirm();
+					return false; // 阻止跳转
+				}
+				return true; // 允许跳转
+			}
+		});
+		
+		uni.addInterceptor('redirectTo', {
+			invoke(e) {
+				if (hasContent()) {
+					showExitConfirm();
+					return false; // 阻止跳转
+				}
+				return true; // 允许跳转
+			}
+		});
+		
+		uni.addInterceptor('navigateBack', {
+			invoke(e) {
+				if (hasContent()) {
+					showExitConfirm();
+					return false; // 阻止返回
+				}
+				return true; // 允许返回
 			}
 		});
 		// #endif
@@ -2226,8 +2291,15 @@
 				if (res.confirm) {
 					// 用户点击确认，清空内容并退出
 					clearAndRefresh();
-					// 返回上一页面
-					uni.navigateBack();
+					
+					// 确保已标记为可以安全退出
+					isConfirmedExit = true;
+					
+					// 延迟执行返回操作，避免多次触发退出逻辑
+					setTimeout(() => {
+						// 返回上一页面
+						uni.navigateBack();
+					}, 100);
 				}
 			},
 			fail: () => {
