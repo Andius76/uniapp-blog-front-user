@@ -291,7 +291,7 @@
 		let lockTimer = null;
 
 		// 设置锁定方法
-		const lock = (duration = 3000) => {
+		const lock = (duration = 1500) => { // 默认锁定时间从3000ms减少到1500ms
 			if (lockTimer) clearTimeout(lockTimer);
 			isLocked = true;
 			lockTimer = setTimeout(() => {
@@ -523,7 +523,7 @@
 			}
 		}
 
-		// 刷新文章列表
+		// 刷新文章列表 - 简化逻辑，移除嵌套的setTimeout
 		if (articleListRef.value) {
 			// 记录本次请求时间
 			data.lastRequestTime = now;
@@ -534,9 +534,16 @@
 			if (!isComponentLoading && !data.isRefreshing) {
 				// 设置刷新状态为true，防止短时间内重复刷新
 				data.isRefreshing = true;
-
 				console.log('检测到页面显示，刷新文章列表');
-				// 设置一个小延迟，避免可能的竞态条件
+                
+				// #ifdef H5
+				// H5环境下直接重置并加载文章列表，不使用嵌套setTimeout
+				articleListRef.value.resetList();
+				articleListRef.value.loadArticles();
+				// #endif
+                
+				// #ifndef H5
+				// 非H5环境保留原有逻辑
 				setTimeout(() => {
 					articleListRef.value.resetList();
 					// 添加延迟再加载文章，避免可能的并发请求
@@ -544,11 +551,12 @@
 						articleListRef.value.loadArticles();
 					}, 50);
 				}, 50);
+				// #endif
 
-				// 2秒后重置刷新状态，允许下次刷新
+				// 1秒后重置刷新状态，允许下次刷新 - 从2秒减少到1秒
 				setTimeout(() => {
 					data.isRefreshing = false;
-				}, 2000);
+				}, 1000);
 			} else if (isComponentLoading) {
 				console.log('组件正在加载中，跳过本次刷新');
 			} else {
@@ -570,8 +578,8 @@
 			return;
 		}
 
-		// 设置加载锁，防止重复加载
-		globalLoadingLock.lock(3000);
+		// 设置加载锁，防止重复加载 - 缩短锁定时间从3000毫秒到1500毫秒
+		globalLoadingLock.lock(1500);
 
 		// 设置刷新状态
 		data.isRefreshing = true;
@@ -590,22 +598,32 @@
 			// 等待DOM更新，确保引用有效
 			await nextTick();
 
-			// 延迟加载文章列表，确保组件已经完全挂载
+			// #ifdef H5
+			// H5环境下直接调用组件的加载方法，简化嵌套延时
+			if (articleListRef.value) {
+				// 先重置列表
+				articleListRef.value.resetList();
+				// 直接加载文章，不使用嵌套的setTimeout
+				articleListRef.value.loadArticles(true);
+				console.log('H5环境：直接调用文章列表加载方法');
+			}
+			// #endif
+
+			// #ifndef H5
+			// 非H5环境的处理
 			setTimeout(() => {
-				// 等待下一个DOM更新周期，文章列表组件会自动加载
-				nextTick(() => {
-					console.log('文章列表组件已渲染，将自动加载数据');
+				// 不使用嵌套的nextTick，直接执行
+				console.log('非H5环境：文章列表组件将自动加载数据');
+			}, 100);
+			// #endif
 
-					// 隐藏加载提示
-					uni.hideLoading();
-
-					// 延迟重置刷新状态
-					setTimeout(() => {
-						data.isRefreshing = false;
-						console.log('重置刷新状态');
-					}, 2000);
-				});
-			}, 300);
+			// 隐藏加载提示
+			setTimeout(() => {
+				uni.hideLoading();
+				// 重置刷新状态 - 减少等待时间从2000毫秒到1000毫秒
+				data.isRefreshing = false;
+				console.log('重置刷新状态');
+			}, 1000);
 		} catch (error) {
 			console.error('统一加载失败:', error);
 			uni.showToast({
@@ -1588,8 +1606,8 @@
 
 			// 如果是同一个导航项，且时间间隔小于500ms，则视为双击
 			if (lastTapNav === index && now - lastTapTime < 500) {
-				// 刷新当前列表
-				refreshArticleList();
+				// 使用统一的刷新入口，而不是调用refreshArticleList
+				loadArticleData();
 				// 重置点击记录
 				lastTapTime = 0;
 				lastTapNav = -1;
@@ -2310,7 +2328,7 @@
 		}
 	};
 
-	// 监听导航切换，重新加载数据
+	// 监听导航切换，重新加载数据 - 修改为使用统一的加载入口
 	watch(() => data.currentNav, () => {
 		// 如果是搜索状态(-1)，则无需重新加载数据
 		if (data.currentNav === -1) {
@@ -2320,7 +2338,9 @@
 		currentPage.value = 1;
 		noMoreData.value = false;
 		articleList.value = [];
-		loadArticleList();
+		
+		// 使用统一的loadArticleData入口，而不是直接调用loadArticleList
+		loadArticleData();
 	});
 
 	// 页面加载时初始化数据
