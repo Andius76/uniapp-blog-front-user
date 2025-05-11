@@ -558,6 +558,67 @@ const formatArticleSummary = (summary) => {
 };
 
 /**
+ * 处理文章封面图片URL
+ * @param {String} url - 图片URL
+ * @return {String} 处理后的图片URL
+ */
+const formatArticleImage = (url) => {
+	console.log('[封面处理] 输入图片URL:', url);
+	if (!url) {
+		console.log('[封面处理] 空URL，返回空字符串');
+		return '';
+	}
+	
+	// 移除URL中可能存在的多余空格
+	url = url.trim();
+	
+	// 确保不是null或undefined字符串
+	if (url === 'null' || url === 'undefined' || url === '') {
+		console.log('[封面处理] 无效URL值，返回空字符串');
+		return '';
+	}
+	
+	// 完整URL处理：如果已经是完整URL，需要特别处理localhost情况
+	if (url.startsWith('http')) {
+		// 检查并修复双斜杠问题
+		if (url.includes('//uploads')) {
+			url = url.replace('//uploads', '/uploads');
+			console.log('[封面处理] 修复双斜杠问题，结果:', url);
+		}
+		
+		// 检查是否包含localhost或127.0.0.1，需要替换为真实IP
+		if (url.includes('localhost') || url.includes('127.0.0.1')) {
+			// 保留路径部分，替换主机部分
+			const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
+			const newUrl = getBaseUrl() + urlPath;
+			console.log(`[封面处理] 替换localhost: ${url} -> ${newUrl}`);
+			return newUrl;
+		}
+		
+		return url;
+	}
+	// 静态资源处理：如果是静态资源路径则不处理
+	else if (url.startsWith('/static')) {
+		console.log('[封面处理] 返回静态资源路径:', url);
+		return url;
+	}
+	// 相对路径处理：添加基础URL
+	else {
+		// 以/开头，直接拼接
+		if (url.startsWith('/')) {
+			const newUrl = getBaseUrl() + url;
+			console.log(`[封面处理] 添加基础URL: ${url} -> ${newUrl}`);
+			return newUrl;
+		} else {
+			// 否则添加/再拼接
+			const newUrl = getBaseUrl() + '/' + url;
+			console.log(`[封面处理] 添加基础URL和斜杠: ${url} -> ${newUrl}`);
+			return newUrl;
+		}
+	}
+};
+
+/**
  * 处理头像URL格式
  */
 const formatAvatarUrl = (url) => {
@@ -578,14 +639,12 @@ const formatAvatarUrl = (url) => {
 			url = url.replace('//uploads', '/uploads');
 		}
 		
-		// APP环境下特别处理localhost
-		// #ifdef APP-PLUS
+		// 检查是否包含localhost或127.0.0.1，需要替换为真实IP
 		if (url.includes('localhost') || url.includes('127.0.0.1')) {
-			const appBaseUrl = 'http://10.9.135.132:8080';
 			const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
-			return appBaseUrl + urlPath;
+			const newUrl = getBaseUrl() + urlPath;
+			return newUrl;
 		}
-		// #endif
 		
 		return url;
 	}
@@ -1132,107 +1191,9 @@ onMounted(() => {
 });
 
 /**
- * 处理文章封面图片URL
- * @param {String} url - 图片URL
- * @return {String} 处理后的图片URL
+ * 处理标签点击事件
+ * @param {String} tag - 被点击的标签
  */
-const formatArticleImage = (url) => {
-	console.log('[封面处理] 输入图片URL:', url);
-	if (!url) {
-		console.log('[封面处理] 空URL，返回空字符串');
-		return '';
-	}
-	
-	// 移除URL中可能存在的多余空格
-	url = url.trim();
-	
-	// 确保不是null或undefined字符串
-	if (url === 'null' || url === 'undefined' || url === '') {
-		console.log('[封面处理] 无效URL值，返回空字符串');
-		return '';
-	}
-	
-	// APP环境特殊处理
-	// #ifdef APP-PLUS
-	console.log('[封面处理] 检测到APP环境，应用特殊处理');
-	
-	// 使用特定的APP环境基础URL
-	const appBaseUrl = 'http://10.9.135.132:8080';
-	
-	// 完整URL处理：如果已经是完整URL，需要特别处理localhost情况
-	if (url.startsWith('http')) {
-		// 检查是否包含localhost或127.0.0.1，需要替换为真实IP
-		if (url.includes('localhost') || url.includes('127.0.0.1')) {
-			// 保留路径部分，替换主机部分
-			const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
-			const newUrl = appBaseUrl + urlPath;
-			console.log(`[封面处理] APP-替换localhost: ${url} -> ${newUrl}`);
-			return newUrl;
-		}
-		
-		// 检查并修复双斜杠问题
-		if (url.includes('//uploads')) {
-			url = url.replace('//uploads', '/uploads');
-			console.log('[封面处理] APP-修复双斜杠问题，结果:', url);
-		}
-		console.log('[封面处理] APP-返回完整URL:', url);
-		return url;
-	}
-	// 静态资源处理：如果是静态资源路径则不处理
-	else if (url.startsWith('/static')) {
-		console.log('[封面处理] APP-返回静态资源路径:', url);
-		return url;
-	}
-	// 相对路径处理：添加基础URL
-	else {
-		// 如果以/开头，直接拼接
-		if (url.startsWith('/')) {
-			const newUrl = appBaseUrl + url;
-			console.log(`[封面处理] APP-添加基础URL: ${url} -> ${newUrl}`);
-			return newUrl;
-		} else {
-			// 否则添加/再拼接
-			const newUrl = appBaseUrl + '/' + url;
-			console.log(`[封面处理] APP-添加基础URL和斜杠: ${url} -> ${newUrl}`);
-			return newUrl;
-		}
-	}
-	// #endif
-	
-	// 非APP环境处理（H5、小程序等）
-	// 完整URL直接返回
-	if (url.startsWith('http')) {
-		// 检查并修复双斜杠问题
-		if (url.includes('//uploads')) {
-			url = url.replace('//uploads', '/uploads');
-			console.log('[封面处理] 修复双斜杠问题，结果:', url);
-		}
-		console.log('[封面处理] 返回完整URL:', url);
-		return url;
-	}
-	// 静态资源直接返回
-	else if (url.startsWith('/static')) {
-		console.log('[封面处理] 返回静态资源路径:', url);
-		return url;
-	}
-	// 相对路径添加基础URL
-	else {
-		const baseUrl = getBaseUrl();
-		// 以/开头，直接拼接
-		if (url.startsWith('/')) {
-			const newUrl = baseUrl + url;
-			console.log(`[封面处理] 添加基础URL: ${url} -> ${newUrl}`);
-			return newUrl;
-		} else {
-			// 否则添加/再拼接
-			const newUrl = baseUrl + '/' + url;
-			console.log(`[封面处理] 添加基础URL和斜杠: ${url} -> ${newUrl}`);
-			return newUrl;
-		}
-	}
-};
-
-// 处理标签点击事件
 const handleTagClick = (tag) => {
 	// 切换到被点击的标签
 	switchCategory(tag);
