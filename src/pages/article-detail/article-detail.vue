@@ -4,6 +4,7 @@
 		<!-- 移除scroll-view，使用普通view来盛放内容，让页面自然滚动 -->
 		<view class="article-detail" id="article-detail">
 			<!-- 添加顶部导航栏 -->
+			<!-- #ifdef H5 -->
 			<view class="custom-nav-bar">
 				<view class="nav-icon home-icon" @click="navigateToHome">
 					<uni-icons type="home" size="24" color="#4361ee"></uni-icons>
@@ -13,6 +14,7 @@
 					<uni-icons type="paperclip" size="24" color="#4361ee"></uni-icons>
 				</view>
 			</view>
+			<!-- #endif -->
 
 			<!-- 刷新成功提示 -->
 			<view class="refresh-success" v-if="data.showRefreshSuccess">
@@ -2043,13 +2045,13 @@
 		// #ifdef H5
 		// H5环境增加阅读舒适度
 		padding: 0 40px 150rpx !important;
+		// H5平台保留顶部填充适应导航栏
+		padding-top: 120rpx !important;
 		// #endif
 
-		// 调整文章详情区域的顶部边距，避免被导航栏遮挡
-		padding-top: 120rpx !important;
-
 		// #ifdef APP-PLUS || MP-WEIXIN
-		padding-top: calc(var(--status-bar-height) + 120rpx) !important;
+		// APP和微信小程序减小顶部空间
+		padding-top: 30rpx !important;
 		// #endif
 	}
 
