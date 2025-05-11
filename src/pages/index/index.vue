@@ -453,15 +453,32 @@
 
 	// 组件卸载时清理监听器
 	onUnmounted(() => {
+		// 设置页面非活动状态
+		data.isPageActive = false;
+		
 		// 清理工作已经在BackToTop组件中处理
 		// 清理文章收藏更新事件监听
 		uni.$off('article_collect_updated');
+		
+		// 清理首页刷新事件监听
+		uni.$off('refresh_home_page');
+		
+		// #ifdef H5
+		// 清理路由监听
+		if (cleanupRouteListener) {
+			cleanupRouteListener();
+		}
+		// #endif
 		
 		// #ifndef H5
 		// 移除搜索状态栏高度变化监听
 		uni.$off('search-status-height-changed');
 		// #endif
 	});
+	
+	// 声明全局变量，用于在模板中使用，避免报错
+	const mpContentPaddingTop = ref('');
+	const mpArticleListHeight = ref('');
 	
 	// #ifndef H5
 	/**
@@ -480,9 +497,9 @@
 		mpArticleListHeight.value = listHeight;
 	};
 	
-	// 添加响应式样式变量
-	const mpContentPaddingTop = ref('calc(var(--status-bar-height) + 170rpx)');
-	const mpArticleListHeight = ref('calc(100vh - 170rpx - var(--status-bar-height))');
+	// 在非H5环境下设置初始值
+	mpContentPaddingTop.value = 'calc(var(--status-bar-height) + 170rpx)';
+	mpArticleListHeight.value = 'calc(100vh - 170rpx - var(--status-bar-height))';
 	// #endif
 
 	// 页面显示时刷新数据
