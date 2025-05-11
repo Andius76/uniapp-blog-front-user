@@ -2974,11 +2974,6 @@
 					// #endif
 				}
 
-				&:nth-child(2) {
-					// 默认让第二个标签（推荐）显示为选中状态
-					color: #4361ee;
-					font-weight: bold;
-				}
 
 				&.active {
 					color: #4361ee;
