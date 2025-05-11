@@ -148,9 +148,13 @@
 
 					<!-- 添加关注按钮到最右侧 -->
 					<view class="follow-button-container">
-						<follow-button :userId="article.author?.id" :nickname="article.author?.nickname"
-							:followed="article.author?.isFollowed" :autoCheck="false"
-							@follow-change="(isFollowed) => updateFollowState(article, isFollowed)" />
+						<follow-button 
+							:user-id="article.author?.id" 
+							:nickname="article.author?.nickname || '该用户'" 
+							:followed="article.author?.isFollowed?.following || false"
+							:auto-check="true"
+							@follow-change="(isFollowed) => updateFollowState(article, isFollowed)" 
+						/>
 					</view>
 
 					<!-- 文章内容 -->
@@ -1638,21 +1642,27 @@
 	 * @param {Boolean} isFollowed - 是否关注
 	 */
 	const updateFollowState = (article, isFollowed) => {
-		// 更新当前文章作者的关注状态
-		article.author.isFollowed = isFollowed;
-
-		// 更新所有相同作者的文章关注状态
+		if (!article || !article.author) return;
+		
+		// 更新当前文章的作者关注状态
+		article.author.isFollowed = {
+			following: isFollowed
+		};
+		
+		// 更新所有相同作者的文章
 		articleList.value.forEach(item => {
 			if (item.author && item.author.id === article.author.id) {
-				item.author.isFollowed = isFollowed;
+				item.author.isFollowed = {
+					following: isFollowed
+				};
 			}
 		});
-
-		// 尝试更新用户头像右上角关注状态
-		if (userInfo.value.id && userInfo.value.followCount !== undefined) {
-			// 刷新用户数据，获取最新的关注数量
-			refreshUserInfo();
-		}
+		
+		// 发送全局事件，通知其他页面更新关注状态
+		uni.$emit('user_follow_updated', {
+			userId: article.author.id,
+			isFollowed: isFollowed
+		});
 	};
 
 	/**
