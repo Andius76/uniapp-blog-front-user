@@ -1,5 +1,6 @@
 <template>
-	<view class="container" :style="{ overflow: 'hidden' }" @touchstart="handleTouchStart" @touchend="handleTouchEnd" @touchmove="handleTouchMove">
+	<view class="container" :style="{ overflow: 'hidden' }" @touchstart="handleTouchStart" @touchend="handleTouchEnd"
+		@touchmove="handleTouchMove">
 		<!-- 移除scroll-view，使用普通view来盛放内容，让页面自然滚动 -->
 		<view class="article-detail" id="article-detail">
 			<!-- 添加顶部导航栏 -->
@@ -43,7 +44,8 @@
 						<image v-if="data.article.author && data.article.author.avatar"
 							:src="formatAvatarUrl(data.article.author.avatar)" class="author-avatar"
 							@error="handleAuthorAvatarError" @click="navigateToUserProfile(data.article.author.id)" />
-						<text class="author" @click="navigateToUserProfile(data.article.author.id)">{{ data.article.author.nickname }}</text>
+						<text class="author"
+							@click="navigateToUserProfile(data.article.author.id)">{{ data.article.author.nickname }}</text>
 						<text class="publish-time">{{ formatDate(data.article.createTime) }}</text>
 					</view>
 				</view>
@@ -103,11 +105,12 @@
 						<view v-for="(comment, index) in data.comments" :key="comment.id" class="comment-card">
 							<view class="comment-item">
 								<image :src="formatAvatarUrl(comment.avatar)" class="comment-avatar"
-									@error="() => handleAvatarError(index, 'comment')" 
+									@error="() => handleAvatarError(index, 'comment')"
 									@click="navigateToUserProfile(comment.userId)" />
 								<view class="comment-content">
 									<view class="comment-header">
-										<text class="comment-author" @click="navigateToUserProfile(comment.userId)">{{ comment.author }}</text>
+										<text class="comment-author"
+											@click="navigateToUserProfile(comment.userId)">{{ comment.author }}</text>
 										<view class="comment-actions">
 											<view class="like-action" @click="handleCommentLike(index)">
 												<uni-icons :type="comment.isLiked ? 'heart-filled' : 'heart'" size="16"
@@ -128,16 +131,18 @@
 
 							<!-- 评论回复区域 -->
 							<view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
-								<view v-for="(reply, replyIndex) in getVisibleReplies(comment)" :key="reply.id" class="reply-item">
+								<view v-for="(reply, replyIndex) in getVisibleReplies(comment)" :key="reply.id"
+									class="reply-item">
 									<image :src="formatAvatarUrl(reply.avatar)" class="reply-avatar"
-										@error="() => handleAvatarError(index, 'reply', replyIndex)" 
+										@error="() => handleAvatarError(index, 'reply', replyIndex)"
 										@click="navigateToUserProfile(reply.userId)" />
 									<view class="reply-content-wrapper">
 										<view class="reply-content">
-											<text class="reply-author" @click="navigateToUserProfile(reply.userId)">{{ reply.author }}</text>
+											<text class="reply-author"
+												@click="navigateToUserProfile(reply.userId)">{{ reply.author }}</text>
 											<text v-if="reply.replyUser" class="reply-to">回复</text>
-											<text v-if="reply.replyUser"
-												class="reply-to-author" @click="navigateToUserProfile(reply.replyUserId)">@{{ reply.replyUser }}</text>
+											<text v-if="reply.replyUser" class="reply-to-author"
+												@click="navigateToUserProfile(reply.replyUserId)">@{{ reply.replyUser }}</text>
 											<text class="reply-text selectable"
 												@longpress="copyText(reply.content)">：{{ reply.content }}</text>
 										</view>
@@ -202,7 +207,7 @@
 				:placeholder="data.replyTarget ? `回复 ${data.replyTarget}` : '说点什么...'" confirm-type="send"
 				@confirm="submitComment" @focus="handleInputFocus" @blur="handleInputBlur" />
 			<button class="send-btn" :disabled="!data.commentContent.trim()" @click="submitComment">发送</button>
-			
+
 			<!-- #ifdef APP-PLUS || MP-WEIXIN -->
 			<!-- 回到顶部按钮，固定在发送按钮右侧 -->
 			<view class="fixed-top-btn" v-if="data.lastScrollTop > 300 && !data.isInputFocused" @click="scrollToTop">
@@ -242,7 +247,9 @@
 		likeComment
 	} from '@/api/article';
 	import http from '@/utils/request';
-	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
+	import {
+		getBaseUrl
+	} from '@/utils/request'; // 引入统一的getBaseUrl函数
 	// 导入回到顶部组件
 	import BackToTop from '@/components/back-to-top/back-to-top.vue';
 
@@ -372,12 +379,12 @@
 		// 其他情况：添加基础URL前缀
 		const baseUrl = getBaseUrl();
 		const timestamp = new Date().getTime(); // 添加时间戳防止缓存
-		
+
 		// 处理仅包含文件名的情况（如 user_5_1746725805869.jpg）
 		if (url.includes('user_') && !url.includes('/')) {
 			return `${baseUrl}/uploads/avatars/${url}?t=${timestamp}`;
 		}
-		
+
 		// 处理以/开头的路径
 		if (url.startsWith('/')) {
 			// 如果包含uploads/avatars路径，直接拼接
@@ -386,8 +393,8 @@
 			}
 			// 其他路径直接拼接
 			return `${baseUrl}${url}?t=${timestamp}`;
-		} 
-		
+		}
+
 		// 默认情况：假设是文件名，添加标准路径
 		return `${baseUrl}/uploads/avatars/${url}?t=${timestamp}`;
 	};
@@ -628,10 +635,10 @@
 
 				// 将数据转换为组件需要的格式
 				const formattedComments = [];
-				
+
 				// 先创建评论ID到评论对象的映射，方便快速查找
 				const commentMap = {};
-				
+
 				// 第一轮：处理所有评论，将它们按ID存储到映射中
 				records.forEach(comment => {
 					// 跳过处理parentId不为空的记录，这些是回复而不是父评论
@@ -639,7 +646,7 @@
 						console.log(`[评论处理] 跳过子评论(${comment.id})处理，等待第二轮`);
 						return;
 					}
-					
+
 					console.log('[评论处理] 开始处理父评论:', comment.id);
 
 					// 确保所有ID为字符串类型
@@ -692,33 +699,33 @@
 						showAllReplies: false,
 						replies: []
 					};
-					
+
 					// 将评论添加到映射中
 					commentMap[commentId] = formattedComment;
 					// 将评论添加到结果数组
 					formattedComments.push(formattedComment);
 				});
-				
+
 				// 第二轮：处理所有回复，将它们添加到相应的父评论中
 				records.forEach(comment => {
 					// 只处理有parentId的评论(即回复)
 					if (!comment.parentId) {
 						return;
 					}
-					
+
 					const parentIdStr = String(comment.parentId);
 					console.log(`[回复处理] 处理回复(${comment.id})到父评论(${parentIdStr})`);
-					
+
 					// 查找父评论
 					const parentComment = commentMap[parentIdStr];
 					if (!parentComment) {
 						console.error(`[回复处理] 未找到父评论(${parentIdStr})，可能是数据不完整`);
 						return;
 					}
-					
+
 					// 处理回复用户信息
 					let userId, nickname, avatar;
-					
+
 					// 提取评论用户信息
 					if (comment.author && typeof comment.author === 'object') {
 						userId = String(comment.author.id || 0);
@@ -737,19 +744,19 @@
 						nickname = "未知用户";
 						avatar = "";
 					}
-					
+
 					// 处理头像URL
 					avatar = formatAvatarUrl(avatar);
-					
+
 					// 处理回复目标用户
 					let replyToUser = null;
 					let replyToUserId = null;
-					
+
 					if (comment.replyUserId) {
 						replyToUserId = String(comment.replyUserId);
 						replyToUser = comment.replyUser || comment.replyNickname || "未知用户";
 					}
-					
+
 					// 创建回复对象
 					const replyObj = {
 						id: String(comment.id),
@@ -760,14 +767,15 @@
 						userId: userId,
 						replyUser: replyToUser,
 						replyUserId: replyToUserId,
-						likeCount: comment.likeCount !== undefined ? parseInt(comment.likeCount) || 0 : 0,
+						likeCount: comment.likeCount !== undefined ? parseInt(comment.likeCount) || 0 :
+							0,
 						isLiked: comment.isLiked || false
 					};
-					
+
 					// 将回复添加到父评论的回复列表
 					parentComment.replies.push(replyObj);
 				});
-				
+
 				// 对每个评论的回复按时间排序，最新的在前面
 				formattedComments.forEach(comment => {
 					if (comment.replies && comment.replies.length > 0) {
@@ -1032,7 +1040,7 @@
 				// 发送全局事件，通知文章列表更新收藏状态
 				uni.$emit('article_collect_updated', {
 					articleId: data.articleId,
-					isCollected: data.article.isCollected, 
+					isCollected: data.article.isCollected,
 					collectCount: data.article.collectCount
 				});
 			}
@@ -1322,18 +1330,22 @@
 						// 判断是新评论还是回复
 						if (commentData.parentId) {
 							// 这是一条回复，添加到对应的父评论的回复列表中
-							const parentIndex = data.comments.findIndex(c => String(c.id) === commentData.parentId);
-							
+							const parentIndex = data.comments.findIndex(c => String(c.id) === commentData
+								.parentId);
+
 							if (parentIndex !== -1) {
 								// 构造回复对象
 								const newReply = {
 									id: String(response.data.id),
-									
-									author: response.data.author || (response.data.user ? response.data.user.nickname : '未知用户'),
-									avatar: formatAvatarUrl(response.data.avatar || (response.data.user ? response.data.user.avatar : '')),
+
+									author: response.data.author || (response.data.user ? response.data.user
+										.nickname : '未知用户'),
+									avatar: formatAvatarUrl(response.data.avatar || (response.data.user ?
+										response.data.user.avatar : '')),
 									content: response.data.content,
 									createTime: response.data.createTime,
-									userId: String(response.data.userId || (response.data.user ? response.data.user.id : '')),
+									userId: String(response.data.userId || (response.data.user ? response.data
+										.user.id : '')),
 									replyUser: data.replyTarget,
 									replyUserId: commentData.replyUserId,
 									likeCount: 0,
@@ -1342,7 +1354,7 @@
 
 								// 将回复添加到父评论的回复列表开头
 								data.comments[parentIndex].replies.unshift(newReply);
-								
+
 								// 重要：不要将子评论当作父评论添加到评论列表中
 								console.log('已将回复添加到父评论下，跳过添加为新评论');
 							} else {
@@ -1355,17 +1367,20 @@
 							// 这是一条新评论，添加到评论列表开头
 							const newComment = {
 								id: String(response.data.id),
-								author: response.data.author || (response.data.user ? response.data.user.nickname : '未知用户'),
-								avatar: formatAvatarUrl(response.data.avatar || (response.data.user ? response.data.user.avatar : '')),
+								author: response.data.author || (response.data.user ? response.data.user
+									.nickname : '未知用户'),
+								avatar: formatAvatarUrl(response.data.avatar || (response.data.user ? response
+									.data.user.avatar : '')),
 								content: response.data.content,
 								createTime: response.data.createTime,
 								likeCount: 0,
 								isLiked: false,
-								userId: String(response.data.userId || (response.data.user ? response.data.user.id : '')),
+								userId: String(response.data.userId || (response.data.user ? response.data.user
+									.id : '')),
 								showAllReplies: false,
 								replies: []
 							};
-							
+
 							data.comments.unshift(newComment);
 						}
 					} catch (e) {
@@ -1415,7 +1430,7 @@
 	const handleInputFocus = (e) => {
 		// 处理键盘弹出
 		data.inputBottom = e.detail.height || 0;
-		
+
 		// 设置输入框焦点状态
 		data.isInputFocused = true;
 
@@ -1424,7 +1439,7 @@
 		if (data.inputBottom > 0) {
 			// 使用较小的固定值，确保输入框就在键盘上方
 			data.inputBottom = 0;
-			
+
 			// 延迟滚动到评论区，确保视图已更新
 			setTimeout(() => {
 				uni.pageScrollTo({
@@ -1434,7 +1449,7 @@
 			}, 100);
 		}
 		// #endif
-		
+
 		// 输入框获得焦点时，隐藏回到顶部按钮
 		if (backToTopRef.value) {
 			console.log('输入框获得焦点，隐藏回到顶部按钮');
@@ -1448,12 +1463,12 @@
 	const handleInputBlur = () => {
 		// 重置输入框焦点状态
 		data.isInputFocused = false;
-		
+
 		// 延迟重置输入框位置，避免闪烁
 		setTimeout(() => {
 			data.inputBottom = 0;
 		}, 100);
-		
+
 		// 输入框失去焦点后，根据当前滚动位置决定是否显示回到顶部按钮
 		setTimeout(() => {
 			// #ifdef APP-PLUS || MP-WEIXIN
@@ -1522,15 +1537,15 @@
 	 */
 	const loadMoreComments = () => {
 		if (data.isLoadingMore || !data.hasMoreComments) return;
-		
+
 		console.log(`加载更多评论，当前页: ${data.currentPage}，加载下一页: ${data.currentPage + 1}`);
-		
+
 		// 显示加载中的状态
 		data.isLoadingMore = true;
-		
+
 		// 递增页码
 		data.currentPage++;
-		
+
 		// 调用加载评论函数
 		fetchComments();
 	};
@@ -1544,29 +1559,34 @@
 
 		// 处理段落标签样式
 		content = content.replace(/<p/g, '<p style="margin-bottom:30rpx;display:block;line-height:1.8;"');
-		
+
 		// 处理图片标签，确保图片响应式
-		content = content.replace(/<img/g, '<img style="max-width:100%;height:auto;display:block;margin:20rpx 0;border-radius:8rpx;"');
-		
+		content = content.replace(/<img/g,
+			'<img style="max-width:100%;height:auto;display:block;margin:20rpx 0;border-radius:8rpx;"');
+
 		// 处理标题标签
-		content = content.replace(/<h1/g, '<h1 style="font-size:36rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
-		content = content.replace(/<h2/g, '<h2 style="font-size:32rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
-		content = content.replace(/<h3/g, '<h3 style="font-size:30rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
-		
+		content = content.replace(/<h1/g,
+			'<h1 style="font-size:36rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
+		content = content.replace(/<h2/g,
+			'<h2 style="font-size:32rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
+		content = content.replace(/<h3/g,
+			'<h3 style="font-size:30rpx;font-weight:bold;margin:30rpx 0 20rpx;line-height:1.4;"');
+
 		// 确保换行标签正确显示
-		content = content.replace(/<br>/g, '<br style="display:block;margin-bottom:10rpx;content:\'\';height:10rpx;" />');
-		
+		content = content.replace(/<br>/g,
+			'<br style="display:block;margin-bottom:10rpx;content:\'\';height:10rpx;" />');
+
 		// 为空段落添加高度
 		content = content.replace(/<p>\s*<\/p>/g, '<p style="height:30rpx;margin-bottom:30rpx;display:block;"></p>');
-		
+
 		// 处理链接样式
 		content = content.replace(/<a/g, '<a style="color:#4361ee;text-decoration:none;"');
-		
+
 		// 处理列表样式
 		content = content.replace(/<ul/g, '<ul style="padding-left:40rpx;margin-bottom:20rpx;"');
 		content = content.replace(/<ol/g, '<ol style="padding-left:40rpx;margin-bottom:20rpx;"');
 		content = content.replace(/<li/g, '<li style="margin-bottom:10rpx;display:list-item;"');
-		
+
 		return content;
 	};
 
@@ -1577,7 +1597,7 @@
 
 		// 根据滚动位置决定是否显示回到顶部按钮
 		data.showScrollTopBtn = scrollTop > 300;
-		
+
 		// #ifdef APP-PLUS || MP-WEIXIN
 		// 同步更新回到顶部按钮的显示状态
 		if (backToTopRef.value) {
@@ -1614,7 +1634,7 @@
 	// 滚动到底部时加载更多评论
 	onReachBottom(() => {
 		console.log('滚动到底部，尝试加载更多评论');
-		
+
 		// 防止频繁触发，加入简单节流
 		if (!data.isLoadingMore && data.hasMoreComments) {
 			loadMoreComments();
@@ -1800,31 +1820,33 @@
 			if (data.comments[commentIndex]) {
 				const originalUrl = data.comments[commentIndex].avatar;
 				console.error(`[头像错误] 评论头像加载失败:`, originalUrl);
-            
+
 				// 尝试检查用户ID获取正确头像
 				const userId = data.comments[commentIndex].userId;
 				if (userId && userId == 5) {
 					// 尝试使用已知的用户5最新头像
-					const fixedUrl = getBaseUrl() + '/uploads/avatars/user_5_1746725805869.jpg?t=' + new Date().getTime();
+					const fixedUrl = getBaseUrl() + '/uploads/avatars/user_5_1746725805869.jpg?t=' + new Date()
+						.getTime();
 					console.log(`[头像修复] 使用用户5的已知头像: ${fixedUrl}`);
 					data.comments[commentIndex].avatar = fixedUrl;
 					return;
 				}
-            
+
 				// 尝试修复头像URL
 				if (originalUrl) {
 					// 检查并替换可能的硬编码IP地址
-					if (originalUrl.includes('http://10.9.135.132:8080') || 
+					if (originalUrl.includes('http://10.9.135.132:8080') ||
 						originalUrl.includes('http://localhost:8080')) {
 						const fileName = originalUrl.split('/uploads/avatars/').pop();
 						if (fileName) {
-							const fixedUrl = getBaseUrl() + '/uploads/avatars/' + fileName + '?t=' + new Date().getTime();
+							const fixedUrl = getBaseUrl() + '/uploads/avatars/' + fileName + '?t=' + new Date()
+								.getTime();
 							console.log(`[头像修复] 尝试修复评论头像路径: ${originalUrl} -> ${fixedUrl}`);
 							data.comments[commentIndex].avatar = fixedUrl;
 							return;
 						}
 					}
-					
+
 					// 其他情况使用formatAvatarUrl统一处理
 					data.comments[commentIndex].avatar = formatAvatarUrl(originalUrl);
 					return;
@@ -1839,16 +1861,17 @@
 			if (data.comments[commentIndex] &&
 				data.comments[commentIndex].replies &&
 				data.comments[commentIndex].replies[replyIndex]) {
-                
+
 				const reply = data.comments[commentIndex].replies[replyIndex];
 				const originalUrl = reply.avatar;
 				console.error(`[头像错误] 回复头像加载失败:`, originalUrl);
-				
+
 				// 尝试检查用户ID获取正确头像
 				const userId = reply.userId;
 				if (userId && userId == 5) {
 					// 尝试使用已知的用户5最新头像
-					const fixedUrl = getBaseUrl() + '/uploads/avatars/user_5_1746725805869.jpg?t=' + new Date().getTime();
+					const fixedUrl = getBaseUrl() + '/uploads/avatars/user_5_1746725805869.jpg?t=' + new Date()
+						.getTime();
 					console.log(`[头像修复] 使用用户5的已知头像: ${fixedUrl}`);
 					reply.avatar = fixedUrl;
 					return;
@@ -1857,25 +1880,27 @@
 				// 尝试修复头像URL
 				if (originalUrl) {
 					// 检查并替换可能的硬编码IP地址
-					if (originalUrl.includes('http://10.9.135.132:8080') || 
+					if (originalUrl.includes('http://10.9.135.132:8080') ||
 						originalUrl.includes('http://localhost:8080')) {
 						const fileName = originalUrl.split('/uploads/avatars/').pop();
 						if (fileName) {
-							const fixedUrl = getBaseUrl() + '/uploads/avatars/' + fileName + '?t=' + new Date().getTime();
+							const fixedUrl = getBaseUrl() + '/uploads/avatars/' + fileName + '?t=' + new Date()
+								.getTime();
 							console.log(`[头像修复] 尝试修复回复头像路径: ${originalUrl} -> ${fixedUrl}`);
 							reply.avatar = fixedUrl;
 							return;
 						}
 					}
-					
+
 					// 尝试基于文件名修复
 					if (originalUrl.includes('user_') && !originalUrl.includes('/')) {
-						const fixedUrl = getBaseUrl() + '/uploads/avatars/' + originalUrl + '?t=' + new Date().getTime();
+						const fixedUrl = getBaseUrl() + '/uploads/avatars/' + originalUrl + '?t=' + new Date()
+							.getTime();
 						console.log(`[头像修复] 基于文件名修复: ${fixedUrl}`);
 						reply.avatar = fixedUrl;
 						return;
 					}
-					
+
 					// 其他情况使用formatAvatarUrl统一处理
 					reply.avatar = formatAvatarUrl(originalUrl);
 					return;
@@ -1904,7 +1929,7 @@
 			console.error('用户ID为空，无法跳转到用户资料页');
 			return;
 		}
-		
+
 		// #ifdef H5
 		// H5环境下，新窗口打开用户资料页
 		const currentUrl = window.location.href;
@@ -1912,7 +1937,7 @@
 		const profileUrl = `${baseUrl}#/pages/user-profile/user-profile?id=${userId}`;
 		window.open(profileUrl, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，正常跳转
 		uni.navigateTo({
@@ -1941,21 +1966,21 @@
 	// 分享文章功能
 	const shareArticle = () => {
 		if (!data.article || !data.article.id) return;
-		
+
 		try {
 			// 构建分享链接
 			let articleUrl = '';
-			
+
 			// #ifdef H5
 			// 在浏览器环境中直接获取当前URL
 			articleUrl = window.location.href;
 			// #endif
-			
+
 			// #ifdef APP-PLUS || MP-WEIXIN
 			// 在APP或小程序中构建完整URL
 			articleUrl = `${getBaseUrl()}/article/${data.article.id}`;
 			// #endif
-			
+
 			// 复制链接
 			uni.setClipboardData({
 				data: articleUrl,
@@ -2011,7 +2036,7 @@
 
 		// 调整文章详情区域的顶部边距，避免被导航栏遮挡
 		padding-top: 120rpx !important;
-		
+
 		// #ifdef APP-PLUS || MP-WEIXIN
 		padding-top: calc(var(--status-bar-height) + 120rpx) !important;
 		// #endif
@@ -2123,8 +2148,10 @@
 			/* 确保头像适当裁剪填充 */
 			border: 1rpx solid #eee;
 			/* 添加边框使头像更清晰 */
-			cursor: pointer; /* 添加鼠标指针样式 */
-			transition: all 0.2s ease; /* 添加过渡效果 */
+			cursor: pointer;
+			/* 添加鼠标指针样式 */
+			transition: all 0.2s ease;
+			/* 添加过渡效果 */
 
 			// #ifdef H5
 			width: 48px;
@@ -2133,10 +2160,14 @@
 		}
 
 		.author-avatar:hover {
-			opacity: 0.85; /* 鼠标悬停时透明度变化 */
-			border-color: #3170f9; /* 鼠标悬停时边框变色 */
-			transform: scale(1.05); /* 鼠标悬停时轻微放大 */
-			box-shadow: 0 2rpx 8rpx rgba(49, 112, 249, 0.3); /* 添加阴影效果 */
+			opacity: 0.85;
+			/* 鼠标悬停时透明度变化 */
+			border-color: #3170f9;
+			/* 鼠标悬停时边框变色 */
+			transform: scale(1.05);
+			/* 鼠标悬停时轻微放大 */
+			box-shadow: 0 2rpx 8rpx rgba(49, 112, 249, 0.3);
+			/* 添加阴影效果 */
 		}
 
 		.author {
@@ -2144,20 +2175,29 @@
 			color: #666;
 			margin-right: 30rpx;
 			font-weight: 500;
-			cursor: pointer; /* 添加鼠标指针样式 */
+			cursor: pointer;
+			/* 添加鼠标指针样式 */
 
 			// #ifdef H5
 			font-size: 20px;
 			// #endif
 		}
 
-		.author:hover, .comment-author:hover, .reply-author:hover, .reply-to-author:hover {
-			color: #3170f9; /* 鼠标悬停时变色 */
+		.author:hover,
+		.comment-author:hover,
+		.reply-author:hover,
+		.reply-to-author:hover {
+			color: #3170f9;
+			/* 鼠标悬停时变色 */
 		}
 
-		.author-avatar:hover, .comment-avatar:hover, .reply-avatar:hover {
-			opacity: 0.8; /* 鼠标悬停时轻微透明效果 */
-			border-color: #3170f9; /* 鼠标悬停时边框变色 */
+		.author-avatar:hover,
+		.comment-avatar:hover,
+		.reply-avatar:hover {
+			opacity: 0.8;
+			/* 鼠标悬停时轻微透明效果 */
+			border-color: #3170f9;
+			/* 鼠标悬停时边框变色 */
 		}
 
 		.publish-time {
@@ -2382,15 +2422,21 @@
 		/* 确保头像适当裁剪填充 */
 		border: 1rpx solid #eee;
 		/* 添加边框使头像更清晰 */
-		cursor: pointer; /* 添加鼠标指针样式 */
-		transition: all 0.2s ease; /* 添加过渡效果 */
+		cursor: pointer;
+		/* 添加鼠标指针样式 */
+		transition: all 0.2s ease;
+		/* 添加过渡效果 */
 	}
 
 	.comment-avatar:hover {
-		opacity: 0.85; /* 鼠标悬停时透明度变化 */
-		border-color: #3170f9; /* 鼠标悬停时边框变色 */
-		transform: scale(1.05); /* 鼠标悬停时轻微放大 */
-		box-shadow: 0 2rpx 8rpx rgba(49, 112, 249, 0.3); /* 添加阴影效果 */
+		opacity: 0.85;
+		/* 鼠标悬停时透明度变化 */
+		border-color: #3170f9;
+		/* 鼠标悬停时边框变色 */
+		transform: scale(1.05);
+		/* 鼠标悬停时轻微放大 */
+		box-shadow: 0 2rpx 8rpx rgba(49, 112, 249, 0.3);
+		/* 添加阴影效果 */
 	}
 
 	.comment-content {
@@ -2413,13 +2459,17 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		cursor: pointer; /* 添加鼠标指针样式 */
-		transition: color 0.2s ease; /* 添加过渡效果 */
+		cursor: pointer;
+		/* 添加鼠标指针样式 */
+		transition: color 0.2s ease;
+		/* 添加过渡效果 */
 	}
 
 	.comment-author:hover {
-		color: #3170f9; /* 鼠标悬停时文字变色 */
-		text-decoration: underline; /* 添加下划线 */
+		color: #3170f9;
+		/* 鼠标悬停时文字变色 */
+		text-decoration: underline;
+		/* 添加下划线 */
 	}
 
 	.comment-actions {
@@ -2533,15 +2583,21 @@
 		/* 确保头像适当裁剪填充 */
 		border: 1rpx solid #eee;
 		/* 添加边框使头像更清晰 */
-		cursor: pointer; /* 添加鼠标指针样式 */
-		transition: all 0.2s ease; /* 添加过渡效果 */
+		cursor: pointer;
+		/* 添加鼠标指针样式 */
+		transition: all 0.2s ease;
+		/* 添加过渡效果 */
 	}
 
 	.reply-avatar:hover {
-		opacity: 0.85; /* 鼠标悬停时透明度变化 */
-		border-color: #3170f9; /* 鼠标悬停时边框变色 */
-		transform: scale(1.05); /* 鼠标悬停时轻微放大 */
-		box-shadow: 0 2rpx 6rpx rgba(49, 112, 249, 0.3); /* 添加阴影效果 */
+		opacity: 0.85;
+		/* 鼠标悬停时透明度变化 */
+		border-color: #3170f9;
+		/* 鼠标悬停时边框变色 */
+		transform: scale(1.05);
+		/* 鼠标悬停时轻微放大 */
+		box-shadow: 0 2rpx 6rpx rgba(49, 112, 249, 0.3);
+		/* 添加阴影效果 */
 	}
 
 	.reply-content-wrapper {
@@ -2566,13 +2622,17 @@
 	.reply-author {
 		color: #6495ED;
 		font-weight: bold;
-		cursor: pointer; /* 添加鼠标指针样式 */
-		transition: color 0.2s ease; /* 添加过渡效果 */
+		cursor: pointer;
+		/* 添加鼠标指针样式 */
+		transition: color 0.2s ease;
+		/* 添加过渡效果 */
 	}
 
 	.reply-author:hover {
-		color: #3170f9; /* 鼠标悬停时文字变色 */
-		text-decoration: underline; /* 添加下划线 */
+		color: #3170f9;
+		/* 鼠标悬停时文字变色 */
+		text-decoration: underline;
+		/* 添加下划线 */
 	}
 
 	.reply-to {
@@ -2582,13 +2642,17 @@
 
 	.reply-to-author {
 		color: #6495ED;
-		cursor: pointer; /* 添加鼠标指针样式 */
-		transition: color 0.2s ease; /* 添加过渡效果 */
+		cursor: pointer;
+		/* 添加鼠标指针样式 */
+		transition: color 0.2s ease;
+		/* 添加过渡效果 */
 	}
 
 	.reply-to-author:hover {
-		color: #3170f9; /* 鼠标悬停时文字变色 */
-		text-decoration: underline; /* 添加下划线 */
+		color: #3170f9;
+		/* 鼠标悬停时文字变色 */
+		text-decoration: underline;
+		/* 添加下划线 */
 	}
 
 	.reply-text {
@@ -2732,7 +2796,7 @@
 				color: #ffffff;
 			}
 		}
-		
+
 		// APP和小程序环境中的固定顶部按钮样式
 		// #ifdef APP-PLUS || MP-WEIXIN
 		.fixed-top-btn {
@@ -2746,12 +2810,13 @@
 			margin-left: 20rpx;
 			box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.1);
 			transition: all 0.2s ease;
-			
+
 			&:active {
 				transform: scale(0.9);
 				background-color: #3651d4;
 			}
 		}
+
 		// #endif
 	}
 
@@ -2951,7 +3016,7 @@
 		border-top: 1px solid #eee;
 		padding-top: 40px;
 		// #endif
-		
+
 		// #ifdef APP-PLUS || MP-WEIXIN
 		padding-bottom: 120rpx; // 确保底部有足够空间，不被输入框遮挡
 		// #endif
@@ -3082,18 +3147,21 @@
 		margin-left: 20rpx;
 		box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.1);
 		transition: all 0.2s ease;
-		
+
 		&:active {
 			transform: scale(0.9);
 			background-color: #3651d4;
 		}
 	}
+
 	// #endif
 
 	// 调整评论输入框右侧间距
 	.comment-input-container {
 		// ... existing code ...
-		
+		// #ifdef H5
+		width: 780px;
+		// #endif
 		// #ifdef APP-PLUS || MP-WEIXIN
 		// 调整元素对齐方式，确保三个元素在一行
 		display: flex;
@@ -3118,14 +3186,14 @@
 		padding: 0 30rpx;
 		z-index: 999;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.08);
-		
+
 		// #ifdef H5
-		max-width: 800px;
+		width: 780px;
 		left: 50%;
 		transform: translateX(-50%);
 		border-radius: 0 0 12px 12px;
 		// #endif
-		
+
 		// #ifdef APP-PLUS || MP-WEIXIN
 		padding-top: calc(var(--status-bar-height) + 10rpx);
 		height: calc(var(--status-bar-height) + 90rpx);
@@ -3141,7 +3209,7 @@
 		border-radius: 50%;
 		background-color: rgba(67, 97, 238, 0.1);
 		transition: all 0.2s ease;
-		
+
 		&:active {
 			transform: scale(0.9);
 			background-color: rgba(67, 97, 238, 0.2);

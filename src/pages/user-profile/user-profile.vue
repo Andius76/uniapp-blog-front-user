@@ -5,7 +5,7 @@
 			<!-- 用户信息区域 -->
 			<view class="user-info-section">
 				<view class="user-header">
-					<image class="avatar" :src="getAvatarUrl(userInfo.avatar)" mode="aspectFill"></image>
+					<image class="avatar" :src="getAvatarUrl(userInfo.avatar)" mode="aspectFill" @click="previewAvatar"></image>
 					<view class="user-meta">
 						<view class="name-and-follow">
 							<text class="nickname">{{ userInfo.nickname }}</text>
@@ -73,7 +73,7 @@
 		<!-- 用户信息区域 -->
 		<view class="user-info-section">
 			<view class="user-header">
-				<image class="avatar" :src="getAvatarUrl(userInfo.avatar)" mode="aspectFill"></image>
+				<image class="avatar" :src="getAvatarUrl(userInfo.avatar)" mode="aspectFill" @click="previewAvatar"></image>
 				<view class="user-meta">
 					<view class="name-and-follow">
 						<text class="nickname">{{ userInfo.nickname }}</text>
@@ -545,6 +545,30 @@
 		}
 	};
 
+	// 添加头像预览方法
+	const previewAvatar = () => {
+		// 获取完整的头像URL
+		const avatarUrl = getAvatarUrl(userInfo.avatar);
+		
+		// 使用uni.previewImage API预览头像
+		uni.previewImage({
+			urls: [avatarUrl],
+			current: avatarUrl,
+			indicator: 'default',
+			loop: false,
+			success: () => {
+				console.log('头像预览成功');
+			},
+			fail: (err) => {
+				console.error('头像预览失败:', err);
+				uni.showToast({
+					title: '预览失败，请重试',
+					icon: 'none'
+				});
+			}
+		});
+	};
+
 	// 页面加载
 	onLoad((options) => {
 		if (options.id) {
@@ -648,6 +672,8 @@
 				background-color: #eee;
 				flex-shrink: 0; /* 防止头像缩小 */
 				border: 2rpx solid #f0f0f0;
+				/* 添加手指形状光标，提示可点击 */
+				cursor: pointer; 
 			}
 
 			.user-meta {
