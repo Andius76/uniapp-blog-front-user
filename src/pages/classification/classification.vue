@@ -80,7 +80,7 @@
 						<follow-button 
 							:user-id="article.author?.id" 
 							:nickname="article.author?.nickname || '该用户'" 
-							:followed="article.author?.isFollowed"
+							:followed="article.author?.isFollowed?.following || false"
 							:auto-check="true"
 							@follow-change="handleFollowChange($event, article)"
 						/>
@@ -867,6 +867,7 @@ const handleLike = async (article) => {
  */
 const handleFollowChange = (isFollowed, article) => {
 	if (article && article.author) {
+		// 直接使用布尔值
 		article.author.isFollowed = isFollowed;
 	}
 };
@@ -1237,8 +1238,9 @@ const checkArticleAuthorsFollowStatus = async (articles) => {
 				// 更新所有该作者的文章
 				articles.forEach(article => {
 					if (article.author && article.author.id === authorId) {
-						article.author.isFollowed = result.data;
-						console.log(`作者 ${authorId} 的关注状态: ${result.data}`);
+						// 将关注状态对象转换为布尔值
+						article.author.isFollowed = result.data?.following || false;
+						console.log(`作者 ${authorId} 的关注状态: ${article.author.isFollowed}`);
 					}
 				});
 			}
