@@ -61,17 +61,6 @@
 					</view>
 				</view>
 			</scroll-view>
-			
-			<!-- 搜索状态显示 -->
-			<view class="search-status" v-if="data.currentNav === -1">
-				<view class="search-info">
-					<text>搜索"{{data.searchText}}"：共{{data.searchResultCount}}条结果</text>
-					<view class="clear-search" @click="clearSearch">
-						<uni-icons type="clear" size="16" />
-						<text>清除搜索</text>
-					</view>
-				</view>
-			</view>
 		</view>
 		<!-- #endif -->
 
@@ -709,7 +698,7 @@
 	};
 
 	/**
-	 * 搜索处理
+	 * 处理搜索
 	 */
 	const handleSearch = async () => {
 		if (!data.searchText.trim()) {
@@ -719,73 +708,18 @@
 			});
 			return;
 		}
-
+		
 		// 显示加载提示
 		uni.showLoading({
 			title: '搜索中...'
 		});
 		
-		// 将当前导航设置为-1，表示当前是搜索模式
-		data.currentNav = -1;
-		
-		// 设置搜索状态栏高度
-		setSearchStatusHeight('90rpx');
-		
-		// #ifdef H5
-		// H5环境使用ArticleList组件处理搜索
-		if (articleListRef.value) {
-			// 重要：先重置文章列表
-			articleListRef.value.resetList();
-			
-			// 使用单一的延迟确保DOM更新后再加载
-			setTimeout(() => {
-				console.log('H5环境：触发ArticleList组件搜索加载，关键词:', data.searchText);
-				// 进行一次性加载，避免多次触发导致的重复渲染
-				articleListRef.value.loadArticles(true);
-				
-				// 移除检查和二次加载的逻辑，避免重复渲染
-			}, 200);
-			
-			// 在H5环境下，同时调用后端搜索API获取准确的搜索结果数量
-			try {
-				const res = await http.get('/api/article/search', {
-					page: 1,
-					pageSize: 10,
-					
-					keyword: data.searchText
-				});
-				
-				if (res.code === 200 && res.data) {
-					// 更新搜索结果数量
-					data.searchResultCount = res.data.total || (res.data.list ? res.data.list.length : 0);
-					console.log(`H5环境搜索结果数量更新: ${data.searchResultCount}`);
-				} else {
-					data.searchResultCount = 0;
-				}
-			} catch (err) {
-				console.error('获取搜索结果数量失败:', err);
-				data.searchResultCount = 0;
-			}
-			
-			// 统一设置延迟让组件有时间重新渲染
-			setTimeout(() => {
-				uni.hideLoading();
-			}, 500);
-		}
-		// #endif
-		
-		// #ifndef H5
-		// 重置文章列表状态
-		currentPage.value = 1;
-		noMoreData.value = false;
-		// 重要：清空文章列表，避免重复渲染
-		articleList.value = [];
-		
-		// 调用搜索API
 		try {
-			const res = await searchArticles(data.searchText, {
+			// 调用搜索API
+			const res = await http.get('/api/article/search', {
 				page: 1,
-				pageSize: 10
+				pageSize: 10,
+				keyword: data.searchText
 			});
 			
 			uni.hideLoading();
@@ -794,26 +728,16 @@
 				// 处理搜索结果
 				const searchResults = res.data.list || [];
 				
-				// 更新搜索结果数量 - 优先使用total字段，否则使用列表长度
-				data.searchResultCount = res.data.total || searchResults.length;
-				console.log(`非H5环境搜索结果数量更新: ${data.searchResultCount}, 数组长度: ${searchResults.length}`);
-				
 				// 如果没有搜索结果
 				if (searchResults.length === 0) {
 					uni.showToast({
 						title: '没有找到相关文章',
 						icon: 'none'
 					});
-					// 重置为推荐栏目
-					data.currentNav = 1;
-					// 重新加载推荐文章
-					loadArticleList();
-					// 重置搜索状态栏高度
-					setSearchStatusHeight('0rpx');
 					return;
 				}
 				
-				// 处理搜索结果数据 - 使用processArticleData函数替代手动处理
+				// 处理搜索结果数据
 				const processedArticles = processArticleData(searchResults);
 				
 				// 检查作者关注状态
@@ -824,28 +748,18 @@
 					console.error('搜索结果：检查作者关注状态失败:', error);
 				}
 				
-				// 更新文章列表 - 使用赋值而非拼接，避免重复
+				// 更新文章列表
 				articleList.value = processedArticles;
 				
-				// 更新页码
+				// 更新页码和加载状态
 				currentPage.value = 2;
+				noMoreData.value = searchResults.length < 10;
 				
-				// 判断是否还有更多数据
-				if (searchResults.length < 10) {
-					noMoreData.value = true;
-				}
 			} else {
-				// 处理搜索失败
 				uni.showToast({
 					title: res.message || '搜索失败',
 					icon: 'none'
 				});
-				// 重置为推荐栏目
-				data.currentNav = 1;
-				// 重新加载推荐文章
-				loadArticleList();
-				// 重置搜索状态栏高度
-				setSearchStatusHeight('0rpx');
 			}
 		} catch (err) {
 			uni.hideLoading();
@@ -854,14 +768,7 @@
 				icon: 'none'
 			});
 			console.error('搜索失败:', err);
-			// 重置为推荐栏目
-			data.currentNav = 1;
-			// 重新加载推荐文章
-			loadArticleList();
-			// 重置搜索状态栏高度
-			setSearchStatusHeight('0rpx');
 		}
-		// #endif
 	};
 
 	/**
@@ -2521,42 +2428,24 @@
 	const clearSearch = () => {
 		// 清空搜索内容
 		data.searchText = '';
-		// 重置搜索结果计数
-		data.searchResultCount = 0;
 		// 切换回推荐标签
 		data.currentNav = 1;
-		// 重置搜索状态栏高度
-		setSearchStatusHeight('0rpx');
 		
-		// #ifdef H5
-		// H5环境使用ArticleList组件刷新
-		if (articleListRef.value) {
-			articleListRef.value.resetList();
-			nextTick(() => {
-				articleListRef.value.loadArticles();
-			});
-		}
-		// #endif
-		
-		// #ifndef H5
-		// 非H5环境直接重新加载文章列表
+		// 重置文章列表
 		currentPage.value = 1;
 		noMoreData.value = false;
 		articleList.value = [];
 		
-		// 显示加载提示
-		uni.showLoading({
-			title: '加载中...'
-		});
-		
-		// 延迟加载确保UI状态已更新
-		setTimeout(() => {
-			loadArticleList();
-			setTimeout(() => {
-				uni.hideLoading();
-			}, 500);
-		}, 100);
-		// #endif
+		// 重新加载文章列表
+		loadArticleList();
+	};
+
+	/**
+	 * 清除搜索文本
+	 */
+	const clearSearchText = () => {
+		data.searchText = '';
+		clearSearch();
 	};
 
 	/**
@@ -2771,11 +2660,6 @@
 			url: '/pages/classification/classification'
 		});
 		// #endif
-	};
-
-	// 添加清除搜索框内容的方法
-	const clearSearchText = () => {
-		data.searchText = '';
 	};
 </script>
 
