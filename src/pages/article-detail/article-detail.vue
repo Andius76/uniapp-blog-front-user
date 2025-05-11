@@ -1957,10 +1957,21 @@
 
 	// 在script部分添加导航到首页的方法
 	const navigateToHome = () => {
-		// 跳转到首页
+		// H5环境下使用更可靠的方式跳转到首页
+		// #ifdef H5
+		// 获取当前URL的基础部分，构建新的首页URL
+		const currentUrl = window.location.href;
+		const baseUrl = currentUrl.split('#')[0];
+		// 使用替换方式导航，避免历史堆栈问题
+		window.location.replace(`${baseUrl}#/pages/index/index`);
+		// #endif
+		
+		// 非H5环境下使用常规Tab跳转
+		// #ifndef H5
 		uni.switchTab({
 			url: '/pages/index/index'
 		});
+		// #endif
 	};
 
 	// 分享文章功能
