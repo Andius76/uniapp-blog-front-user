@@ -23,10 +23,15 @@
 <script setup>
 	// 导入文章列表组件
 	import ArticleList from '@/components/article-list/article-list.vue'
-	import { ref, onMounted } from 'vue'
+	import {
+		ref,
+		onMounted
+	} from 'vue'
 
 	// 获取本地存储的用户信息，显示昵称
-	const userInfo = ref({ nickname: '' })
+	const userInfo = ref({
+		nickname: ''
+	})
 	onMounted(() => {
 		const localUserInfo = uni.getStorageSync('userInfo')
 		if (localUserInfo) {
@@ -46,6 +51,7 @@
 		display: flex;
 		flex-direction: column;
 	}
+
 	.navbar {
 		display: flex;
 		align-items: center;
@@ -57,18 +63,21 @@
 		position: sticky;
 		top: 0;
 		z-index: 100;
+
 		.navbar-left,
 		.navbar-right {
 			width: 60rpx;
 			display: flex;
 			align-items: center;
 		}
+
 		.navbar-title {
 			font-size: 34rpx;
 			font-weight: bold;
 			color: #333;
 		}
 	}
+
 	.article-width-container {
 		min-width: 600px;
 		width: 100%;
@@ -83,15 +92,16 @@
 		margin-top: 0;
 		// 移除overflow-y属性，防止创建嵌套滚动区域
 	}
+
 	/* #endif */
-	
+
 	/* #ifndef H5 */
 	.container-mobile {
 		background-color: #f5f5f5;
-		min-height: 100vh;
-		padding: 20rpx;
+		padding: 10rpx;
 		// 设置position为relative，便于子元素定位
 		position: relative;
 	}
+
 	/* #endif */
 </style>
