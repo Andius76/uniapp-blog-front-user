@@ -681,666 +681,6 @@
 		}
 	};
 
-	// =================== 标签相关方法 =================== //
-	// 添加自定义标签
-	const addCustomTag = () => {
-		const tagValue = customTagInput.value.trim();
-
-		// 验证标签是否为空
-		if (!tagValue) {
-			uni.showToast({
-				title: '标签不能为空',
-				icon: 'none'
-			});
-			return;
-		}
-
-		// 验证标签长度
-		if (tagValue.length > 10) {
-			uni.showToast({
-				title: '标签最多10个字符',
-				icon: 'none'
-			});
-			return;
-		}
-
-		// 检查标签是否已存在
-		if (selectedTags.value.includes(tagValue)) {
-			uni.showToast({
-				title: '该标签已添加',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		// 检查已选标签数量
-		if (selectedTags.value.length >= 5) {
-			uni.showToast({
-				title: '最多只能添加5个标签',
-				icon: 'none'
-			});
-			return;
-		}
-
-		// 添加标签到已选列表
-		selectedTags.value.push(tagValue);
-
-		// 清空输入框
-		customTagInput.value = '';
-	};
-
-	// 移除标签
-	const removeTag = (tag) => {
-		const index = articleData.tags.indexOf(tag);
-		if (index > -1) {
-			articleData.tags.splice(index, 1);
-
-		uni.showToast({
-				title: '标签已移除',
-			icon: 'success'
-		});
-		}
-	};
-
-	// 移除选中标签
-	const removeSelectedTag = (tag) => {
-		const index = selectedTags.value.indexOf(tag);
-		if (index > -1) {
-			selectedTags.value.splice(index, 1);
-		}
-	};
-
-	// 显示标签选择器
-	const showTagSelector = () => {
-		// 预览模式下禁用
-		if (isPreviewMode.value) return;
-		
-		// 如果已经有5个标签，则提示
-		if (articleData.tags.length >= 5) {
-			uni.showToast({
-				title: '最多只能添加5个标签',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		// 打开前，先将已有的标签设置为选中状态
-		selectedTags.value = [...articleData.tags];
-		customTagInput.value = '';
-		
-		// 打开弹窗前调整页面滚动位置，确保不被底部工具栏遮挡
-		const pageScrollTop = uni.pageScrollTop || 0;
-		if (pageScrollTop > 0) {
-			uni.pageScrollTo({
-				scrollTop: 0,
-				duration: 300
-			});
-		}
-		
-		// 延迟打开弹窗，确保滚动完成
-		setTimeout(() => {
-		tagPopup.value.open();
-		}, 300);
-	};
-
-	// 关闭标签选择器
-	const closeTagPopup = () => {
-		tagPopup.value.close();
-	};
-
-	// 切换标签选中状态
-	const toggleTag = (tag) => {
-		const index = selectedTags.value.indexOf(tag);
-		if (index > -1) {
-			// 如果已选中，则取消选中
-			selectedTags.value.splice(index, 1);
-		} else {
-			// 检查是否已满5个标签
-			if (selectedTags.value.length >= 5) {
-				uni.showToast({
-					title: '最多只能添加5个标签',
-					icon: 'none'
-				});
-				return;
-			}
-			
-			// 如果未选中，则添加到选中列表
-			selectedTags.value.push(tag);
-		}
-	};
-
-	// 确认标签选择
-	const confirmTagSelection = () => {
-		// 优化：过滤空标签，确保格式一致
-		articleData.tags = selectedTags.value
-			.map(tag => String(tag).trim())
-			.filter(tag => tag.length > 0);
-			
-		// 确保没有重复标签
-		articleData.tags = [...new Set(articleData.tags)];
-		
-		closeTagPopup();
-
-		// 查看结果
-		console.log('确认的标签数据:', {
-			tags: JSON.stringify(articleData.tags),
-			count: articleData.tags.length
-		});
-
-		uni.showToast({
-			title: '标签已添加',
-			icon: 'success'
-		});
-	};
-
-	// =================== 链接相关方法 =================== //
-	// 显示链接插入弹窗
-	const showLinkPopup = () => {
-		linkUrl.value = '';
-		linkText.value = '';
-		linkPopup.value.open();
-	};
-
-	// 关闭链接插入弹窗
-	const closeLinkPopup = () => {
-		linkPopup.value.close();
-	};
-
-	// 确认插入链接
-	const confirmInsertLink = () => {
-		if (!linkUrl.value.trim()) {
-			uni.showToast({
-				title: '请输入链接地址',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		// 如果链接不以http://或https://开头，则添加https://
-		let url = linkUrl.value.trim();
-		if (!/^https?:\/\//i.test(url)) {
-			url = 'https://' + url;
-		}
-
-		// 如果没有输入链接文本，就使用URL作为文本
-		const text = linkText.value.trim() || url;
-
-		if (editorCtx) {
-			editorCtx.insertLink({
-				text: text,
-				url: url
-			});
-		}
-
-		closeLinkPopup();
-	};
-
-	// =================== 图片相关方法 =================== //
-	// 插入图片
-	const insertImage = () => {
-		// 预览模式下禁用
-		if (isPreviewMode.value) return;
-		
-		// 首先确认编辑器上下文是否已初始化
-		if (!editorCtx) {
-			uni.showToast({
-				title: '编辑器未初始化',
-				icon: 'none'
-			});
-			return;
-		}
-
-		uni.chooseImage({
-			count: 9,
-			success: (res) => {
-				// 处理选中的图片
-				const tempFilePaths = res.tempFilePaths;
-				
-				// 限制总图片数量
-				if ((articleData.images.length + tempFilePaths.length) > 20) {
-					uni.showToast({
-						title: '图片数量超过限制（最多20张）',
-						icon: 'none'
-					});
-					return;
-				}
-				
-				// 检查图片大小
-				const checkImageSize = (path) => {
-					return new Promise((resolve, reject) => {
-						uni.getFileInfo({
-							filePath: path,
-							success: (res) => {
-								// 检查图片大小是否超过5MB
-								if (res.size > 5 * 1024 * 1024) {
-									reject(new Error('图片大小不能超过5MB'));
-								} else {
-									resolve();
-								}
-							},
-							fail: () => {
-								// 无法获取文件信息，假设图片大小合适
-								resolve();
-							}
-						});
-					});
-				};
-				
-				// 检查所有图片大小
-				const sizePromises = tempFilePaths.map(path => checkImageSize(path));
-				
-				Promise.all(sizePromises)
-					.then(() => {
-						// 所有图片大小都符合要求
-						// 显示加载中提示
-						uni.showLoading({
-							title: '处理图片中...',
-							mask: true
-						});
-						
-						// 逐个插入图片到编辑器
-						tempFilePaths.forEach((path, index) => {
-							// 为每个图片添加唯一标识
-							const imageId = `img_${Date.now()}_${index}`;
-							
-							// 获取图片信息
-							uni.getImageInfo({
-								src: path,
-								success: (imageInfo) => {
-									// 计算适当尺寸
-									const maxWidth = uni.getSystemInfoSync().windowWidth * 0.8;
-									const ratio = imageInfo.width / imageInfo.height;
-									const width = Math.min(maxWidth, imageInfo.width);
-									const height = width / ratio;
-									
-									// 插入图片到编辑器
-									editorCtx.insertImage({
-										src: path,
-										width: '100%', // 确保图片宽度固定为100%
-										height: 'auto', // 高度自适应
-										alt: `文章图片${index+1}`,
-										extClass: 'article-content-image',
-										data: {
-											imageId: imageId
-										},
-										success: () => {
-											// 如果是最后一张图片，隐藏加载提示
-											if (index === tempFilePaths.length - 1) {
-												uni.hideLoading();
-												uni.showToast({
-													title: '图片添加成功',
-													icon: 'success'
-												});
-												
-												// 调整编辑器高度
-												nextTick(() => {
-													adjustEditorHeight();
-												});
-											}
-										},
-										fail: (err) => {
-											console.error('插入图片失败:', err);
-											if (index === tempFilePaths.length - 1) {
-												uni.hideLoading();
-												uni.showToast({
-													title: '部分图片插入失败',
-													icon: 'none'
-												});
-											}
-										}
-									});
-								},
-								fail: () => {
-									// 获取图片信息失败，使用默认尺寸
-									editorCtx.insertImage({
-										src: path,
-										width: '100%',
-										height: 'auto',
-										alt: `文章图片${index+1}`,
-										extClass: 'article-content-image'
-									});
-									
-									// 如果是最后一张图片，隐藏加载提示
-									if (index === tempFilePaths.length - 1) {
-										uni.hideLoading();
-										uni.showToast({
-											title: '图片添加成功',
-											icon: 'success'
-										});
-										
-										// 调整编辑器高度
-										nextTick(() => {
-											adjustEditorHeight();
-										});
-									}
-								}
-							});
-						});
-					})
-					.catch(error => {
-						uni.showToast({
-							title: error.message,
-							icon: 'none'
-						});
-					});
-			}
-		});
-	};
-
-	// 直接从编辑器中删除图片
-	const removeImageFromEditor = (imagePath) => {
-		// 确认删除对话框
-		uni.showModal({
-			title: '删除图片',
-			content: '确定要删除这张图片吗？',
-			success: (res) => {
-				if (res.confirm) {
-					// 从数组中移除图片
-					const index = articleData.images.indexOf(imagePath);
-					if (index > -1) {
-						articleData.images.splice(index, 1);
-					}
-					
-					// 更新富文本编辑器内容，从HTML中移除对应图片
-					if (editorCtx) {
-						// 获取当前HTML内容
-						editorCtx.getContents({
-							success: (res) => {
-								let currentHtml = res.html || '';
-								// 替换包含该图片路径的img标签及其父容器
-								const imgWrapperRegex = new RegExp(`<div[^>]*class="image-delete-wrapper"[^>]*data-image-path="${imagePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>[\\s\\S]*?<\/div>`, 'g');
-								currentHtml = currentHtml.replace(imgWrapperRegex, '');
-								
-								// 替换普通img标签
-								const imgRegex = new RegExp(`<img[^>]*src=["']${imagePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`, 'g');
-								currentHtml = currentHtml.replace(imgRegex, '');
-								
-								// 设置新的内容
-								editorCtx.setContents({
-									html: currentHtml
-								});
-							}
-						});
-					}
-					
-					uni.showToast({
-						title: '图片已删除',
-						icon: 'success'
-					});
-				}
-			}
-		});
-	};
-	
-	// =================== 封面图片相关方法 =================== //
-	// 选择封面图片
-	const selectCoverImage = () => {
-		uni.chooseImage({
-			count: 1, // 只选择一张图片作为封面
-			success: (res) => {
-				const tempFilePath = res.tempFilePaths[0];
-				
-				// 检查图片大小
-				uni.getFileInfo({
-					filePath: tempFilePath,
-					success: (fileInfo) => {
-						// 限制图片大小为5MB
-						if (fileInfo.size > 5 * 1024 * 1024) {
-							uni.showToast({
-								title: '封面图片不能超过5MB',
-								icon: 'none'
-							});
-							return;
-						}
-						
-						// 显示加载中提示
-						uni.showLoading({
-							title: '处理封面图片...',
-							mask: true
-						});
-						
-						// 获取图片信息
-						uni.getImageInfo({
-							src: tempFilePath,
-							success: (imageInfo) => {
-								// 检查图片比例
-								const ratio = imageInfo.width / imageInfo.height;
-								
-								// 设置封面图片
-								articleData.coverImage = tempFilePath;
-								// 重置封面删除标记
-								articleData.isCoverDeleted = false;
-								
-								uni.hideLoading();
-								
-								uni.showToast({
-									title: '封面设置成功',
-									icon: 'success'
-								});
-								
-								// 如果图片比例不接近16:9，显示提示
-								if (Math.abs(ratio - 16/9) > 0.2) {
-									setTimeout(() => {
-										uni.showToast({
-											title: '建议使用16:9比例的图片作为封面',
-											icon: 'none',
-											duration: 2000
-										});
-									}, 1500);
-								}
-							},
-							fail: () => {
-								// 获取图片信息失败，仍然设置封面
-								articleData.coverImage = tempFilePath;
-								// 重置封面删除标记
-								articleData.isCoverDeleted = false;
-								
-								uni.hideLoading();
-								
-								uni.showToast({
-									title: '封面设置成功',
-									icon: 'success'
-								});
-							}
-						});
-					},
-					fail: () => {
-						// 无法获取文件信息，假设图片大小合适
-						// 显示加载中提示
-						uni.showLoading({
-							title: '处理封面图片...'
-						});
-						
-						// 设置封面图片
-						setTimeout(() => {
-							uni.hideLoading();
-							articleData.coverImage = tempFilePath;
-							// 重置封面删除标记
-							articleData.isCoverDeleted = false;
-							
-							uni.showToast({
-								title: '封面设置成功',
-								icon: 'success'
-							});
-						}, 500);
-					}
-				});
-			}
-		});
-	};
-	
-	// 删除封面图片
-	const removeCoverImage = () => {
-		// 如果在编辑模式并且有原始封面，提供更多选项
-		if (mode.value === 'edit' && articleData.originalCoverImage) {
-			uni.showModal({
-				title: '删除封面',
-				content: '确定要删除封面图片吗？',
-				success: (res) => {
-					if (res.confirm) {
-						// 完全删除封面
-						articleData.coverImage = null;
-						// 标记封面为已删除状态
-						articleData.isCoverDeleted = true;
-						console.log('封面已删除，标记删除状态:', articleData.isCoverDeleted);
-						uni.showToast({
-							title: '封面已删除',
-							icon: 'success'
-						});
-					}
-				}
-			});
-		} else {
-			// 常规删除确认
-			uni.showModal({
-				title: '删除封面',
-				content: '确定要删除封面图片吗？',
-				success: (res) => {
-					if (res.confirm) {
-						articleData.coverImage = null;
-						// 编辑模式下也标记为已删除
-						if (mode.value === 'edit') {
-							articleData.isCoverDeleted = true;
-						}
-						uni.showToast({
-							title: '封面已删除',
-							icon: 'success'
-						});
-					}
-				}
-			});
-		}
-	};
-
-	// =================== 页面退出与保存相关方法 =================== //
-	// 清空内容并刷新页面
-	const clearAndRefresh = () => {
-		// 清空所有内容
-		articleData.title = '';
-		articleData.content = '';
-		articleData.htmlContent = '';
-		editorContent.value = '';
-		if (editorCtx) {
-			editorCtx.clear();
-		}
-		articleData.images = [];
-		articleData.tags = [];
-		articleData.coverImage = null;
-		selectedTags.value = [];
-
-		// 清除草稿
-		clearDraft();
-
-		// 标记已确认离开
-		isConfirmedExit = true;
-	};
-
-	// 退出确认弹窗
-	const showExitConfirm = () => {
-		// 如果已经显示了对话框，则不再重复显示
-		if (showingExitDialog.value) return;
-		
-		// 判断是否有编辑内容，如果没有直接返回
-		if (!hasContent()) {
-			// 清空内容并标记为已确认离开
-			clearAndRefresh();
-			// 返回上一页面
-			uni.navigateBack();
-			return;
-		}
-
-		// 标记正在显示对话框
-		showingExitDialog.value = true;
-
-		// 显示确认对话框
-		uni.showModal({
-			title: '确认退出',
-			content: '有未保存的内容，确定要退出吗？',
-			confirmText: '退出',
-			confirmColor: '#FF4D4F',
-			cancelText: '继续编辑',
-			success: (res) => {
-				// 标记对话框已关闭
-				showingExitDialog.value = false;
-				
-				if (res.confirm) {
-					// 用户点击确认，清空内容并退出
-					clearAndRefresh();
-					// 返回上一页面
-					uni.navigateBack();
-				}
-			},
-			fail: () => {
-				// 确保对话框关闭时重置标记
-				showingExitDialog.value = false;
-			}
-		});
-	};
-
-	// 检查是否有内容
-	const hasContent = () => {
-		return articleData.title.trim() ||
-			articleData.content.trim() ||
-			articleData.images.length > 0 ||
-			articleData.tags.length > 0 ||
-			articleData.coverImage !== null;
-	};
-	
-	// 发布或更新文章
-	const publishArticle = () => {
-		// 表单验证
-		if (!articleData.title.trim()) {
-			uni.showToast({
-				title: '请输入文章标题',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		// 验证标题长度
-		if (articleData.title.length > 50) {
-			uni.showToast({
-				title: '标题最多50个字符',
-				icon: 'none'
-			});
-			return;
-		}
-
-		if (!articleData.content.trim()) {
-			uni.showToast({
-				title: '请输入文章内容',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		// 验证内容长度
-		if (articleData.content.length < 10) {
-			uni.showToast({
-				title: '文章内容太短，至少10个字符',
-				icon: 'none'
-			});
-			return;
-		}
-		
-		// 防止重复提交
-		if (isLoading.value) {
-			return;
-		}
-		
-		// 显示确认对话框
-		uni.showModal({
-			title: mode.value === 'edit' ? '更新文章' : '发布文章',
-			content: mode.value === 'edit' ? '确认更新这篇文章吗？' : '确认发布这篇文章吗？',
-			success: (res) => {
-				if (res.confirm) {
-					// 用户点击确认，开始处理图片和发布文章
-					processImagesAndPublish();
-				}
-			}
-		});
-	};
-
 	/**
 	 * 标签数据统一处理函数 - 优化版本，确保标签数据格式正确
 	 */
@@ -1350,7 +690,9 @@
 		// 过滤空值并转换为字符串
 		const processedTags = tags
 			.map(tag => String(tag).trim())
-			.filter(tag => tag && tag.length > 0);
+			.filter(tag => tag && tag.length > 0)
+			// 过滤掉可能包含HTML标签的字符串，避免后端处理问题
+			.filter(tag => !tag.includes('<') && !tag.includes('>'));
 		
 		// 去重
 		return [...new Set(processedTags)];
@@ -1405,7 +747,7 @@
 				title: articleData.title,
 				content: articleData.content,
 				htmlContent: ensureCorrectHtmlFormat(articleData.htmlContent), // 使用增强的HTML格式
-				// 确保标签数据是简单的字符串数组，避免复杂对象
+				// 确保标签数据是简单的字符串数组，并过滤掉HTML标签
 				tags: prepareTags(articleData.tags),
 				images: articleData.images,
 				wordCount: articleData.wordCount
@@ -1580,7 +922,9 @@
 			// 只使用tagNames字段，确保是基本字符串数组
 			tags: undefined,
 			tagNames: Array.isArray(originalRequestData.tagNames) 
-				? originalRequestData.tagNames.map(t => String(t).trim()).filter(t => t)
+				? originalRequestData.tagNames
+					.map(t => String(t).trim())
+					.filter(t => t && !t.includes('<') && !t.includes('>'))
 				: []
 		};
 		
@@ -1726,18 +1070,12 @@
 			mask: true
 		});
 		
-		// 标签数据统一处理函数
-		const prepareTags = (tags) => {
-			if (!Array.isArray(tags) || tags.length === 0) return [];
-			return tags.map(tag => String(tag).trim()).filter(tag => tag);
-		};
-		
 		// 构建请求数据
 		const requestData = {
 			title: articleData.title,
 			content: articleData.content,
 			htmlContent: ensureCorrectHtmlFormat(articleData.htmlContent), // 使用增强的HTML格式
-			// 确保标签数据是字符串数组
+			// 确保标签数据是字符串数组，并过滤掉可能含有HTML标签的内容
 			tags: prepareTags(articleData.tags),
 			wordCount: articleData.wordCount
 		};
@@ -2291,6 +1629,676 @@
 		processedHtml = processedHtml.replace(/<p>\s*<\/p>/g, '<p><br></p>');
 		
 		return processedHtml;
+	};
+
+	// =================== 标签相关方法 =================== //
+	// 添加自定义标签
+	const addCustomTag = () => {
+		const tagValue = customTagInput.value.trim();
+
+		// 验证标签是否为空
+		if (!tagValue) {
+			uni.showToast({
+				title: '标签不能为空',
+				icon: 'none'
+			});
+			return;
+		}
+
+		// 验证标签长度
+		if (tagValue.length > 10) {
+			uni.showToast({
+				title: '标签最多10个字符',
+				icon: 'none'
+			});
+			return;
+		}
+
+		// 检查标签是否包含HTML标签，避免后端处理问题
+		if (tagValue.includes('<') || tagValue.includes('>')) {
+			uni.showToast({
+				title: '标签不能包含特殊字符',
+				icon: 'none'
+			});
+			return;
+		}
+
+		// 检查标签是否已存在
+		if (selectedTags.value.includes(tagValue)) {
+			uni.showToast({
+				title: '该标签已添加',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 检查已选标签数量
+		if (selectedTags.value.length >= 5) {
+			uni.showToast({
+				title: '最多只能添加5个标签',
+				icon: 'none'
+			});
+			return;
+		}
+
+		// 添加标签到已选列表
+		selectedTags.value.push(tagValue);
+
+		// 清空输入框
+		customTagInput.value = '';
+	};
+
+	// 移除标签
+	const removeTag = (tag) => {
+		const index = articleData.tags.indexOf(tag);
+		if (index > -1) {
+			articleData.tags.splice(index, 1);
+
+		uni.showToast({
+				title: '标签已移除',
+			icon: 'success'
+		});
+		}
+	};
+
+	// 移除选中标签
+	const removeSelectedTag = (tag) => {
+		const index = selectedTags.value.indexOf(tag);
+		if (index > -1) {
+			selectedTags.value.splice(index, 1);
+		}
+	};
+
+	// 显示标签选择器
+	const showTagSelector = () => {
+		// 预览模式下禁用
+		if (isPreviewMode.value) return;
+		
+		// 如果已经有5个标签，则提示
+		if (articleData.tags.length >= 5) {
+			uni.showToast({
+				title: '最多只能添加5个标签',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 打开前，先将已有的标签设置为选中状态
+		selectedTags.value = [...articleData.tags];
+		customTagInput.value = '';
+		
+		// 打开弹窗前调整页面滚动位置，确保不被底部工具栏遮挡
+		const pageScrollTop = uni.pageScrollTop || 0;
+		if (pageScrollTop > 0) {
+			uni.pageScrollTo({
+				scrollTop: 0,
+				duration: 300
+			});
+		}
+		
+		// 延迟打开弹窗，确保滚动完成
+		setTimeout(() => {
+		tagPopup.value.open();
+		}, 300);
+	};
+
+	// 关闭标签选择器
+	const closeTagPopup = () => {
+		tagPopup.value.close();
+	};
+
+	// 切换标签选中状态
+	const toggleTag = (tag) => {
+		const index = selectedTags.value.indexOf(tag);
+		if (index > -1) {
+			// 如果已选中，则取消选中
+			selectedTags.value.splice(index, 1);
+		} else {
+			// 检查是否已满5个标签
+			if (selectedTags.value.length >= 5) {
+				uni.showToast({
+					title: '最多只能添加5个标签',
+					icon: 'none'
+				});
+				return;
+			}
+			
+			// 如果未选中，则添加到选中列表
+			selectedTags.value.push(tag);
+		}
+	};
+
+	// 确认标签选择
+	const confirmTagSelection = () => {
+		// 优化：过滤空标签和包含HTML标签的字符串，确保格式一致
+		articleData.tags = selectedTags.value
+			.map(tag => String(tag).trim())
+			.filter(tag => tag.length > 0)
+			.filter(tag => !tag.includes('<') && !tag.includes('>'));
+		
+		// 确保没有重复标签
+		articleData.tags = [...new Set(articleData.tags)];
+		
+		closeTagPopup();
+
+		// 查看结果
+		console.log('确认的标签数据:', {
+			tags: JSON.stringify(articleData.tags),
+			count: articleData.tags.length
+		});
+
+		uni.showToast({
+			title: '标签已添加',
+			icon: 'success'
+		});
+	};
+
+	// =================== 链接相关方法 =================== //
+	// 显示链接插入弹窗
+	const showLinkPopup = () => {
+		linkUrl.value = '';
+		linkText.value = '';
+		linkPopup.value.open();
+	};
+
+	// 关闭链接插入弹窗
+	const closeLinkPopup = () => {
+		linkPopup.value.close();
+	};
+
+	// 确认插入链接
+	const confirmInsertLink = () => {
+		if (!linkUrl.value.trim()) {
+			uni.showToast({
+				title: '请输入链接地址',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 如果链接不以http://或https://开头，则添加https://
+		let url = linkUrl.value.trim();
+		if (!/^https?:\/\//i.test(url)) {
+			url = 'https://' + url;
+		}
+
+		// 如果没有输入链接文本，就使用URL作为文本
+		const text = linkText.value.trim() || url;
+
+		if (editorCtx) {
+			editorCtx.insertLink({
+				text: text,
+				url: url
+			});
+		}
+
+		closeLinkPopup();
+	};
+
+	// =================== 图片相关方法 =================== //
+	// 插入图片
+	const insertImage = () => {
+		// 预览模式下禁用
+		if (isPreviewMode.value) return;
+		
+		// 首先确认编辑器上下文是否已初始化
+		if (!editorCtx) {
+			uni.showToast({
+				title: '编辑器未初始化',
+				icon: 'none'
+			});
+			return;
+		}
+
+		uni.chooseImage({
+			count: 9,
+			success: (res) => {
+				// 处理选中的图片
+				const tempFilePaths = res.tempFilePaths;
+				
+				// 限制总图片数量
+				if ((articleData.images.length + tempFilePaths.length) > 20) {
+					uni.showToast({
+						title: '图片数量超过限制（最多20张）',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 检查图片大小
+				const checkImageSize = (path) => {
+					return new Promise((resolve, reject) => {
+						uni.getFileInfo({
+							filePath: path,
+							success: (res) => {
+								// 检查图片大小是否超过5MB
+								if (res.size > 5 * 1024 * 1024) {
+									reject(new Error('图片大小不能超过5MB'));
+								} else {
+									resolve();
+								}
+							},
+							fail: () => {
+								// 无法获取文件信息，假设图片大小合适
+								resolve();
+							}
+						});
+					});
+				};
+				
+				// 检查所有图片大小
+				const sizePromises = tempFilePaths.map(path => checkImageSize(path));
+				
+				Promise.all(sizePromises)
+					.then(() => {
+						// 所有图片大小都符合要求
+						// 显示加载中提示
+						uni.showLoading({
+							title: '处理图片中...',
+							mask: true
+						});
+						
+						// 逐个插入图片到编辑器
+						tempFilePaths.forEach((path, index) => {
+							// 为每个图片添加唯一标识
+							const imageId = `img_${Date.now()}_${index}`;
+							
+							// 获取图片信息
+							uni.getImageInfo({
+								src: path,
+								success: (imageInfo) => {
+									// 计算适当尺寸
+									const maxWidth = uni.getSystemInfoSync().windowWidth * 0.8;
+									const ratio = imageInfo.width / imageInfo.height;
+									const width = Math.min(maxWidth, imageInfo.width);
+									const height = width / ratio;
+									
+									// 插入图片到编辑器
+									editorCtx.insertImage({
+										src: path,
+										width: '100%', // 确保图片宽度固定为100%
+										height: 'auto', // 高度自适应
+										alt: `文章图片${index+1}`,
+										extClass: 'article-content-image',
+										data: {
+											imageId: imageId
+										},
+										success: () => {
+											// 如果是最后一张图片，隐藏加载提示
+											if (index === tempFilePaths.length - 1) {
+												uni.hideLoading();
+												uni.showToast({
+													title: '图片添加成功',
+													icon: 'success'
+												});
+												
+												// 调整编辑器高度
+												nextTick(() => {
+													adjustEditorHeight();
+												});
+											}
+										},
+										fail: (err) => {
+											console.error('插入图片失败:', err);
+											if (index === tempFilePaths.length - 1) {
+												uni.hideLoading();
+												uni.showToast({
+													title: '部分图片插入失败',
+													icon: 'none'
+												});
+											}
+										}
+									});
+								},
+								fail: () => {
+									// 获取图片信息失败，使用默认尺寸
+									editorCtx.insertImage({
+										src: path,
+										width: '100%',
+										height: 'auto',
+										alt: `文章图片${index+1}`,
+										extClass: 'article-content-image'
+									});
+									
+									// 如果是最后一张图片，隐藏加载提示
+									if (index === tempFilePaths.length - 1) {
+										uni.hideLoading();
+										uni.showToast({
+											title: '图片添加成功',
+											icon: 'success'
+										});
+										
+										// 调整编辑器高度
+										nextTick(() => {
+											adjustEditorHeight();
+										});
+									}
+								}
+							});
+						});
+					})
+					.catch(error => {
+						uni.showToast({
+							title: error.message,
+							icon: 'none'
+						});
+					});
+			}
+		});
+	};
+
+	// 直接从编辑器中删除图片
+	const removeImageFromEditor = (imagePath) => {
+		// 确认删除对话框
+		uni.showModal({
+			title: '删除图片',
+			content: '确定要删除这张图片吗？',
+			success: (res) => {
+				if (res.confirm) {
+					// 从数组中移除图片
+					const index = articleData.images.indexOf(imagePath);
+					if (index > -1) {
+						articleData.images.splice(index, 1);
+					}
+					
+					// 更新富文本编辑器内容，从HTML中移除对应图片
+					if (editorCtx) {
+						// 获取当前HTML内容
+						editorCtx.getContents({
+							success: (res) => {
+								let currentHtml = res.html || '';
+								// 替换包含该图片路径的img标签及其父容器
+								const imgWrapperRegex = new RegExp(`<div[^>]*class="image-delete-wrapper"[^>]*data-image-path="${imagePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>[\\s\\S]*?<\/div>`, 'g');
+								currentHtml = currentHtml.replace(imgWrapperRegex, '');
+								
+								// 替换普通img标签
+								const imgRegex = new RegExp(`<img[^>]*src=["']${imagePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`, 'g');
+								currentHtml = currentHtml.replace(imgRegex, '');
+								
+								// 设置新的内容
+								editorCtx.setContents({
+									html: currentHtml
+								});
+							}
+						});
+					}
+					
+					uni.showToast({
+						title: '图片已删除',
+						icon: 'success'
+					});
+				}
+			}
+		});
+	};
+	
+	// =================== 封面图片相关方法 =================== //
+	// 选择封面图片
+	const selectCoverImage = () => {
+		uni.chooseImage({
+			count: 1, // 只选择一张图片作为封面
+			success: (res) => {
+				const tempFilePath = res.tempFilePaths[0];
+				
+				// 检查图片大小
+				uni.getFileInfo({
+					filePath: tempFilePath,
+					success: (fileInfo) => {
+						// 限制图片大小为5MB
+						if (fileInfo.size > 5 * 1024 * 1024) {
+							uni.showToast({
+								title: '封面图片不能超过5MB',
+								icon: 'none'
+							});
+							return;
+						}
+						
+						// 显示加载中提示
+						uni.showLoading({
+							title: '处理封面图片...',
+							mask: true
+						});
+						
+						// 获取图片信息
+						uni.getImageInfo({
+							src: tempFilePath,
+							success: (imageInfo) => {
+								// 检查图片比例
+								const ratio = imageInfo.width / imageInfo.height;
+								
+								// 设置封面图片
+								articleData.coverImage = tempFilePath;
+								// 重置封面删除标记
+								articleData.isCoverDeleted = false;
+								
+								uni.hideLoading();
+								
+								uni.showToast({
+									title: '封面设置成功',
+									icon: 'success'
+								});
+								
+								// 如果图片比例不接近16:9，显示提示
+								if (Math.abs(ratio - 16/9) > 0.2) {
+									setTimeout(() => {
+										uni.showToast({
+											title: '建议使用16:9比例的图片作为封面',
+											icon: 'none',
+											duration: 2000
+										});
+									}, 1500);
+								}
+							},
+							fail: () => {
+								// 获取图片信息失败，仍然设置封面
+								articleData.coverImage = tempFilePath;
+								// 重置封面删除标记
+								articleData.isCoverDeleted = false;
+								
+								uni.hideLoading();
+								
+								uni.showToast({
+									title: '封面设置成功',
+									icon: 'success'
+								});
+							}
+						});
+					},
+					fail: () => {
+						// 无法获取文件信息，假设图片大小合适
+						// 显示加载中提示
+						uni.showLoading({
+							title: '处理封面图片...'
+						});
+						
+						// 设置封面图片
+						setTimeout(() => {
+							uni.hideLoading();
+							articleData.coverImage = tempFilePath;
+							// 重置封面删除标记
+							articleData.isCoverDeleted = false;
+							
+							uni.showToast({
+								title: '封面设置成功',
+								icon: 'success'
+							});
+						}, 500);
+					}
+				});
+			}
+		});
+	};
+	
+	// 删除封面图片
+	const removeCoverImage = () => {
+		// 如果在编辑模式并且有原始封面，提供更多选项
+		if (mode.value === 'edit' && articleData.originalCoverImage) {
+			uni.showModal({
+				title: '删除封面',
+				content: '确定要删除封面图片吗？',
+				success: (res) => {
+					if (res.confirm) {
+						// 完全删除封面
+						articleData.coverImage = null;
+						// 标记封面为已删除状态
+						articleData.isCoverDeleted = true;
+						console.log('封面已删除，标记删除状态:', articleData.isCoverDeleted);
+						uni.showToast({
+							title: '封面已删除',
+							icon: 'success'
+						});
+					}
+				}
+			});
+		} else {
+			// 常规删除确认
+			uni.showModal({
+				title: '删除封面',
+				content: '确定要删除封面图片吗？',
+				success: (res) => {
+					if (res.confirm) {
+						articleData.coverImage = null;
+						// 编辑模式下也标记为已删除
+						if (mode.value === 'edit') {
+							articleData.isCoverDeleted = true;
+						}
+						uni.showToast({
+							title: '封面已删除',
+							icon: 'success'
+						});
+					}
+				}
+			});
+		}
+	};
+
+	// =================== 页面退出与保存相关方法 =================== //
+	// 清空内容并刷新页面
+	const clearAndRefresh = () => {
+		// 清空所有内容
+		articleData.title = '';
+		articleData.content = '';
+		articleData.htmlContent = '';
+		editorContent.value = '';
+		if (editorCtx) {
+			editorCtx.clear();
+		}
+		articleData.images = [];
+		articleData.tags = [];
+		articleData.coverImage = null;
+		selectedTags.value = [];
+
+		// 清除草稿
+		clearDraft();
+
+		// 标记已确认离开
+		isConfirmedExit = true;
+	};
+
+	// 退出确认弹窗
+	const showExitConfirm = () => {
+		// 如果已经显示了对话框，则不再重复显示
+		if (showingExitDialog.value) return;
+		
+		// 判断是否有编辑内容，如果没有直接返回
+		if (!hasContent()) {
+			// 清空内容并标记为已确认离开
+			clearAndRefresh();
+			// 返回上一页面
+			uni.navigateBack();
+			return;
+		}
+
+		// 标记正在显示对话框
+		showingExitDialog.value = true;
+
+		// 显示确认对话框
+		uni.showModal({
+			title: '确认退出',
+			content: '有未保存的内容，确定要退出吗？',
+			confirmText: '退出',
+			confirmColor: '#FF4D4F',
+			cancelText: '继续编辑',
+			success: (res) => {
+				// 标记对话框已关闭
+				showingExitDialog.value = false;
+				
+				if (res.confirm) {
+					// 用户点击确认，清空内容并退出
+					clearAndRefresh();
+					// 返回上一页面
+					uni.navigateBack();
+				}
+			},
+			fail: () => {
+				// 确保对话框关闭时重置标记
+				showingExitDialog.value = false;
+			}
+		});
+	};
+
+	// 检查是否有内容
+	const hasContent = () => {
+		return articleData.title.trim() ||
+			articleData.content.trim() ||
+			articleData.images.length > 0 ||
+			articleData.tags.length > 0 ||
+			articleData.coverImage !== null;
+	};
+	
+	// 发布或更新文章
+	const publishArticle = () => {
+		// 表单验证
+		if (!articleData.title.trim()) {
+			uni.showToast({
+				title: '请输入文章标题',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 验证标题长度
+		if (articleData.title.length > 50) {
+			uni.showToast({
+				title: '标题最多50个字符',
+				icon: 'none'
+			});
+			return;
+		}
+
+		if (!articleData.content.trim()) {
+			uni.showToast({
+				title: '请输入文章内容',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 验证内容长度
+		if (articleData.content.length < 10) {
+			uni.showToast({
+				title: '文章内容太短，至少10个字符',
+				icon: 'none'
+			});
+			return;
+		}
+		
+		// 防止重复提交
+		if (isLoading.value) {
+			return;
+		}
+		
+		// 显示确认对话框
+		uni.showModal({
+			title: mode.value === 'edit' ? '更新文章' : '发布文章',
+			content: mode.value === 'edit' ? '确认更新这篇文章吗？' : '确认发布这篇文章吗？',
+			success: (res) => {
+				if (res.confirm) {
+					// 用户点击确认，开始处理图片和发布文章
+					processImagesAndPublish();
+				}
+			}
+		});
 	};
 </script>
 
