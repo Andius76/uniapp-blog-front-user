@@ -370,7 +370,8 @@
 	import {
 		deleteArticle,
 		getArticleDetail,
-		collectArticle
+		collectArticle,
+		likeArticle
 	} from '@/api/article';
 	import http from '@/utils/request';
 	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
