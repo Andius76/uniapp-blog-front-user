@@ -4305,4 +4305,67 @@
 			}
 		}
 	}
+
+	/* 文章操作样式增强 */
+	.article-actions {
+		display: flex;
+		justify-content: space-around;
+		align-items: center;
+		padding: 20rpx 0;
+		border-top: 1px solid #f0f0f0;
+	}
+	.action-item {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 10rpx;
+	}
+	.action-item text {
+		font-size: 26rpx;
+		color: #666;
+		transition: color 0.3s;
+	}
+	.action-item .liked {
+		color: #ff6b6b;
+	}
+	.action-item .collected {
+		color: #ffc107;
+	}
+
+	/* 点赞和收藏图标动画 */
+	.animate-icon {
+		animation: pulse 0.8s ease;
+	}
+	@keyframes pulse {
+		0% { transform: scale(1); }
+		50% { transform: scale(1.5); }
+		100% { transform: scale(1); }
+	}
+
+	/* 小程序样式 */
+	.mp-actions {
+		display: flex;
+		justify-content: space-around;
+		align-items: center;
+		padding: 15rpx 0;
+		margin-top: 10rpx;
+		border-top: 1px solid #f0f0f0;
+	}
+	.mp-action {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6rpx;
+	}
+	.mp-action text {
+		font-size: 24rpx;
+		color: #666;
+		transition: color 0.3s;
+	}
+	.mp-liked {
+		color: #ff6b6b !important;
+	}
+	.mp-collected {
+		color: #ffc107 !important;
+	}
 </style>

@@ -369,7 +369,8 @@
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	import {
 		deleteArticle,
-		getArticleDetail
+		getArticleDetail,
+		collectArticle
 	} from '@/api/article';
 	import http from '@/utils/request';
 	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
@@ -982,7 +983,8 @@
 			const original = JSON.parse(JSON.stringify(article));
 			console.log('原始文章数据:', original);
 
-			// 检查数据库字段映射问题
+			// 统一字段命名 - 确保所有字段都使用驼峰命名风格
+			
 			// 统一点赞数字段
 			if (article.like_count !== undefined && article.likeCount === undefined) {
 				article.likeCount = article.like_count;
@@ -992,34 +994,62 @@
 			if (article.comment_count !== undefined && article.commentCount === undefined) {
 				article.commentCount = article.comment_count;
 			}
-
-			// 修正为0的点赞和评论数
-			article.likeCount = article.likeCount || 0;
-			article.commentCount = article.commentCount || 0;
-
-			// 检查点赞状态字段
-			if (article.is_liked !== undefined && article.isLiked === undefined) {
-				article.isLiked = article.is_liked;
+			
+			// 统一收藏数字段
+			if (article.collect_count !== undefined && article.collectCount === undefined) {
+				article.collectCount = article.collect_count;
 			}
 
-			// 检查收藏状态字段
-			if (article.is_collected !== undefined && article.isCollected === undefined) {
-				article.isCollected = article.is_collected;
+			// 修正为0的计数字段
+			article.likeCount = article.likeCount !== undefined ? article.likeCount : 0;
+			article.commentCount = article.commentCount !== undefined ? article.commentCount : 0;
+			article.collectCount = article.collectCount !== undefined ? article.collectCount : 0;
+
+			// 检查点赞状态字段 - 确保统一使用isLiked
+			if (article.is_liked !== undefined) {
+				article.isLiked = !!article.is_liked; // 使用!!确保转换为布尔值
+			} else if (article.liked !== undefined) {
+				article.isLiked = !!article.liked;
+			} else if (article.isLiked === undefined) {
+				article.isLiked = false; // 默认值
+			} else {
+				article.isLiked = !!article.isLiked; // 确保是布尔值
 			}
 
-			// 确保布尔值格式正确
-			article.isLiked = !!article.isLiked;
-			article.isCollected = !!article.isCollected;
+			// 检查收藏状态字段 - 确保统一使用isCollected
+			if (article.is_collected !== undefined) {
+				article.isCollected = !!article.is_collected;
+			} else if (article.collected !== undefined) {
+				article.isCollected = !!article.collected;
+			} else if (article.isCollected === undefined) {
+				article.isCollected = false; // 默认值
+			} else {
+				article.isCollected = !!article.isCollected; // 确保是布尔值
+			}
 			
 			// 处理作者关注状态字段映射
 			if (article.author) {
 				// 检查后端返回的is_followed字段
-				if (article.author.is_followed !== undefined && article.author.isFollowed === undefined) {
-					article.author.isFollowed = article.author.is_followed;
-					console.log(`修正作者[${article.author.id}]关注状态字段映射: ${article.author.is_followed} -> ${article.author.isFollowed}`);
+				if (article.author.is_followed !== undefined) {
+					article.author.isFollowed = !!article.author.is_followed;
+				} else if (article.author.followed !== undefined) {
+					article.author.isFollowed = !!article.author.followed;
+				} else if (article.author.isFollowed === undefined) {
+					// 如果没有isFollowed字段，初始化为false
+					article.author.isFollowed = false;
 				}
-				// 确保关注状态是布尔值
+				
+				// 确保isFollowed为布尔值
 				article.author.isFollowed = !!article.author.isFollowed;
+				
+				// 如果后端返回了嵌套的对象，如{following: true}，处理这种情况
+				if (typeof article.author.isFollowed === 'object' && article.author.isFollowed !== null) {
+					if (article.author.isFollowed.following !== undefined) {
+						article.author.isFollowed = !!article.author.isFollowed.following;
+					}
+				}
+				
+				console.log(`作者[${article.author.id}]关注状态: ${article.author.isFollowed}`);
 			}
 
 			// 检查数据库字段映射 - 后端用cover_image，前端用coverImage
@@ -1140,9 +1170,15 @@
 				article.author.avatar = '/static/images/avatar.png';
 			}
 
+			// 添加UI动画状态属性
+			article.isAnimating = false;
+			article.animationType = '';
+
 			// 最终封面URL
 			console.log(`最终封面URL[${article.id}]:`, article.coverImage);
 			console.log(`最终作者头像URL[${article.id}]:`, article.author?.avatar);
+			console.log(`点赞状态[${article.id}]:`, article.isLiked);
+			console.log(`收藏状态[${article.id}]:`, article.isCollected);
 
 			return article;
 		});
@@ -1598,94 +1634,77 @@
 		}
 	};
 
-	// 处理收藏
+	// 处理收藏操作
 	const handleCollect = async (index) => {
+		// 在收藏之前，保存当前的收藏状态
 		const article = articleList.value[index];
-		const articleId = article.id;
-		const baseUrl = getBaseUrl();
-		const token = uni.getStorageSync('token');
-
-		if (!token) {
-			uni.showToast({
-				title: '请先登录',
-				icon: 'none'
-			});
-			// 可选：跳转到登录页
-			// uni.navigateTo({ url: '/pages/login/login' });
-			return;
-		}
-
+		const currentIsCollected = article.isCollected;
+		const currentCollectCount = article.collectCount || 0;
+		
 		try {
-			// 先保存原始收藏状态，以便在请求失败时恢复
-			const originalIsCollected = article.isCollected;
-			const originalCollectCount = article.collectCount || 0;
-
-			// 提前在UI上更新，提供即时反馈
-			article.isCollected = !article.isCollected;
-			article.collectCount = (article.collectCount || 0) + (article.isCollected ? 1 : -1);
-
-			// 构建请求
-			const url = `${baseUrl}/api/article/collect/${articleId}`;
-			const method = originalIsCollected ? 'DELETE' : 'POST';
-
-			// 发起请求
-			uni.request({
-				url,
-				method,
-				header: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				success: (res) => {
-					if (res.statusCode === 200) {
-						// 请求成功，收藏状态已更新
-
-						// 如果当前是收藏列表，且是取消收藏，则移除该文章
-						if (props.listType === 'collection' && !article.isCollected) {
-							// 从列表中移除该文章
-							articleList.value.splice(index, 1);
-						}
-
-						// 显示提示
-						uni.showToast({
-							title: article.isCollected ? '收藏成功' : '已取消收藏',
-							icon: 'success'
-						});
-
-						// 触发事件
-						emit('collect', article);
-
-						// 如果可能，从响应中获取确切的收藏数并更新
-						if (res.data && res.data.data && res.data.data.collectCount !== undefined) {
-							article.collectCount = res.data.data.collectCount;
-						}
-					} else {
-						// 请求失败，恢复原始状态
-						article.isCollected = originalIsCollected;
-						article.collectCount = originalCollectCount;
-
-						uni.showToast({
-							title: res.data?.message || '操作失败',
-							icon: 'none'
-						});
-					}
-				},
-				fail: (err) => {
-					// 请求失败，恢复原始状态
-					article.isCollected = originalIsCollected;
-					article.collectCount = originalCollectCount;
-
-					console.error('收藏操作失败:', err);
-					uni.showToast({
-						title: '网络异常，请稍后再试',
-						icon: 'none'
-					});
+			// 先更新UI，优化体验
+			article.isCollected = !currentIsCollected;
+			article.collectCount = currentIsCollected ? Math.max(0, currentCollectCount - 1) : currentCollectCount + 1;
+			
+			// 添加动画效果
+			article.isAnimating = true;
+			article.animationType = 'collect';
+			
+			// 延迟后移除动画效果
+			setTimeout(() => {
+				if (articleList.value[index]) {
+					articleList.value[index].isAnimating = false;
 				}
-			});
+			}, 800);
+			
+			// 调用API
+			const res = await collectArticle(article.id, !currentIsCollected);
+			
+			// 检查API响应
+			if (res.code !== 200) {
+				// 恢复原始状态
+				article.isCollected = currentIsCollected;
+				article.collectCount = currentCollectCount;
+				
+				// 打印错误
+				console.error('收藏操作失败:', res.message);
+				
+				// 提示错误
+				uni.showToast({
+					title: res.message || '操作失败',
+					icon: 'none'
+				});
+			} else {
+				// API返回了新的收藏数，使用返回的数据
+				if (res.data && res.data.collectCount !== undefined) {
+					article.collectCount = res.data.collectCount;
+				}
+				
+				// 触发事件
+				emit('collect', {
+					articleId: article.id,
+					isCollected: article.isCollected,
+					collectCount: article.collectCount
+				});
+				
+				// 广播收藏状态变更
+				uni.$emit('article_collect_updated', {
+					articleId: article.id,
+					isCollected: article.isCollected,
+					collectCount: article.collectCount
+				});
+				
+				console.log(`文章[${article.id}]收藏状态更新成功: ${article.isCollected}, 收藏数: ${article.collectCount}`);
+			}
 		} catch (error) {
 			console.error('收藏操作异常:', error);
+			
+			// 恢复原始状态
+			article.isCollected = currentIsCollected;
+			article.collectCount = currentCollectCount;
+			
 			uni.showToast({
-				title: '操作异常，请稍后再试',
+				title: '网络异常，请稍后再试',
 				icon: 'none'
 			});
 		}
@@ -1693,87 +1712,75 @@
 
 	// 处理点赞
 	const handleLike = async (index) => {
+		// 在点赞之前，保存当前的点赞状态
 		const article = articleList.value[index];
-		const articleId = article.id;
-		const baseUrl = getBaseUrl();
-		const token = uni.getStorageSync('token');
-
-		if (!token) {
-			uni.showToast({
-				title: '请先登录',
-				icon: 'none'
-			});
-
-			// 可选：跳转到登录页
-			// uni.navigateTo({ url: '/pages/login/login' });
-			return;
-		}
-
+		const currentIsLiked = article.isLiked;
+		const currentLikeCount = article.likeCount || 0;
+		
 		try {
-			// 先保存原始点赞状态，以便在请求失败时恢复
-			const originalIsLiked = article.isLiked;
-			const originalLikeCount = article.likeCount || 0;
-
-			// 提前在UI上更新，提供即时反馈
-			article.isLiked = !article.isLiked;
-			article.likeCount = article.likeCount + (article.isLiked ? 1 : -1);
-
-			// 构建请求
-			const url = `${baseUrl}/api/article/like/${articleId}`;
-			const method = originalIsLiked ? 'DELETE' : 'POST';
-
-			// 发起请求
-			uni.request({
-				url,
-				method,
-				header: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				success: (res) => {
-					if (res.statusCode === 200) {
-						// 请求成功，点赞状态已更新
-
-						// 显示提示
-						uni.showToast({
-							title: article.isLiked ? '点赞成功' : '已取消点赞',
-							icon: 'success'
-						});
-
-						// 触发事件
-						emit('like', article);
-
-						// 如果可能，从响应中获取确切的点赞数并更新
-						if (res.data && res.data.data && res.data.data.likeCount !== undefined) {
-							article.likeCount = res.data.data.likeCount;
-						}
-					} else {
-						// 请求失败，恢复原始状态
-						article.isLiked = originalIsLiked;
-						article.likeCount = originalLikeCount;
-
-						uni.showToast({
-							title: res.data?.message || '操作失败',
-							icon: 'none'
-						});
-					}
-				},
-				fail: (err) => {
-					// 请求失败，恢复原始状态
-					article.isLiked = originalIsLiked;
-					article.likeCount = originalLikeCount;
-
-					console.error('点赞操作失败:', err);
-					uni.showToast({
-						title: '网络异常，请稍后再试',
-						icon: 'none'
-					});
+			// 先更新UI，优化体验
+			article.isLiked = !currentIsLiked;
+			article.likeCount = currentIsLiked ? Math.max(0, currentLikeCount - 1) : currentLikeCount + 1;
+			
+			// 添加动画效果
+			article.isAnimating = true;
+			article.animationType = 'like';
+			
+			// 延迟后移除动画效果
+			setTimeout(() => {
+				if (articleList.value[index]) {
+					articleList.value[index].isAnimating = false;
 				}
-			});
+			}, 800);
+			
+			// 调用API
+			const res = await likeArticle(article.id, !currentIsLiked);
+			
+			// 检查API响应
+			if (res.code !== 200) {
+				// 恢复原始状态
+				article.isLiked = currentIsLiked;
+				article.likeCount = currentLikeCount;
+				
+				// 打印错误
+				console.error('点赞操作失败:', res.message);
+				
+				// 提示错误
+				uni.showToast({
+					title: res.message || '操作失败',
+					icon: 'none'
+				});
+			} else {
+				// API返回了新的点赞数，使用返回的数据
+				if (res.data && res.data.likeCount !== undefined) {
+					article.likeCount = res.data.likeCount;
+				}
+				
+				// 触发事件
+				emit('like', {
+					articleId: article.id,
+					isLiked: article.isLiked,
+					likeCount: article.likeCount
+				});
+				
+				// 广播点赞状态变更
+				uni.$emit('article_like_updated', {
+					articleId: article.id,
+					isLiked: article.isLiked,
+					likeCount: article.likeCount
+				});
+				
+				console.log(`文章[${article.id}]点赞状态更新成功: ${article.isLiked}, 点赞数: ${article.likeCount}`);
+			}
 		} catch (error) {
 			console.error('点赞操作异常:', error);
+			
+			// 恢复原始状态
+			article.isLiked = currentIsLiked;
+			article.likeCount = currentLikeCount;
+			
 			uni.showToast({
-				title: '操作异常，请稍后再试',
+				title: '网络异常，请稍后再试',
 				icon: 'none'
 			});
 		}

@@ -311,12 +311,9 @@ export function getArticleDetail(articleId) {
  * @param {boolean} isLike - 是否点赞，true为点赞，false为取消点赞
  * @return {Promise} - 返回操作结果的Promise
  */
-export function likeArticle(articleId, isLike) {
-  if (isLike) {
-    return http.post(`/api/article/like/${articleId}`);
-  } else {
-    return http.delete(`/api/article/like/${articleId}`);
-  }
+export function likeArticle(articleId, isLike = true) {
+  const method = isLike ? 'post' : 'delete';
+  return http[method](`/api/article/like/${articleId}`);
 }
 
 /**
@@ -325,15 +322,9 @@ export function likeArticle(articleId, isLike) {
  * @param {boolean} isCollect - 是否收藏，true为收藏，false为取消收藏
  * @return {Promise} - 返回操作结果的Promise
  */
-export function collectArticle(articleId, isCollect) {
-  // 确保articleId是字符串类型
-  const articleIdStr = String(articleId);
-  
-  if (isCollect) {
-    return http.post(`/api/article/collect/${articleIdStr}`);
-  } else {
-    return http.delete(`/api/article/collect/${articleIdStr}`);
-  }
+export function collectArticle(articleId, isCollect = true) {
+  const method = isCollect ? 'post' : 'delete';
+  return http[method](`/api/article/collect/${articleId}`);
 }
 
 /**

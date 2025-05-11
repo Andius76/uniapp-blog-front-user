@@ -1835,22 +1835,24 @@ const clearSearch = () => {
 /* 文章操作按钮样式 */
 .mp-actions {
 	display: flex;
-	justify-content: space-between;
-	padding-top: 15rpx;
-	border-top: 1rpx solid #f0f2f7;
-	margin-top: 15rpx;
+	justify-content: space-around;
+	align-items: center;
+	padding: 15rpx 0;
+	margin-top: 10rpx;
+	border-top: 1px solid #f0f0f0;
 }
 
 .mp-action {
 	display: flex;
 	align-items: center;
-	padding: 0 10rpx;
+	justify-content: center;
+	gap: 6rpx;
 }
 
 .mp-action text {
 	font-size: 24rpx;
 	color: #666;
-	margin-left: 8rpx;
+	transition: color 0.3s;
 }
 
 .mp-liked {
@@ -1861,29 +1863,22 @@ const clearSearch = () => {
 	color: #ffc107 !important;
 }
 
+/* 动画效果 */
+.animate-icon {
+	animation: pulse 0.8s ease;
+}
+@keyframes pulse {
+	0% { transform: scale(1); }
+	50% { transform: scale(1.5); }
+	100% { transform: scale(1); }
+}
+
 /* 加载状态样式 */
 .mp-loading {
 	padding: 30rpx;
 	text-align: center;
 	color: #999;
 	font-size: 26rpx;
-}
-
-/* 动画效果 */
-.animate-icon {
-	animation: scale-animation 0.5s;
-}
-
-@keyframes scale-animation {
-	0% {
-		transform: scale(1);
-	}
-	50% {
-		transform: scale(1.3);
-	}
-	100% {
-		transform: scale(1);
-	}
 }
 
 /* 响应式布局 */
