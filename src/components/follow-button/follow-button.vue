@@ -3,19 +3,6 @@
 	<button class="follow-btn" :class="{'followed': isFollowed}" @click.stop="toggleFollow" v-if="showButton">
 		{{ isFollowed ? '已关注' : '+ 关注' }}
 	</button>
-
-	<!-- 自定义取消关注确认弹窗 -->
-	<view class="custom-popup" v-if="showConfirmDialog" @touchmove.stop.prevent>
-		<view class="popup-mask" @click="closeConfirmDialog"></view>
-		<view class="popup-content">
-			<view class="popup-title">取消关注</view>
-			<view class="popup-message">确定不再关注"{{props.nickname}}"吗？</view>
-			<view class="popup-buttons">
-				<button class="popup-btn cancel-btn" @click="closeConfirmDialog">取消</button>
-				<button class="popup-btn confirm-btn" @click="confirmUnfollow">确定</button>
-			</view>
-		</view>
-	</view>
 </template>
 
 <script setup>
@@ -55,8 +42,6 @@ const isFollowed = ref(props.followed);
 const currentUserId = ref(null);
 // 是否正在加载
 const isLoading = ref(false);
-// 自定义弹窗状态
-const showConfirmDialog = ref(false);
 
 // 计算属性：是否显示关注按钮（不能关注自己）
 const showButton = computed(() => {
@@ -177,30 +162,26 @@ const toggleFollow = () => {
 		return;
 	}
 	
-	// 如果当前是已关注状态，显示自定义确认弹窗
+	// 如果当前是已关注状态，显示系统确认弹窗
 	if (isFollowed.value) {
-		showConfirmDialog.value = true;
+		uni.showModal({
+			title: '取消关注',
+			content: `确定不再关注"${props.nickname}"吗？`,
+			cancelText: '取消',
+			confirmText: '确定',
+			confirmColor: '#4361ee',
+			success: (res) => {
+				if (res.confirm) {
+					// 用户点击确定，执行取消关注操作
+					performFollowAction(false);
+				}
+				// 用户点击取消，不执行任何操作
+			}
+		});
 	} else {
-		// 当前是未关注状态，执行关注操作
+		// 当前是未关注状态，直接执行关注操作
 		performFollowAction();
 	}
-};
-
-/**
- * 关闭确认弹窗
- */
-const closeConfirmDialog = () => {
-	showConfirmDialog.value = false;
-};
-
-/**
- * 确认取消关注
- */
-const confirmUnfollow = () => {
-	// 关闭弹窗
-	closeConfirmDialog();
-	// 执行取消关注操作
-	performFollowAction(false);
 };
 
 /**
@@ -294,122 +275,4 @@ onMounted(async () => {
 		transform: scale(0.98);
 	}
 }
-
-/* 自定义弹窗样式 */
-.custom-popup {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 9999;
-	
-	.popup-mask {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: rgba(0, 0, 0, 0.5);
-	}
-	
-	.popup-content {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 80%;
-		max-width: 600rpx;
-		background-color: #fff;
-		border-radius: 16rpx;
-		padding: 40rpx 30rpx;
-		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
-		animation: popup-in 0.3s ease-out;
-		
-		.popup-title {
-			font-size: 34rpx;
-			font-weight: bold;
-			color: #333;
-			text-align: center;
-			margin-bottom: 30rpx;
-		}
-		
-		.popup-message {
-			font-size: 30rpx;
-			color: #666;
-			text-align: center;
-			margin-bottom: 40rpx;
-			padding: 0 20rpx;
-			line-height: 1.5;
-		}
-		
-		.popup-buttons {
-			display: flex;
-			justify-content: space-between;
-			gap: 30rpx;
-			
-			.popup-btn {
-				flex: 1;
-				height: 80rpx;
-				line-height: 80rpx;
-				text-align: center;
-				border-radius: 40rpx;
-				font-size: 30rpx;
-				margin: 0;
-				
-				&.cancel-btn {
-					background-color: #f5f5f5;
-					color: #666;
-					
-					&:active {
-						background-color: #eaeaea;
-					}
-				}
-				
-				&.confirm-btn {
-					background-color: #4361ee;
-					color: #fff;
-					
-					&:active {
-						background-color: #3651d4;
-					}
-				}
-			}
-		}
-	}
-}
-
-@keyframes popup-in {
-	from {
-		opacity: 0;
-		transform: translate(-50%, -60%);
-	}
-	to {
-		opacity: 1;
-		transform: translate(-50%, -50%);
-	}
-}
-
-/* 适配不同平台 */
-/* #ifdef MP-WEIXIN */
-.custom-popup .popup-content {
-	padding: 40rpx 30rpx 30rpx;
-}
-
-.custom-popup .popup-buttons .popup-btn {
-	height: 76rpx;
-	line-height: 76rpx;
-	font-size: 28rpx;
-}
-/* #endif */
-
-/* #ifdef APP-PLUS */
-.custom-popup .popup-content {
-	padding: 44rpx 30rpx;
-}
-
-.custom-popup .popup-title {
-	font-size: 36rpx;
-}
-/* #endif */
 </style> 
