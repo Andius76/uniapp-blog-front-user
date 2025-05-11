@@ -1639,6 +1639,17 @@
 	const handleCollect = async (index) => {
 		// 在收藏之前，保存当前的收藏状态
 		const article = articleList.value[index];
+		
+		// 检查文章ID是否存在
+		if (!article || !article.id) {
+			console.error('收藏失败：无效的文章ID', article);
+			uni.showToast({
+				title: '操作失败，文章信息不完整',
+				icon: 'none'
+			});
+			return;
+		}
+		
 		const currentIsCollected = article.isCollected;
 		const currentCollectCount = article.collectCount || 0;
 		
@@ -1650,6 +1661,9 @@
 			// 添加动画效果
 			article.isAnimating = true;
 			article.animationType = 'collect';
+			
+			// 输出调试信息
+			console.log('收藏文章:', article.id, !currentIsCollected);
 			
 			// 延迟后移除动画效果
 			setTimeout(() => {
@@ -1699,15 +1713,6 @@
 			}
 		} catch (error) {
 			console.error('收藏操作异常:', error);
-			
-			// 恢复原始状态
-			article.isCollected = currentIsCollected;
-			article.collectCount = currentCollectCount;
-			
-			uni.showToast({
-				title: '网络异常，请稍后再试',
-				icon: 'none'
-			});
 		}
 	};
 
@@ -1715,6 +1720,17 @@
 	const handleLike = async (index) => {
 		// 在点赞之前，保存当前的点赞状态
 		const article = articleList.value[index];
+		
+		// 检查文章ID是否存在
+		if (!article || !article.id) {
+			console.error('点赞失败：无效的文章ID', article);
+			uni.showToast({
+				title: '操作失败，文章信息不完整',
+				icon: 'none'
+			});
+			return;
+		}
+		
 		const currentIsLiked = article.isLiked;
 		const currentLikeCount = article.likeCount || 0;
 		
@@ -1726,6 +1742,9 @@
 			// 添加动画效果
 			article.isAnimating = true;
 			article.animationType = 'like';
+			
+			// 输出调试信息
+			console.log('点赞文章:', article.id, !currentIsLiked);
 			
 			// 延迟后移除动画效果
 			setTimeout(() => {
@@ -1775,15 +1794,6 @@
 			}
 		} catch (error) {
 			console.error('点赞操作异常:', error);
-			
-			// 恢复原始状态
-			article.isLiked = currentIsLiked;
-			article.likeCount = currentLikeCount;
-			
-			uni.showToast({
-				title: '网络异常，请稍后再试',
-				icon: 'none'
-			});
 		}
 	};
 

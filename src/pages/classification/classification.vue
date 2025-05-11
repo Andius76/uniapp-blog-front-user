@@ -46,7 +46,6 @@
 				:keyword="currentTag === searchText && searchText ? searchText : ''"
 				:height="'calc(100vh - 180rpx)'"
 				:empty-text="emptyText"
-				@article-click="viewArticleDetail"
 				@author-click="viewAuthorProfile"
 				@tag-click="handleTagClick"
 				@share="handleShare"
@@ -87,7 +86,7 @@
 					</view>
 
 					<!-- 文章内容 -->
-					<view class="article-content" @click="viewArticleDetail(article.id)">
+					<view class="article-content" @click.stop="viewArticleDetail(article.id)">
 						<text class="mp-title">{{article.title}}</text>
 						<text class="mp-summary">{{formatArticleSummary(article.summary)}}</text>
 
@@ -526,9 +525,34 @@ const handleSearch = async () => {
 
 // 查看文章详情
 const viewArticleDetail = (articleId) => {
+	if (!articleId) {
+		console.error('文章ID为空，无法跳转到详情页');
+		return;
+	}
+	
+	console.log('点击文章，准备跳转到详情页:', articleId);
+	
+	// #ifdef H5
+	// H5环境下，在新窗口打开文章详情页
+	const currentUrl = window.location.href;
+	const baseUrl = currentUrl.split('#')[0];
+	const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
+	window.open(detailUrl, '_blank');
+	// #endif
+	
+	// #ifndef H5
+	// 非H5环境下，使用uni.navigateTo跳转到文章详情页
 	uni.navigateTo({
-		url: `/pages/article-detail/article-detail?id=${articleId}`
+		url: `/pages/article-detail/article-detail?id=${articleId}`,
+		fail: (err) => {
+			console.error('跳转文章详情页失败:', err);
+			uni.showToast({
+				title: '页面跳转失败',
+				icon: 'none'
+			});
+		}
 	});
+	// #endif
 };
 
 // 查看作者资料
@@ -749,6 +773,16 @@ const handleComment = (article) => {
  * 处理收藏/取消收藏
  */
 const handleCollect = async (article) => {
+	// 检查参数合法性
+	if (!article || !article.id) {
+		console.error('收藏失败：无效的文章ID', article);
+		uni.showToast({
+			title: '操作失败，文章信息不完整',
+			icon: 'none'
+		});
+		return;
+	}
+
 	// 检查登录状态
 	const token = uni.getStorageSync('token');
 	if (!token) {
@@ -768,6 +802,8 @@ const handleCollect = async (article) => {
 		// 添加动画效果
 		article.isAnimating = true;
 		article.animationType = 'collect';
+		
+		console.log('收藏文章:', article.id, !article.isCollected);
 		
 		// 调用收藏API
 		const res = await collectArticle(article.id, !article.isCollected);
@@ -794,10 +830,6 @@ const handleCollect = async (article) => {
 		}
 	} catch (error) {
 		console.error('收藏操作失败:', error);
-		uni.showToast({
-			title: '操作失败，请稍后再试',
-			icon: 'none'
-		});
 	} finally {
 		// 动画结束后清除动画状态
 		setTimeout(() => {
@@ -810,6 +842,16 @@ const handleCollect = async (article) => {
  * 处理点赞/取消点赞
  */
 const handleLike = async (article) => {
+	// 检查参数合法性
+	if (!article || !article.id) {
+		console.error('点赞失败：无效的文章ID', article);
+		uni.showToast({
+			title: '操作失败，文章信息不完整',
+			icon: 'none'
+		});
+		return;
+	}
+	
 	// 检查登录状态
 	const token = uni.getStorageSync('token');
 	if (!token) {
@@ -830,6 +872,8 @@ const handleLike = async (article) => {
 		article.isAnimating = true;
 		article.animationType = 'like';
 		
+		console.log('点赞文章:', article.id, !article.isLiked);
+		
 		// 调用点赞API
 		const res = await likeArticle(article.id, !article.isLiked);
 		
@@ -848,10 +892,6 @@ const handleLike = async (article) => {
 		}
 	} catch (error) {
 		console.error('点赞操作失败:', error);
-		uni.showToast({
-			title: '操作失败，请稍后再试',
-			icon: 'none'
-		});
 	} finally {
 		// 动画结束后清除动画状态
 		setTimeout(() => {

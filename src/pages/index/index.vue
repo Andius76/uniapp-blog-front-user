@@ -855,6 +855,16 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleCollect = (article) => {
+		// 检查参数合法性
+		if (!article || !article.id) {
+			console.error('收藏失败：无效的文章ID', article);
+			uni.showToast({
+				title: '操作失败，文章信息不完整',
+				icon: 'none'
+			});
+			return;
+		}
+
 		// 检查登录状态
 		const token = uni.getStorageSync('token');
 		if (!token) {
@@ -881,8 +891,10 @@
 		// 立即反馈UI (乐观更新)
 		article.isCollected = !article.isCollected;
 		article.collectCount = article.isCollected ? (article.collectCount || 0) + 1 : Math.max(0, (article
-			.collectCount || 0) - 1);
+		.collectCount || 0) - 1);
 
+		console.log('收藏文章:', article.id, article.isCollected);
+		
 		// 调用API进行实际收藏/取消收藏操作
 		collectArticle(article.id, article.isCollected)
 			.then(res => {
@@ -938,10 +950,6 @@
 				article.collectCount = originalState ? (article.collectCount || 0) + 1 : Math.max(0, (article
 					.collectCount || 0) - 1);
 
-				uni.showToast({
-					title: '网络异常，请稍后再试',
-					icon: 'none'
-				});
 				console.error('收藏失败:', err);
 			})
 			.finally(() => {
@@ -957,6 +965,16 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleComment = (article) => {
+		// 检查参数合法性
+		if (!article || !article.id) {
+			console.error('评论失败：无效的文章ID', article);
+			uni.showToast({
+				title: '操作失败，文章信息不完整',
+				icon: 'none'
+			});
+			return;
+		}
+
 		// 检查登录状态，如果未登录，先跳转到登录页
 		const token = uni.getStorageSync('token');
 		if (!token) {
@@ -982,6 +1000,16 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleLike = (article) => {
+		// 检查参数合法性
+		if (!article || !article.id) {
+			console.error('点赞失败：无效的文章ID', article);
+			uni.showToast({
+				title: '操作失败，文章信息不完整',
+				icon: 'none'
+			});
+			return;
+		}
+
 		// 检查登录状态
 		const token = uni.getStorageSync('token');
 		if (!token) {
@@ -991,10 +1019,10 @@
 			});
 
 			setTimeout(() => {
-				uni.navigateTo({
-					url: '/pages/login/login'
-				});
-			}, 1500);
+					uni.navigateTo({
+						url: '/pages/login/login'
+					});
+				}, 1500);
 			return;
 		}
 
@@ -1009,6 +1037,8 @@
 		article.isLiked = !article.isLiked;
 		article.likeCount = article.isLiked ? (article.likeCount || 0) + 1 : Math.max(0, (article.likeCount || 0) - 1);
 
+		console.log('点赞文章:', article.id, article.isLiked);
+		
 		// 调用API进行实际点赞/取消点赞操作
 		likeArticle(article.id, article.isLiked)
 			.then(res => {
@@ -1040,10 +1070,6 @@
 				article.likeCount = originalState ? (article.likeCount || 0) + 1 : Math.max(0, (article
 					.likeCount || 0) - 1);
 
-				uni.showToast({
-					title: '网络异常，请稍后再试',
-					icon: 'none'
-				});
 				console.error('点赞失败:', err);
 			})
 			.finally(() => {
