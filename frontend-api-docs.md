@@ -1740,6 +1740,7 @@
 | pageSize | number | 否   | 每页条数，默认10，最大50          |
 | tag      | string | 否   | 标签筛选                          |
 | keyword  | string | 否   | 关键词搜索，匹配标题和内容        |
+| sort     | string | 否   | 排序方式：new(最新)、hot(热门)、recommend(推荐)、following(关注) |
 
 - **响应参数：**
 
@@ -1770,13 +1771,25 @@
 | viewCount      | number           | 浏览量              |
 | likeCount      | number           | 点赞数              |
 | commentCount   | number           | 评论数              |
-| userId         | number           | 作者ID              |
-| nickname       | string           | 作者昵称            |
-| avatar         | string           | 作者头像            |
+| userId         | number           | 作者ID (将逐渐废弃, 使用 author.id) |
+| nickname       | string           | 作者昵称 (将逐渐废弃, 使用 author.nickname) |
+| avatar         | string           | 作者头像 (将逐渐废弃, 使用 author.avatar) |
+| author         | object           | 作者信息对象        |
+| isLiked        | boolean          | 当前用户是否已点赞该文章 |
+| isCollected    | boolean          | 当前用户是否已收藏该文章 |
 | createTime     | string           | 创建时间            |
 | updateTime     | string           | 更新时间            |
 
-- **⚠️ 当前状态：已实现**
+- **author对象结构：**
+
+| 参数名      | 类型    | 说明              |
+|-------------|---------|------------------|
+| id          | number  | 用户ID           |
+| nickname    | string  | 用户昵称         |
+| avatar      | string  | 用户头像URL      |
+| isFollowed  | boolean | 当前用户是否已关注此作者 |
+
+- **⚠️ 当前状态：已实现 (部分字段如isLiked, isCollected, author.isFollowed 由此变更引入)**
 
 ### 5. 获取文章详情
 
@@ -1812,14 +1825,23 @@
 | viewCount      | number           | 浏览量                       |
 | likeCount      | number           | 点赞数                       |
 | commentCount   | number           | 评论数                       |
-| isLiked        | boolean          | 当前用户是否已点赞           |
-| isCollected    | boolean          | 当前用户是否已收藏           |
-| userId         | number           | 作者ID                       |
-| nickname       | string           | 作者昵称                     |
-| avatar         | string           | 作者头像                     |
-| isFollowed     | boolean          | 当前用户是否已关注作者       |
+| isLiked        | boolean          | 当前用户是否已点赞该文章      |
+| isCollected    | boolean          | 当前用户是否已收藏该文章      |
+| userId         | number           | 作者ID (将逐渐废弃, 使用 author.id) |
+| nickname       | string           | 作者昵称 (将逐渐废弃, 使用 author.nickname) |
+| avatar         | string           | 作者头像 (将逐渐废弃, 使用 author.avatar) |
+| author         | object           | 作者信息对象                 |
 | createTime     | string           | 创建时间                     |
 | updateTime     | string           | 更新时间                     |
+
+- **author对象结构 (补充到data对象结构内联，或作为独立说明)：**
+
+| 参数名      | 类型    | 说明              |
+|-------------|---------|------------------|
+| id          | number  | 用户ID           |
+| nickname    | string  | 用户昵称         |
+| avatar      | string  | 用户头像URL      |
+| isFollowed  | boolean | 当前用户是否已关注此作者 |
 
 - **images数组元素结构：**
 
@@ -1990,7 +2012,7 @@
 - **请求参数：**
 
 | 参数名   | 类型   | 必选 | 说明                     |
-|----------|--------|------|-------------------------|
+|----------|--------|------|--------------------------|
 | page     | number | 否   | 页码，默认1             |
 | pageSize | number | 否   | 每页条数，默认10，最大50 |
 
@@ -2098,7 +2120,7 @@
 | tag      | string | 否   | 标签名称，不提供则返回所有文章     |
 | page     | number | 否   | 页码，默认1                       |
 | pageSize | number | 否   | 每页条数，默认10，最大50          |
-| sort     | string | 否   | 排序方式：new(最新)、hot(热门)    |
+| sort     | string | 否   | 排序方式：new(最新)、hot(热门)、recommend(推荐)、following(关注) |
 
 - **响应参数：**
 
@@ -2130,11 +2152,13 @@
 | likeCount      | number           | 点赞数              |
 | commentCount   | number           | 评论数              |
 | collectCount   | number           | 收藏数              |
-| isLiked        | boolean          | 当前用户是否已点赞   |
-| isCollected    | boolean          | 当前用户是否已收藏   |
-| userId         | number           | 作者ID              |
-| nickname       | string           | 作者昵称            |
-| avatar         | string           | 作者头像            |
+| isLiked        | boolean          | 当前用户是否已点赞该文章 |
+| isCollected    | boolean          | 当前用户是否已收藏该文章 |
+| userId         | number           | 作者ID (将逐渐废弃, 使用 author.id) |
+| nickname       | string           | 作者昵称 (将逐渐废弃, 使用 author.nickname) |
+| avatar         | string           | 作者头像 (将逐渐废弃, 使用 author.avatar) |
+| author         | object           | 作者信息对象         |
+| isFollowed     | boolean          | 当前用户是否已关注此作者 |
 | createTime     | string           | 创建时间            |
 | updateTime     | string           | 更新时间            |
 
@@ -2163,6 +2187,7 @@
                 "userId": 1,
                 "nickname": "技术作者",
                 "avatar": "https://example.com/uploads/avatars/user_1.jpg",
+                "isFollowed": false,
                 "createTime": "2024-05-01 10:00:00",
                 "updateTime": "2024-05-01 10:00:00"
             },
