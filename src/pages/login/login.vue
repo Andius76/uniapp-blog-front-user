@@ -273,6 +273,12 @@ const handleSubmit = () => {
 				duration: 2000
 			});
 			
+			// 添加定时器，3秒后清除错误提示
+			setTimeout(() => {
+				data.errors.username = '';
+				data.errors.password = '';
+			}, 3000);
+			
 			data.loading = false;
 		});
 	}
