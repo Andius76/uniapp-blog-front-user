@@ -8,9 +8,12 @@
 				<navigator @click="classification">分类</navigator>
 				<!-- 搜索框 -->
 				<view class="search-bar">
-					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch" />
+					<uni-icons type="search" size="18" color="#999" class="search-icon"></uni-icons>
+					<input type="text" placeholder="请输入搜索内容" v-model="data.searchText" @confirm="handleSearch"
+						@input="handleSearchInput" :focus="data.isSearchFocused" @focus="handleSearchFocus"
+						@blur="handleSearchBlur" />
 					<!-- 添加清除按钮 -->
-					<view class="clear-icon" v-if="data.searchText.length > 0" @click="clearSearchText">
+					<view class="clear-icon" v-if="data.searchText.length > 0" @click.stop="clearSearchText">
 						<uni-icons type="clear" size="18" color="#999"></uni-icons>
 					</view>
 					<button class="search-btn" @click="handleSearch">搜索</button>
@@ -82,21 +85,12 @@
 						</view>
 					</view>
 				</view>
-				
-				<ArticleList 
-					ref="articleListRef"
-					:key="data.currentNav"
-					:list-type="getListType()"
-					:use-global-scroll="true"
-					:empty-text="'暂无文章内容'"
-					:keyword="data.currentNav === -1 ? data.searchText : ''"
-					@article-click="viewArticleDetail"
-					@like="handleLike"
-					@share="handleShare"
-					@comment="handleComment"
-					@collect="handleCollect"
-					@search-results="updateSearchResults"
-				/>
+
+				<ArticleList ref="articleListRef" :key="data.currentNav" :list-type="getListType()"
+					:use-global-scroll="true" :empty-text="'暂无文章内容'"
+					:keyword="data.currentNav === -1 ? data.searchText : ''" @article-click="viewArticleDetail"
+					@like="handleLike" @share="handleShare" @comment="handleComment" @collect="handleCollect"
+					@search-results="updateSearchResults" />
 			</view>
 
 			<!-- 右侧创作中心区域 -->
@@ -137,37 +131,26 @@
 		<!-- APP和小程序的内容区域 -->
 		<!-- #ifndef H5 -->
 		<view class="content-area mp-content" :style="{ paddingTop: mpContentPaddingTop }">
-			<scroll-view 
-				scroll-y 
-				class="article-list" 
-				refresher-enabled 
-				:refresher-triggered="data.isRefreshing" 
-				@refresherrefresh="handleRefresh"
-				@scrolltolower="handleLoadMore"
-				:refresher-threshold="100"
-				refresher-default-style="black"
-				refresher-background="#f5f5f5"
-				:style="{ height: mpArticleListHeight }"
-			>
+			<scroll-view scroll-y class="article-list" refresher-enabled :refresher-triggered="data.isRefreshing"
+				@refresherrefresh="handleRefresh" @scrolltolower="handleLoadMore" :refresher-threshold="100"
+				refresher-default-style="black" refresher-background="#f5f5f5" :style="{ height: mpArticleListHeight }">
 				<!-- 文章列表循环显示 -->
 				<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
 					<!-- 用户信息 -->
 					<view class="user-info">
 						<!-- 添加更多安全性检查，确保即使formatAvatarUrl函数有问题也能显示默认头像 -->
-						<image class="avatar" :src="article.author && formatAvatarUrl(article.author?.avatar) || '/static/images/avatar.png'" mode="aspectFill" @error="handleUserAvatarError(index)"></image>
+						<image class="avatar"
+							:src="article.author && formatAvatarUrl(article.author?.avatar) || '/static/images/avatar.png'"
+							mode="aspectFill" @error="handleUserAvatarError(index)"></image>
 						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
 						<!-- 将关注按钮移到最右侧 -->
 					</view>
-					
+
 					<!-- 添加关注按钮到最右侧 -->
 					<view class="follow-button-container">
-						<follow-button
-							:userId="article.author?.id"
-							:nickname="article.author?.nickname"
-							:followed="article.author?.isFollowed"
-							:autoCheck="false"
-							@follow-change="(isFollowed) => updateFollowState(article, isFollowed)"
-						/>
+						<follow-button :userId="article.author?.id" :nickname="article.author?.nickname"
+							:followed="article.author?.isFollowed" :autoCheck="false"
+							@follow-change="(isFollowed) => updateFollowState(article, isFollowed)" />
 					</view>
 
 					<!-- 文章内容 -->
@@ -177,11 +160,12 @@
 
 						<!-- 文章封面图片 -->
 						<view class="article-image" v-if="article.coverImage">
-							<image :src="article.coverImage" mode="aspectFill" class="single-image" @error="handleImageError(article)"></image>
+							<image :src="article.coverImage" mode="aspectFill" class="single-image"
+								@error="handleImageError(article)"></image>
 							<!-- 添加调试信息，便于排查封面图片问题 -->
 							<text class="debug-info" v-if="false">封面URL: {{article.coverImage}}</text>
 						</view>
-						
+
 						<!-- 文章标签 -->
 						<view class="article-tags" v-if="article.tags && article.tags.length > 0">
 							<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item">
@@ -201,12 +185,14 @@
 							<text>{{article.commentCount || 0}}</text>
 						</view>
 						<view class="action-item" @click.stop="handleCollection(article)">
-							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" :color="article.isCollected ? '#ffc107' : '#666'" 
+							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20"
+								:color="article.isCollected ? '#ffc107' : '#666'"
 								:class="{'animate-icon': article.isAnimating && article.animationType === 'collect'}"></uni-icons>
 							<text :class="{'collected': article.isCollected}">{{article.collectCount || 0}}</text>
 						</view>
 						<view class="action-item" @click.stop="handleLike(article)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20" :color="article.isLiked ? '#ff6b6b' : '#666'"
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
+								:color="article.isLiked ? '#ff6b6b' : '#666'"
 								:class="{'animate-icon': article.isAnimating && article.animationType === 'like'}"></uni-icons>
 							<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
 						</view>
@@ -266,29 +252,44 @@
 	// 导入uni-icons组件
 	import uniIcons from '@/uni_modules/uni-icons/components/uni-icons/uni-icons.vue';
 	// 导入API接口
-	import { getArticleDetail, likeArticle, collectArticle } from '@/api/article';
-	import { getUserInfo, followUser, checkUserFollow } from '@/api/user'; // 导入getUserInfo和followUser接口
-	import { onLoad, onShow } from '@dcloudio/uni-app';
+	import {
+		getArticleDetail,
+		likeArticle,
+		collectArticle
+	} from '@/api/article';
+	import {
+		getUserInfo,
+		followUser,
+		checkUserFollow
+	} from '@/api/user'; // 导入getUserInfo和followUser接口
+	import {
+		onLoad,
+		onShow
+	} from '@dcloudio/uni-app';
 	// 导入ArticleList组件
 	import ArticleList from '@/components/article-list/article-list.vue';
 	import UserSettings from '@/components/user-settings/user-settings.vue';
 	// 导入回到顶部组件
 	import BackToTop from '@/components/back-to-top/back-to-top.vue';
 	import http from '@/utils/request';
-	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
+	import {
+		getBaseUrl
+	} from '@/utils/request'; // 引入统一的getBaseUrl函数
 	// 导入SearchArticles API
-	import { searchArticles } from '@/api/article';
+	import {
+		searchArticles
+	} from '@/api/article';
 	import FollowButton from '@/components/follow-button/follow-button.vue';
 
 	// 添加引用
 	const articleListRef = ref(null);
 	const backToTopRef = ref(null);
-	
+
 	// 添加全局防抖标记，使用闭包确保跨页面刷新时重置
 	const globalLoadingLock = (() => {
 		let isLocked = false;
 		let lockTimer = null;
-		
+
 		// 设置锁定方法
 		const lock = (duration = 3000) => {
 			if (lockTimer) clearTimeout(lockTimer);
@@ -299,10 +300,10 @@
 			}, duration);
 			return true;
 		};
-		
+
 		// 检查是否锁定
 		const isActive = () => isLocked;
-		
+
 		// 解除锁定
 		const unlock = () => {
 			isLocked = false;
@@ -311,12 +312,12 @@
 				lockTimer = null;
 			}
 		};
-		
+
 		// 重置
 		const reset = () => {
 			unlock();
 		};
-		
+
 		return {
 			lock,
 			isActive,
@@ -355,6 +356,7 @@
 		],
 		currentNav: 1, // 默认选中推荐
 		searchStatusHeight: 0, // 搜索状态栏高度
+		isSearchFocused: false, // 搜索框是否获得焦点
 	});
 
 	const userInfo = reactive({
@@ -383,7 +385,9 @@
 			userInfo.followCount = 0;
 			userInfo.followerCount = 0;
 		}
-	}, { deep: true });
+	}, {
+		deep: true
+	});
 
 	// 在onBeforeMount阶段拦截，避免多个生命周期重复加载
 	onBeforeMount(() => {
@@ -398,7 +402,7 @@
 		await loadUserData();
 		// 使用统一的数据加载入口
 		await loadArticleData();
-		
+
 		// 确保ArticleList组件在H5环境下加载数据
 		// #ifdef H5
 		if (articleListRef.value) {
@@ -415,7 +419,7 @@
 			});
 		}
 		// #endif
-		
+
 		// 监听收藏状态更新事件
 		uni.$on('article_collect_updated', (data) => {
 			console.log('首页接收到文章收藏更新事件:', data);
@@ -429,7 +433,7 @@
 				}
 			}
 		});
-		
+
 		// #ifndef H5
 		// 监听搜索状态栏高度变化事件
 		uni.$on('search-status-height-changed', (data) => {
@@ -444,31 +448,31 @@
 	onUnmounted(() => {
 		// 设置页面非活动状态
 		data.isPageActive = false;
-		
+
 		// 清理工作已经在BackToTop组件中处理
 		// 清理文章收藏更新事件监听
 		uni.$off('article_collect_updated');
-		
+
 		// 清理首页刷新事件监听
 		uni.$off('refresh_home_page');
-		
+
 		// #ifdef H5
 		// 清理路由监听
 		if (cleanupRouteListener) {
 			cleanupRouteListener();
 		}
 		// #endif
-		
+
 		// #ifndef H5
 		// 移除搜索状态栏高度变化监听
 		uni.$off('search-status-height-changed');
 		// #endif
 	});
-	
+
 	// 声明全局变量，用于在模板中使用，避免报错
 	const mpContentPaddingTop = ref('');
 	const mpArticleListHeight = ref('');
-	
+
 	// #ifndef H5
 	/**
 	 * 更新内容区域样式
@@ -477,15 +481,15 @@
 	const updateContentAreaStyle = (searchStatusHeight) => {
 		// 计算内容区域内边距
 		const contentPadding = `calc(var(--status-bar-height) + 170rpx + ${searchStatusHeight}rpx)`;
-		
+
 		// 计算文章列表高度
 		const listHeight = `calc(100vh - 170rpx - var(--status-bar-height) - ${searchStatusHeight}rpx)`;
-		
+
 		// 更新计算样式
 		mpContentPaddingTop.value = contentPadding;
 		mpArticleListHeight.value = listHeight;
 	};
-	
+
 	// 在非H5环境下设置初始值
 	mpContentPaddingTop.value = 'calc(var(--status-bar-height) + 170rpx)';
 	mpArticleListHeight.value = 'calc(100vh - 170rpx - var(--status-bar-height))';
@@ -495,20 +499,20 @@
 	onShow(async () => {
 		// 每次页面显示时更新用户数据
 		loadUserData();
-		
+
 		// 如果全局锁定中，跳过刷新
 		if (globalLoadingLock.isActive()) {
 			console.log('全局锁定中，onShow跳过文章列表刷新');
 			return;
 		}
-		
+
 		// 检查请求频率限制 - 如果距离上次请求不足1秒，则跳过刷新
 		const now = Date.now();
 		if (now - data.lastRequestTime < 1000) {
 			console.log('请求过于频繁，跳过本次刷新');
 			return;
 		}
-		
+
 		// 如果有文章列表数据，更新所有作者的关注状态
 		if (articleList.value && articleList.value.length > 0) {
 			try {
@@ -518,19 +522,19 @@
 				console.error('页面显示：检查作者关注状态失败:', error);
 			}
 		}
-		
+
 		// 刷新文章列表
 		if (articleListRef.value) {
 			// 记录本次请求时间
 			data.lastRequestTime = now;
-			
+
 			// 检查组件上的加载状态
 			const isComponentLoading = articleListRef.value.isLoading || articleListRef.value.loading || false;
-			
+
 			if (!isComponentLoading && !data.isRefreshing) {
 				// 设置刷新状态为true，防止短时间内重复刷新
 				data.isRefreshing = true;
-				
+
 				console.log('检测到页面显示，刷新文章列表');
 				// 设置一个小延迟，避免可能的竞态条件
 				setTimeout(() => {
@@ -540,7 +544,7 @@
 						articleListRef.value.loadArticles();
 					}, 50);
 				}, 50);
-				
+
 				// 2秒后重置刷新状态，允许下次刷新
 				setTimeout(() => {
 					data.isRefreshing = false;
@@ -563,38 +567,38 @@
 		// 如果已经在加载中，跳过
 		if (globalLoadingLock.isActive()) {
 			console.log('全局加载锁激活中，跳过加载');
-				return;
-			}
+			return;
+		}
 
 		// 设置加载锁，防止重复加载
 		globalLoadingLock.lock(3000);
-		
+
 		// 设置刷新状态
 		data.isRefreshing = true;
-		
+
 		// 记录请求时间
 		data.lastRequestTime = Date.now();
-		
+
 		console.log('=== 开始统一加载文章数据 ===');
-		
+
 		try {
 			// 显示加载提示
 			uni.showLoading({
 				title: '加载中...'
 			});
-			
+
 			// 等待DOM更新，确保引用有效
 			await nextTick();
-			
+
 			// 延迟加载文章列表，确保组件已经完全挂载
 			setTimeout(() => {
 				// 等待下一个DOM更新周期，文章列表组件会自动加载
 				nextTick(() => {
 					console.log('文章列表组件已渲染，将自动加载数据');
-					
+
 					// 隐藏加载提示
 					uni.hideLoading();
-				
+
 					// 延迟重置刷新状态
 					setTimeout(() => {
 						data.isRefreshing = false;
@@ -609,9 +613,9 @@
 				icon: 'none'
 			});
 			uni.hideLoading();
-			
+
 			// 出错时也要重置状态
-				data.isRefreshing = false;
+			data.isRefreshing = false;
 			globalLoadingLock.unlock();
 		}
 	};
@@ -624,9 +628,9 @@
 		if (data.currentNav === -1) {
 			return 'search';
 		}
-		
+
 		const navType = data.navItems[data.currentNav].type;
-		switch(navType) {
+		switch (navType) {
 			case 'follow':
 				return 'follow';
 			case 'recommend':
@@ -647,22 +651,22 @@
 	 */
 	const formatAvatarUrl = (url) => {
 		if (!url) return '/static/images/avatar.png';
-		
+
 		// 移除URL中可能存在的多余空格
 		url = url.trim();
-		
+
 		// 确保不是null、undefined或空字符串
 		if (url === 'null' || url === 'undefined' || url === '') {
 			return '/static/images/avatar.png';
 		}
-		
+
 		// 完整URL处理：如果已经是完整URL（包含http）则做特殊处理
 		if (url.startsWith('http')) {
 			// 检查并修复双斜杠问题
 			if (url.includes('//uploads')) {
 				url = url.replace('//uploads', '/uploads');
 			}
-			
+
 			// APP环境下特别处理localhost
 			// #ifdef APP-PLUS
 			if (url.includes('localhost') || url.includes('127.0.0.1')) {
@@ -671,7 +675,7 @@
 				return appBaseUrl + urlPath;
 			}
 			// #endif
-			
+
 			return url;
 		}
 		// 静态资源处理：如果是静态资源路径则不处理
@@ -708,38 +712,42 @@
 			});
 			return;
 		}
-		
-		// 显示加载提示
-		uni.showLoading({
-			title: '搜索中...'
-		});
-		
+
+		// 重置页码和加载状态
+		currentPage.value = 1;
+		noMoreData.value = false;
+
+		// 清空文章列表
+		articleList.value = [];
+
+		// 设置为搜索状态，取消导航菜单选中状态
+		data.currentNav = -1;
+
+		// 显示加载中
+		isLoading.value = true;
+
 		try {
-			// 调用搜索API
-			const res = await http.get('/api/article/search', {
-				page: 1,
-				pageSize: 10,
-				keyword: data.searchText
+			const res = await searchArticles(data.searchText, {
+				page: currentPage.value,
+				pageSize: 10
 			});
-			
-			uni.hideLoading();
-			
+
 			if (res.code === 200 && res.data) {
 				// 处理搜索结果
 				const searchResults = res.data.list || [];
-				
+
+				// 更新搜索结果计数
+				updateSearchResults(res.data);
+
 				// 如果没有搜索结果
 				if (searchResults.length === 0) {
-					uni.showToast({
-						title: '没有找到相关文章',
-						icon: 'none'
-					});
+					noMoreData.value = true;
 					return;
 				}
-				
+
 				// 处理搜索结果数据
 				const processedArticles = processArticleData(searchResults);
-				
+
 				// 检查作者关注状态
 				try {
 					await checkAuthorsFollowStatus(processedArticles);
@@ -747,14 +755,17 @@
 				} catch (error) {
 					console.error('搜索结果：检查作者关注状态失败:', error);
 				}
-				
+
 				// 更新文章列表
 				articleList.value = processedArticles;
-				
-				// 更新页码和加载状态
-				currentPage.value = 2;
-				noMoreData.value = searchResults.length < 10;
-				
+
+				// 更新页码
+				currentPage.value++;
+
+				// 判断是否还有更多数据
+				if (searchResults.length < 10) {
+					noMoreData.value = true;
+				}
 			} else {
 				uni.showToast({
 					title: res.message || '搜索失败',
@@ -762,12 +773,13 @@
 				});
 			}
 		} catch (err) {
-			uni.hideLoading();
+			console.error('搜索失败:', err);
 			uni.showToast({
-				title: '搜索失败，请稍后重试',
+				title: '网络异常，请稍后再试',
 				icon: 'none'
 			});
-			console.error('搜索失败:', err);
+		} finally {
+			isLoading.value = false;
 		}
 	};
 
@@ -782,7 +794,7 @@
 				title: '请先登录',
 				icon: 'none'
 			});
-			
+
 			setTimeout(() => {
 				uni.navigateTo({
 					url: `/pages/login/login?redirect=${encodeURIComponent('/pages/publish/publish')}`
@@ -790,7 +802,7 @@
 			}, 1500);
 			return;
 		}
-		
+
 		uni.navigateTo({
 			url: '/pages/publish/publish'
 		});
@@ -807,10 +819,11 @@
 		// 获取正确的基础路径
 		const currentUrl = window.location.href;
 		const baseUrl = currentUrl.split('#')[0];
-		const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}${scrollToComments ? '&scrollToComments=true' : ''}`;
+		const detailUrl =
+			`${baseUrl}#/pages/article-detail/article-detail?id=${articleId}${scrollToComments ? '&scrollToComments=true' : ''}`;
 		window.open(detailUrl, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，正常跳转
 		uni.navigateTo({
@@ -831,7 +844,7 @@
 				title: '请先登录',
 				icon: 'none'
 			});
-			
+
 			setTimeout(() => {
 				uni.navigateTo({
 					url: '/pages/login/login'
@@ -839,18 +852,19 @@
 			}, 1500);
 			return;
 		}
-		
+
 		// 切换收藏状态前的状态
 		const originalState = article.isCollected;
-		
+
 		// 设置动画标记
 		article.isAnimating = true;
 		article.animationType = 'collect';
-		
+
 		// 立即反馈UI (乐观更新)
 		article.isCollected = !article.isCollected;
-		article.collectCount = article.isCollected ? (article.collectCount || 0) + 1 : Math.max(0, (article.collectCount || 0) - 1);
-		
+		article.collectCount = article.isCollected ? (article.collectCount || 0) + 1 : Math.max(0, (article
+			.collectCount || 0) - 1);
+
 		// 调用API进行实际收藏/取消收藏操作
 		collectArticle(article.id, article.isCollected)
 			.then(res => {
@@ -859,12 +873,12 @@
 						title: article.isCollected ? '收藏成功' : '已取消收藏',
 						icon: article.isCollected ? 'success' : 'none'
 					});
-					
+
 					// API成功后，确保UI反映正确的计数
 					if (res.data && typeof res.data.collectCount !== 'undefined') {
 						article.collectCount = res.data.collectCount;
 					}
-					
+
 					// 更新本地存储的收藏状态
 					try {
 						let collectedArticles = uni.getStorageSync('collectedArticles') || {};
@@ -874,14 +888,14 @@
 							delete collectedArticles[article.id];
 						}
 						uni.setStorageSync('collectedArticles', collectedArticles);
-						console.log('更新本地收藏状态:', 
-							article.isCollected ? '添加收藏' : '取消收藏', 
+						console.log('更新本地收藏状态:',
+							article.isCollected ? '添加收藏' : '取消收藏',
 							article.id
 						);
 					} catch (e) {
 						console.error('存储收藏状态出错:', e);
 					}
-					
+
 					// 发送全局事件，通知其他页面更新该文章的收藏状态
 					uni.$emit('article_collect_updated', {
 						articleId: article.id,
@@ -891,8 +905,9 @@
 				} else {
 					// 恢复原状态
 					article.isCollected = originalState;
-					article.collectCount = originalState ? (article.collectCount || 0) + 1 : Math.max(0, (article.collectCount || 0) - 1);
-					
+					article.collectCount = originalState ? (article.collectCount || 0) + 1 : Math.max(0, (article
+						.collectCount || 0) - 1);
+
 					uni.showToast({
 						title: res.message || '操作失败',
 						icon: 'none'
@@ -902,8 +917,9 @@
 			.catch(err => {
 				// 恢复原状态
 				article.isCollected = originalState;
-				article.collectCount = originalState ? (article.collectCount || 0) + 1 : Math.max(0, (article.collectCount || 0) - 1);
-				
+				article.collectCount = originalState ? (article.collectCount || 0) + 1 : Math.max(0, (article
+					.collectCount || 0) - 1);
+
 				uni.showToast({
 					title: '网络异常，请稍后再试',
 					icon: 'none'
@@ -930,7 +946,7 @@
 				title: '请先登录',
 				icon: 'none'
 			});
-			
+
 			setTimeout(() => {
 				uni.navigateTo({
 					url: `/pages/login/login?redirect=${encodeURIComponent('/pages/article-detail/article-detail?id=' + article.id + '&scrollToComments=true')}`
@@ -938,7 +954,7 @@
 			}, 1500);
 			return;
 		}
-		
+
 		// 跳转到文章详情页，并设置参数滚动到评论区
 		viewArticleDetail(article.id, true);
 	};
@@ -955,7 +971,7 @@
 				title: '请先登录',
 				icon: 'none'
 			});
-			
+
 			setTimeout(() => {
 				uni.navigateTo({
 					url: '/pages/login/login'
@@ -963,18 +979,18 @@
 			}, 1500);
 			return;
 		}
-		
+
 		// 保存点赞前的状态
 		const originalState = article.isLiked;
-		
+
 		// 设置动画标记
 		article.isAnimating = true;
 		article.animationType = 'like';
-		
+
 		// 立即反馈UI (乐观更新)
 		article.isLiked = !article.isLiked;
 		article.likeCount = article.isLiked ? (article.likeCount || 0) + 1 : Math.max(0, (article.likeCount || 0) - 1);
-		
+
 		// 调用API进行实际点赞/取消点赞操作
 		likeArticle(article.id, article.isLiked)
 			.then(res => {
@@ -983,7 +999,7 @@
 						title: article.isLiked ? '点赞成功' : '已取消点赞',
 						icon: article.isLiked ? 'success' : 'none'
 					});
-					
+
 					// API成功后，确保UI反映正确的计数
 					if (res.data && typeof res.data.likeCount !== 'undefined') {
 						article.likeCount = res.data.likeCount;
@@ -991,8 +1007,9 @@
 				} else {
 					// 恢复原状态
 					article.isLiked = originalState;
-					article.likeCount = originalState ? (article.likeCount || 0) + 1 : Math.max(0, (article.likeCount || 0) - 1);
-					
+					article.likeCount = originalState ? (article.likeCount || 0) + 1 : Math.max(0, (article
+						.likeCount || 0) - 1);
+
 					uni.showToast({
 						title: res.message || '操作失败',
 						icon: 'none'
@@ -1002,8 +1019,9 @@
 			.catch(err => {
 				// 恢复原状态
 				article.isLiked = originalState;
-				article.likeCount = originalState ? (article.likeCount || 0) + 1 : Math.max(0, (article.likeCount || 0) - 1);
-				
+				article.likeCount = originalState ? (article.likeCount || 0) + 1 : Math.max(0, (article
+					.likeCount || 0) - 1);
+
 				uni.showToast({
 					title: '网络异常，请稍后再试',
 					icon: 'none'
@@ -1046,7 +1064,7 @@
 							}
 						});
 						// #endif
-						
+
 						// #ifdef H5 || MP-WEIXIN
 						uni.showToast({
 							title: '已复制链接，请手动分享',
@@ -1060,7 +1078,7 @@
 						});
 						// #endif
 						break;
-						
+
 					case 1: // 复制链接
 						uni.setClipboardData({
 							data: `${getBaseUrl()}/article/${article.id}`,
@@ -1072,14 +1090,14 @@
 							}
 						});
 						break;
-						
+
 					case 2: // 生成分享图
 						uni.showToast({
 							title: '分享图生成中...',
 							icon: 'loading',
 							duration: 2000
 						});
-						
+
 						setTimeout(() => {
 							uni.showToast({
 								title: '分享图已生成',
@@ -1137,12 +1155,12 @@
 		// 在APP和小程序中减去状态栏高度
 		return 'calc(100vh - 220rpx - var(--status-bar-height, 25px))';
 		// #endif
-		
+
 		// #ifdef H5
 		// 在H5中使用固定值
 		return 'calc(100vh - 220rpx)';
 		// #endif
-		
+
 		// 默认高度
 		return 'calc(100vh - 220rpx)';
 	};
@@ -1174,7 +1192,7 @@
 			});
 			return;
 		}
-		
+
 		// 更新最新的用户信息
 		const latestUserInfo = uni.getStorageSync('userInfo');
 		if (latestUserInfo) {
@@ -1190,7 +1208,7 @@
 			userInfo.followCount = latestUserInfo.followCount || 0;
 			userInfo.followerCount = latestUserInfo.followerCount || 0;
 		}
-		
+
 		// 显示设置面板
 		nextTick(() => {
 			showUserSettings.value = true;
@@ -1200,16 +1218,16 @@
 	const handleAvatarChange = (newAvatar) => {
 		// 标记操作完成
 		isInOperation.value = false;
-		
+
 		// 处理头像URL
 		const formattedAvatar = formatAvatarUrl(newAvatar);
 		userInfo.avatar = formattedAvatar;
-		
+
 		// 更新本地存储
 		const currentUserInfo = uni.getStorageSync('userInfo') || {};
 		uni.setStorageSync('userInfo', {
 			...currentUserInfo,
-			avatar: newAvatar  // 保存原始URL，因为formatAvatarUrl已经加了baseUrl
+			avatar: newAvatar // 保存原始URL，因为formatAvatarUrl已经加了baseUrl
 		});
 	};
 
@@ -1231,7 +1249,7 @@
 		userInfo.followCount = 0;
 		userInfo.followerCount = 0;
 		showUserSettings.value = false;
-		
+
 		uni.showToast({
 			title: '已退出登录',
 			icon: 'success'
@@ -1256,7 +1274,7 @@
 			}, 1500);
 			return;
 		}
-		
+
 		// #ifdef H5
 		// H5环境下，在新窗口打开消息页面
 		const currentUrl = window.location.href;
@@ -1264,7 +1282,7 @@
 		const messageUrl = `${baseUrl}#/pages/message/message`;
 		window.open(messageUrl, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，正常跳转到消息页面
 		uni.navigateTo({
@@ -1350,14 +1368,14 @@
 			}, 1500);
 			return;
 		}
-		
+
 		// #ifdef H5
 		// H5环境下，在新窗口打开关注列表页面
 		const currentUrl = window.location.href;
 		const baseUrl = currentUrl.split('#')[0];
 		window.open(`${baseUrl}#/pages/follows/follows`, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，正常跳转
 		uni.navigateTo({
@@ -1381,14 +1399,14 @@
 			}, 1500);
 			return;
 		}
-		
+
 		// #ifdef H5
 		// H5环境下，在新窗口打开粉丝列表页面
 		const currentUrl = window.location.href;
 		const baseUrl = currentUrl.split('#')[0];
 		window.open(`${baseUrl}#/pages/fans/fans`, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，正常跳转
 		uni.navigateTo({
@@ -1411,16 +1429,16 @@
 		try {
 			// 调用获取用户信息API
 			const res = await getUserInfo();
-			
+
 			if (res.code === 200 && res.data) {
 				// 处理头像URL
 				if (res.data.avatar) {
 					res.data.avatar = formatAvatarUrl(res.data.avatar);
 				}
-				
+
 				// 更新本地存储
 				uni.setStorageSync('userInfo', res.data);
-				
+
 				// 更新响应式数据
 				userInfo.avatar = res.data.avatar || '';
 				userInfo.nickname = res.data.nickname || '';
@@ -1428,7 +1446,7 @@
 				userInfo.followCount = res.data.followCount || 0;
 				userInfo.followerCount = res.data.followerCount || 0;
 				userInfo.collectionCount = res.data.collectionCount || 0;
-				
+
 				console.log('用户数据已更新', res.data);
 			}
 		} catch (error) {
@@ -1441,7 +1459,7 @@
 	 */
 	const scrollToTop = () => {
 		console.log('首页: 执行滚动到顶部方法');
-		
+
 		// #ifdef H5
 		// 对于H5环境，先尝试全局滚动
 		if (window) {
@@ -1453,16 +1471,16 @@
 			return;
 		}
 		// #endif
-		
+
 		// 如果不是H5环境或window不可用，尝试组件内部滚动
 		if (articleListRef.value) {
 			console.log('首页: 通过文章列表组件引用执行滚动');
 			articleListRef.value.scrollToTop();
 			return;
 		}
-		
+
 		console.warn('首页: 文章列表组件引用不可用，尝试备用方案');
-		
+
 		// #ifdef H5
 		// 备用方案1: 尝试直接操作DOM - H5环境
 		const scrollViewH5 = document.getElementById('article-list-scroll-h5');
@@ -1471,7 +1489,7 @@
 			scrollViewH5.scrollTop = 0;
 			return;
 		}
-		
+
 		// 再尝试通过类名查找
 		const scrollViewByClass = document.querySelector('.article-scroll');
 		if (scrollViewByClass) {
@@ -1480,7 +1498,7 @@
 			return;
 		}
 		// #endif
-		
+
 		// 备用方案2: 使用uni-app API
 		console.log('首页: 使用uni-app通用API尝试滚动');
 		uni.pageScrollTo({
@@ -1499,14 +1517,14 @@
 			closeUserSettings();
 			return;
 		}
-		
+
 		// 只有在点击容器本身而不是其子元素时才触发
 		if (event.target === event.currentTarget) {
 			console.log('首页: 点击页面容器空白区域');
 			scrollToTop();
 		}
 	};
-	
+
 	/**
 	 * 处理右侧栏点击事件
 	 * 在右侧栏的空白区域点击时滚动文章列表到顶部
@@ -1514,7 +1532,7 @@
 	const handleSidebarClick = (event) => {
 		// 获取点击的元素
 		const target = event.target;
-		
+
 		// 检查是否点击在右侧栏的空白区域
 		// 不是点击在右侧栏的具体交互元素上
 		if (target.classList.contains('right-sidebar')) {
@@ -1541,7 +1559,7 @@
 			}, 1500);
 			return;
 		}
-		
+
 		// #ifdef H5
 		// H5环境下，在新窗口打开个人中心页面
 		const currentUrl = window.location.href;
@@ -1549,7 +1567,7 @@
 		const myPageUrl = `${baseUrl}#/pages/my/my`;
 		window.open(myPageUrl, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，正常跳转
 		uni.navigateTo({
@@ -1564,10 +1582,10 @@
 	const refreshByNavDoubleTap = (() => {
 		let lastTapTime = 0;
 		let lastTapNav = -1;
-		
+
 		return (index) => {
 			const now = Date.now();
-			
+
 			// 如果是同一个导航项，且时间间隔小于500ms，则视为双击
 			if (lastTapNav === index && now - lastTapTime < 500) {
 				// 刷新当前列表
@@ -1575,17 +1593,17 @@
 				// 重置点击记录
 				lastTapTime = 0;
 				lastTapNav = -1;
-				
+
 				// 显示刷新提示
 				uni.showToast({
 					title: '刷新中...',
 					icon: 'loading',
 					duration: 1000
 				});
-				
+
 				return true;
 			}
-			
+
 			// 记录本次点击
 			lastTapTime = now;
 			lastTapNav = index;
@@ -1610,7 +1628,7 @@
 		const maxLength = 80; // 减少字数限制，从100改为80
 		if (plainText.length > maxLength) {
 			plainText = plainText.substring(0, maxLength) + '...';
-		} 
+		}
 		return plainText;
 	};
 
@@ -1622,14 +1640,14 @@
 	const updateFollowState = (article, isFollowed) => {
 		// 更新当前文章作者的关注状态
 		article.author.isFollowed = isFollowed;
-		
+
 		// 更新所有相同作者的文章关注状态
 		articleList.value.forEach(item => {
 			if (item.author && item.author.id === article.author.id) {
 				item.author.isFollowed = isFollowed;
 			}
 		});
-		
+
 		// 尝试更新用户头像右上角关注状态
 		if (userInfo.value.id && userInfo.value.followCount !== undefined) {
 			// 刷新用户数据，获取最新的关注数量
@@ -1650,19 +1668,19 @@
 	const loadArticleList = () => {
 		// 如果已经没有更多数据或正在加载中，则不处理
 		if (noMoreData.value || isLoading.value) return;
-		
+
 		isLoading.value = true;
-		
+
 		// 获取文章列表
 		const listType = getListType();
-		
+
 		// 构建请求参数
 		const params = {
 			page: currentPage.value,
 			pageSize: 10,
 			timestamp: new Date().getTime()
 		};
-		
+
 		// 根据不同的列表类型设置参数
 		if (listType === 'follow') {
 			params.type = 'follow';
@@ -1673,42 +1691,43 @@
 		} else if (listType === 'new') {
 			params.sort = 'new';
 		}
-		
+
 		console.log('请求参数:', params, '请求类型:', listType);
-		
+
 		// 调用API获取文章列表
 		http.get('/api/article', params)
 			.then(async res => {
 				if (res.code === 200 && res.data && res.data.list) {
 					const newArticles = res.data.list;
 					console.log('获取到文章数据:', newArticles.length, '条');
-					
+
 					// 处理文章数据
 					const processedArticles = newArticles.map(article => {
 						// 输出原始数据用于调试
-						console.log(`[文章${article.id}] 原始数据:`, Object.keys(article).reduce((acc, key) => {
+						console.log(`[文章${article.id}] 原始数据:`, Object.keys(article).reduce((acc,
+							key) => {
 							if (typeof article[key] !== 'object' || key === 'author') {
 								acc[key] = article[key];
 							}
 							return acc;
 						}, {}));
-						
+
 						// 记录原始图片相关字段，用于调试
-						console.log(`[文章${article.id}] 原始字段:`, 
-							Object.keys(article).filter(key => 
-								key.includes('cover') || 
-								key.includes('image') || 
+						console.log(`[文章${article.id}] 原始字段:`,
+							Object.keys(article).filter(key =>
+								key.includes('cover') ||
+								key.includes('image') ||
 								key === 'thumbnail'
 							));
-						
+
 						// 尝试从多种可能的字段名获取封面图片URL
 						let coverImage = null;
-						
+
 						// 优先级1: coverImage字段
 						if (article.coverImage) {
 							coverImage = article.coverImage;
 							console.log(`[文章${article.id}] 使用coverImage字段:`, coverImage);
-						} 
+						}
 						// 优先级2: cover_image字段
 						else if (article.cover_image) {
 							coverImage = article.cover_image;
@@ -1727,31 +1746,34 @@
 								console.log(`[文章${article.id}] 从内容提取图片:`, coverImage);
 							}
 						}
-						
+
 						// 统一处理封面图片URL
 						if (coverImage) {
 							// #ifdef APP-PLUS
 							// APP环境下特别处理localhost
 							if (coverImage.includes('localhost') || coverImage.includes('127.0.0.1')) {
 								const appBaseUrl = 'http://10.9.135.132:8080';
-								const urlPath = coverImage.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
+								const urlPath = coverImage.replace(
+									/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
 								coverImage = appBaseUrl + urlPath;
 								console.log(`[文章${article.id}] APP环境替换localhost: ${coverImage}`);
 							}
 							// #endif
-							
+
 							article.coverImage = formatArticleImage(coverImage);
 							console.log(`[文章${article.id}] 处理后的封面图片URL:`, article.coverImage);
 						} else {
 							article.coverImage = ''; // 确保没有封面时设为空字符串
 							console.log(`[文章${article.id}] 无封面图片`);
 						}
-						
+
 						// 处理作者头像
 						if (article.author && article.author.avatar) {
 							const originalAvatar = article.author.avatar;
 							article.author.avatar = formatAvatarUrl(article.author.avatar);
-							console.log(`[文章${article.id}] 作者头像: ${originalAvatar} -> ${article.author.avatar}`);
+							console.log(
+								`[文章${article.id}] 作者头像: ${originalAvatar} -> ${article.author.avatar}`
+							);
 						} else if (article.author) {
 							// 确保author对象存在但avatar为空时也设置默认头像
 							article.author.avatar = '/static/images/avatar.png';
@@ -1765,7 +1787,7 @@
 							};
 							console.log(`[文章${article.id}] 缺少作者信息，创建默认作者对象`);
 						}
-						
+
 						// 处理点赞数、评论数和收藏数，支持多种可能的字段名
 						// 点赞数处理
 						if (typeof article.likeCount === 'number') {
@@ -1773,7 +1795,7 @@
 							article.likeCount = parseInt(article.likeCount || 0);
 						} else if (typeof article.like_count === 'number') {
 							// snake_case转换为camelCase
-							article.likeCount = parseInt(article.like_count || 0); 
+							article.likeCount = parseInt(article.like_count || 0);
 						} else if (typeof article.likes === 'number') {
 							// 可能使用复数形式likes
 							article.likeCount = parseInt(article.likes || 0);
@@ -1796,11 +1818,15 @@
 						let collectCountFound = false;
 
 						// 1. 首先尝试直接常见字段名
-						const commonCollectFields = ['collectCount', 'collect_count', 'collection_count', 'collectionsCount', 'favorites', 'favorite_count'];
+						const commonCollectFields = ['collectCount', 'collect_count',
+							'collection_count', 'collectionsCount', 'favorites', 'favorite_count'
+						];
 						for (const field of commonCollectFields) {
-							if (typeof article[field] === 'number' || (article[field] && !isNaN(parseInt(article[field])))) {
+							if (typeof article[field] === 'number' || (article[field] && !isNaN(
+									parseInt(article[field])))) {
 								article.collectCount = parseInt(article[field]);
-								console.log(`[文章${article.id}] 找到收藏数字段 ${field}:`, article.collectCount);
+								console.log(`[文章${article.id}] 找到收藏数字段 ${field}:`, article
+									.collectCount);
 								collectCountFound = true;
 								break;
 							}
@@ -1809,34 +1835,35 @@
 						// 2. 如果常见字段没找到，尝试深度扫描整个对象
 						if (!collectCountFound) {
 							console.log(`[文章${article.id}] 开始深度扫描收藏数字段...`);
-							
+
 							// 扫描所有可能与收藏相关的字段
-							const collectMatches = findFields(article, key => 
-								key.includes('collect') || 
-								key.includes('collection') || 
+							const collectMatches = findFields(article, key =>
+								key.includes('collect') ||
+								key.includes('collection') ||
 								key.includes('favorite') ||
 								key === 'collections'
 							);
-							
+
 							if (collectMatches.length > 0) {
 								console.log(`[文章${article.id}] 深度扫描发现可能的收藏相关字段:`, collectMatches);
-								
+
 								// 按优先级处理找到的字段
-								const numericMatches = collectMatches.filter(m => 
-									typeof m.value === 'number' || 
+								const numericMatches = collectMatches.filter(m =>
+									typeof m.value === 'number' ||
 									(m.value && !isNaN(parseInt(m.value)))
 								);
-								
+
 								if (numericMatches.length > 0) {
 									// 优先使用名称最匹配的字段
-									const bestMatch = numericMatches.find(m => 
-										m.key === 'collectCount' || 
-										m.key === 'collect_count' || 
+									const bestMatch = numericMatches.find(m =>
+										m.key === 'collectCount' ||
+										m.key === 'collect_count' ||
 										m.key === 'collection_count'
 									) || numericMatches[0];
-									
+
 									article.collectCount = parseInt(bestMatch.value);
-									console.log(`[文章${article.id}] 使用深度扫描字段 ${bestMatch.path} 作为收藏数:`, article.collectCount);
+									console.log(`[文章${article.id}] 使用深度扫描字段 ${bestMatch.path} 作为收藏数:`,
+										article.collectCount);
 									collectCountFound = true;
 								}
 							}
@@ -1845,18 +1872,19 @@
 						// 3. 如果还没找到，尝试从stats或统计对象中获取
 						if (!collectCountFound && article.stats && typeof article.stats === 'object') {
 							console.log(`[文章${article.id}] 检查stats对象:`, article.stats);
-							
+
 							// 从stats对象中查找收藏数
-							const statsFields = Object.keys(article.stats).filter(key => 
-								key.includes('collect') || 
-								key.includes('collection') || 
+							const statsFields = Object.keys(article.stats).filter(key =>
+								key.includes('collect') ||
+								key.includes('collection') ||
 								key.includes('favorite')
 							);
-							
+
 							if (statsFields.length > 0) {
 								const firstStatField = statsFields[0];
 								article.collectCount = parseInt(article.stats[firstStatField]);
-								console.log(`[文章${article.id}] 从stats对象获取收藏数 ${firstStatField}:`, article.collectCount);
+								console.log(`[文章${article.id}] 从stats对象获取收藏数 ${firstStatField}:`,
+									article.collectCount);
 								collectCountFound = true;
 							}
 						}
@@ -1865,18 +1893,25 @@
 						if (!collectCountFound) {
 							// 遍历所有字符串字段，查找可能包含收藏数据的内容
 							Object.keys(article).forEach(key => {
-								if (typeof article[key] === 'string' && 
-									(key.includes('stat') || key.includes('count') || key.includes('info'))) {
+								if (typeof article[key] === 'string' &&
+									(key.includes('stat') || key.includes('count') || key
+										.includes('info'))) {
 									try {
 										const parsedData = JSON.parse(article[key]);
 										if (parsedData && typeof parsedData === 'object') {
-											const collectKey = Object.keys(parsedData).find(k => 
-												k.includes('collect') || k.includes('favorite')
+											const collectKey = Object.keys(parsedData).find(
+												k =>
+												k.includes('collect') || k.includes(
+													'favorite')
 											);
-											
-											if (collectKey && !isNaN(parseInt(parsedData[collectKey]))) {
-												article.collectCount = parseInt(parsedData[collectKey]);
-												console.log(`[文章${article.id}] 从字符串 ${key} 解析出收藏数:`, article.collectCount);
+
+											if (collectKey && !isNaN(parseInt(parsedData[
+													collectKey]))) {
+												article.collectCount = parseInt(parsedData[
+													collectKey]);
+												console.log(
+													`[文章${article.id}] 从字符串 ${key} 解析出收藏数:`,
+													article.collectCount);
 												collectCountFound = true;
 											}
 										}
@@ -1892,18 +1927,24 @@
 							article.collectCount = 0;
 							console.log(`[文章${article.id}] 未找到有效的收藏数字段，记录所有顶层字段:`);
 							Object.keys(article).forEach(key => {
-								if (typeof article[key] !== 'object' || article[key] === null) {
-									console.log(`  - ${key}: ${article[key]} (${typeof article[key]})`);
+								if (typeof article[key] !== 'object' || article[key] ===
+									null) {
+									console.log(
+										`  - ${key}: ${article[key]} (${typeof article[key]})`
+									);
 								} else {
-									console.log(`  - ${key}: [Object] (${Array.isArray(article[key]) ? 'Array' : 'Object'})`);
+									console.log(
+										`  - ${key}: [Object] (${Array.isArray(article[key]) ? 'Array' : 'Object'})`
+									);
 								}
 							});
 						}
-						
+
 						// 设置点赞和收藏状态
 						article.isLiked = !!article.isLiked || !!article.is_liked || false;
-						article.isCollected = !!article.isCollected || !!article.is_collected || !!article.is_favorite || false;
-						
+						article.isCollected = !!article.isCollected || !!article.is_collected || !!
+							article.is_favorite || false;
+
 						console.log(`[文章${article.id}] 处理后的数据:`, {
 							likeCount: article.likeCount,
 							commentCount: article.commentCount,
@@ -1911,10 +1952,10 @@
 							isLiked: article.isLiked,
 							isCollected: article.isCollected
 						});
-						
+
 						return article;
 					});
-					
+
 					// 检查作者关注状态
 					try {
 						await checkAuthorsFollowStatus(processedArticles);
@@ -1922,22 +1963,22 @@
 					} catch (error) {
 						console.error('检查作者关注状态失败:', error);
 					}
-					
+
 					// 第一页时替换列表，否则追加
 					if (currentPage.value === 1) {
 						articleList.value = processedArticles;
 					} else {
 						articleList.value = [...articleList.value, ...processedArticles];
 					}
-					
+
 					// 更新页码
 					currentPage.value++;
-					
+
 					// 判断是否还有更多数据
 					if (!newArticles.length || newArticles.length < 10) {
 						noMoreData.value = true;
 					}
-					
+
 					// 加载完成后同步收藏状态
 					setTimeout(() => {
 						syncCollectionStatus();
@@ -1975,23 +2016,23 @@
 			console.log('[封面处理] 空URL，返回空字符串');
 			return '';
 		}
-		
+
 		// 移除URL中可能存在的多余空格
 		url = url.trim();
-		
+
 		// 确保不是null或undefined字符串
 		if (url === 'null' || url === 'undefined' || url === '') {
 			console.log('[封面处理] 无效URL值，返回空字符串');
 			return '';
 		}
-		
+
 		// APP环境特殊处理
 		// #ifdef APP-PLUS
 		console.log('[封面处理] 检测到APP环境，应用特殊处理');
-		
+
 		// 使用特定的APP环境基础URL - 直接使用与request.js相同的地址
 		const appBaseUrl = 'http://10.9.135.132:8080';
-		
+
 		// 完整URL处理：如果已经是完整URL，需要特别处理localhost情况
 		if (url.startsWith('http')) {
 			// 检查是否包含localhost或127.0.0.1，需要替换为真实IP
@@ -2002,7 +2043,7 @@
 				console.log(`[封面处理] APP-替换localhost: ${url} -> ${newUrl}`);
 				return newUrl;
 			}
-			
+
 			// 检查并修复双斜杠问题
 			if (url.includes('//uploads')) {
 				url = url.replace('//uploads', '/uploads');
@@ -2016,7 +2057,7 @@
 			console.log('[封面处理] APP-返回静态资源路径:', url);
 			return url;
 		}
-		
+
 		// 处理文章图片路径
 		if (url.includes('articles') || url.includes('thumbnails')) {
 			// 提取文件名
@@ -2042,7 +2083,7 @@
 			return fullUrl;
 		}
 		// #endif
-		
+
 		// 非APP环境的处理
 		// 完整URL处理：如果已经是完整URL（包含http）则不处理
 		if (url.startsWith('http')) {
@@ -2059,7 +2100,7 @@
 			console.log('[封面处理] 返回静态资源路径:', url);
 			return url;
 		}
-		
+
 		// 处理封面图片特殊路径：检查是否包含特定路径
 		if (url.includes('articles') || url.includes('thumbnails')) {
 			// 如果包含articles或thumbnails但没有完整路径，尝试构建完整路径
@@ -2079,7 +2120,7 @@
 				}
 			}
 		}
-		
+
 		// 其他情况：添加基础URL前缀
 		let fullUrl;
 		if (url.startsWith('/')) {
@@ -2099,7 +2140,7 @@
 		data.isRefreshing = true;
 		currentPage.value = 1;
 		noMoreData.value = false;
-		
+
 		// 根据当前模式执行不同的刷新操作
 		if (data.currentNav === -1) {
 			// 搜索模式下重新搜索
@@ -2108,30 +2149,30 @@
 					page: 1,
 					pageSize: 10
 				});
-				
+
 				if (res.code === 200 && res.data) {
 					// 处理搜索结果
 					const searchResults = res.data.list || [];
-					
+
 					// 处理搜索结果数据
 					const processedArticles = searchResults.map(article => {
 						// 处理作者头像
 						if (article.author && article.author.avatar) {
 							article.author.avatar = formatAvatarUrl(article.author.avatar);
 						}
-						
+
 						// 处理封面图片
 						if (article.coverImage) {
 							article.coverImage = formatArticleImage(article.coverImage);
 						}
-						
+
 						// 处理收藏和点赞状态
 						article.isLiked = !!article.isLiked;
 						article.isCollected = !!article.isCollected;
-						
+
 						return article;
 					});
-					
+
 					// 检查作者关注状态
 					try {
 						await checkAuthorsFollowStatus(processedArticles);
@@ -2139,13 +2180,13 @@
 					} catch (error) {
 						console.error('刷新搜索结果：检查作者关注状态失败:', error);
 					}
-					
+
 					// 更新文章列表
 					articleList.value = processedArticles;
-					
+
 					// 更新页码
 					currentPage.value = 2;
-					
+
 					// 判断是否还有更多数据
 					if (searchResults.length < 10) {
 						noMoreData.value = true;
@@ -2186,7 +2227,7 @@
 			loadArticleList();
 		}
 		// #endif
-		
+
 		// #ifdef H5
 		// H5模式下使用ArticleList组件自动处理
 		// 这里不需要做任何事情，组件会自行处理加载更多
@@ -2197,30 +2238,30 @@
 	const loadMoreSearchResults = async () => {
 		// 如果已经没有更多数据或正在加载中，则不处理
 		if (noMoreData.value || isLoading.value) return;
-		
+
 		isLoading.value = true;
-		
+
 		// 调用搜索API
 		try {
 			const res = await searchArticles(data.searchText, {
 				page: currentPage.value,
 				pageSize: 10
 			});
-			
+
 			if (res.code === 200 && res.data) {
 				// 处理搜索结果
 				const searchResults = res.data.list || [];
-				
+
 				// 如果没有更多结果
 				if (searchResults.length === 0) {
 					noMoreData.value = true;
 					isLoading.value = false;
 					return;
 				}
-				
+
 				// 处理搜索结果数据 - 使用统一的处理函数
 				const processedArticles = processArticleData(searchResults);
-				
+
 				// 检查作者关注状态
 				try {
 					await checkAuthorsFollowStatus(processedArticles);
@@ -2228,13 +2269,13 @@
 				} catch (error) {
 					console.error('加载更多搜索结果：检查作者关注状态失败:', error);
 				}
-				
+
 				// 追加到文章列表
 				articleList.value = [...articleList.value, ...processedArticles];
-				
+
 				// 更新页码
 				currentPage.value++;
-				
+
 				// 判断是否还有更多数据
 				if (searchResults.length < 10) {
 					noMoreData.value = true;
@@ -2263,7 +2304,7 @@
 		if (data.currentNav === -1) {
 			return;
 		}
-		
+
 		currentPage.value = 1;
 		noMoreData.value = false;
 		articleList.value = [];
@@ -2275,7 +2316,7 @@
 		console.log('页面加载:');
 		// 先加载文章列表
 		loadArticleList();
-		
+
 		// 文章列表加载完成后，同步收藏状态
 		setTimeout(() => {
 			syncCollectionStatus();
@@ -2287,11 +2328,11 @@
 	 */
 	const handleImageError = (article) => {
 		console.error(`文章[${article.id}]封面图片加载失败:`, article.coverImage);
-		
+
 		// 修复可能的URL错误，重新尝试格式化
 		if (article.coverImage) {
 			const originalUrl = article.coverImage;
-			
+
 			// #ifdef APP-PLUS
 			// APP中特殊处理localhost问题
 			if (originalUrl.includes('localhost') || originalUrl.includes('127.0.0.1')) {
@@ -2304,7 +2345,7 @@
 				return;
 			}
 			// #endif
-			
+
 			// 通用错误处理
 			article.coverImage = formatArticleImage(article.coverImage);
 			console.log(`尝试修复封面URL: ${originalUrl} -> ${article.coverImage}`);
@@ -2331,22 +2372,27 @@
 	 */
 	const findFields = (obj, matcher, parentPath = '', results = []) => {
 		if (!obj || typeof obj !== 'object') return results;
-		
+
 		Object.keys(obj).forEach(key => {
 			const value = obj[key];
 			const path = parentPath ? `${parentPath}.${key}` : key;
-			
+
 			// 检查当前字段是否匹配
 			if (matcher(key)) {
-				results.push({ path, key, value, type: typeof value });
+				results.push({
+					path,
+					key,
+					value,
+					type: typeof value
+				});
 			}
-			
+
 			// 递归检查子对象，但跳过数组和null
 			if (value && typeof value === 'object' && !Array.isArray(value)) {
 				findFields(value, matcher, path, results);
 			}
 		});
-		
+
 		return results;
 	};
 
@@ -2358,37 +2404,37 @@
 		if (!articleList.value || articleList.value.length === 0) {
 			return;
 		}
-		
+
 		console.log('同步文章收藏状态...');
-		
+
 		// 获取本地存储的收藏文章ID列表
 		const collectedArticles = uni.getStorageSync('collectedArticles') || {};
 		console.log('本地存储的收藏文章:', Object.keys(collectedArticles));
-		
+
 		// 更新文章列表中的收藏状态
 		articleList.value.forEach(article => {
 			if (!article) return;
-			
+
 			const articleId = String(article.id);
 			const originalIsCollected = article.isCollected;
-			
+
 			// 从本地存储获取收藏状态
 			article.isCollected = !!collectedArticles[articleId];
-			
+
 			// 如果状态不一致，尝试获取详情
 			if (article.isCollected !== originalIsCollected || article.collectCount === 0) {
 				console.log(`文章[${articleId}]收藏状态需要更新:`, {
 					old: originalIsCollected,
 					new: article.isCollected
 				});
-				
+
 				// 尝试直接更新收藏数
 				// 如果是收藏状态但收藏数为0，增加收藏数
 				if (article.isCollected && article.collectCount === 0) {
 					console.log(`文章[${articleId}]收藏状态为true但收藏数为0，设置为1`);
 					article.collectCount = 1;
 				}
-				
+
 				// 延迟异步请求文章详情以避免批量请求
 				setTimeout(() => {
 					// 获取文章详情以获取准确的收藏状态和数量
@@ -2397,7 +2443,7 @@
 							if (res.code === 200 && res.data) {
 								// 更新UI
 								article.isCollected = !!res.data.isCollected;
-								
+
 								// 更新收藏数
 								if (res.data.collectCount !== undefined) {
 									article.collectCount = parseInt(res.data.collectCount) || 0;
@@ -2429,13 +2475,13 @@
 		// 清空搜索内容
 		data.searchText = '';
 		// 切换回推荐标签
-		data.currentNav = 1;
-		
+		data.currentNav = 0;
+
 		// 重置文章列表
 		currentPage.value = 1;
 		noMoreData.value = false;
 		articleList.value = [];
-		
+
 		// 重新加载文章列表
 		loadArticleList();
 	};
@@ -2457,20 +2503,20 @@
 		if (height !== '0rpx') {
 			// 当显示搜索状态栏时，调整内容区域
 			const heightValue = parseInt(height);
-			
+
 			// 使用uni的API获取系统信息
 			uni.getSystemInfo({
 				success: (res) => {
 					// 计算实际像素高度（rpx转px）
 					const actualHeight = heightValue * (res.windowWidth / 750);
 					console.log('搜索状态栏高度(px):', actualHeight);
-					
+
 					// 发送事件通知页面调整内容
 					uni.$emit('search-status-height-changed', {
 						height: heightValue,
 						actualHeight: actualHeight
 					});
-					
+
 					// 添加状态到页面数据中
 					data.searchStatusHeight = heightValue;
 				}
@@ -2478,7 +2524,7 @@
 		} else {
 			// 当隐藏搜索状态栏时，恢复原始padding
 			data.searchStatusHeight = 0;
-			
+
 			// 发送事件通知页面恢复内容
 			uni.$emit('search-status-height-changed', {
 				height: 0,
@@ -2495,7 +2541,7 @@
 	 */
 	const processArticleData = (articles) => {
 		if (!articles || !Array.isArray(articles)) return [];
-		
+
 		return articles.map(article => {
 			// 处理作者头像
 			if (article.author && article.author.avatar) {
@@ -2511,23 +2557,23 @@
 					isFollowed: false
 				};
 			}
-			
+
 			// 处理封面图片
 			if (article.coverImage) {
 				article.coverImage = formatArticleImage(article.coverImage);
 			} else if (article.cover_image) {
 				article.coverImage = formatArticleImage(article.cover_image);
 			}
-			
+
 			// 处理点赞数和评论数，确保为数字
 			article.likeCount = parseInt(article.likeCount || article.like_count || 0);
 			article.commentCount = parseInt(article.commentCount || article.comment_count || 0);
 			article.collectCount = parseInt(article.collectCount || article.collect_count || 0);
-			
+
 			// 处理收藏和点赞状态，确保为布尔值
 			article.isLiked = !!article.isLiked || !!article.is_liked;
 			article.isCollected = !!article.isCollected || !!article.is_collected;
-			
+
 			return article;
 		});
 	};
@@ -2560,48 +2606,57 @@
 		// 获取token，如果未登录则不检查
 		const token = uni.getStorageSync('token');
 		if (!token) return;
-		
+
 		// 从文章列表中提取不重复的作者ID
 		const authorIds = [...new Set(
 			articles
-				.filter(article => article.author && article.author.id)
-				.map(article => article.author.id)
+			.filter(article => article.author && article.author.id)
+			.map(article => article.author.id)
 		)];
-		
+
 		if (authorIds.length === 0) return;
-		
+
 		console.log(`检查${authorIds.length}个作者的关注状态`);
-		
+
 		// 批量检查关注状态 - 使用Promise.all并发请求
 		const checkPromises = authorIds.map(async authorId => {
 			try {
 				const res = await checkUserFollow(authorId);
 				if (res.code === 200) {
-					return { authorId, isFollowed: res.data };
+					return {
+						authorId,
+						isFollowed: res.data
+					};
 				}
-				return { authorId, isFollowed: false };
+				return {
+					authorId,
+					isFollowed: false
+				};
 			} catch (error) {
 				console.error(`检查作者${authorId}的关注状态失败:`, error);
-				return { authorId, isFollowed: false };
+				return {
+					authorId,
+					isFollowed: false
+				};
 			}
 		});
-		
+
 		// 等待所有检查完成
 		const results = await Promise.all(checkPromises);
-		
+
 		// 创建关注状态映射表
 		const followMap = {};
 		results.forEach(result => {
 			followMap[result.authorId] = result.isFollowed;
 		});
-		
+
 		// 更新文章列表中的作者关注状态
 		articles.forEach(article => {
 			if (article.author && article.author.id && followMap.hasOwnProperty(article.author.id)) {
 				article.author.isFollowed = followMap[article.author.id];
 			}
 		});
-		
+
 		return articles;
 	};
 
@@ -2614,18 +2669,18 @@
 				pageSize: pageSize.value,
 				// ... 其他参数 ...
 			});
-			
+
 			if (response.code === 200) {
 				const newArticles = response.data.records || [];
 				// 检查作者关注状态
 				await checkAuthorsFollowStatus(newArticles);
-				
+
 				if (currentPage.value === 1) {
 					articleList.value = newArticles;
 				} else {
 					articleList.value = [...articleList.value, ...newArticles];
 				}
-				
+
 				total.value = response.data.total;
 				noMoreData.value = articleList.value.length >= total.value;
 			}
@@ -2653,13 +2708,37 @@
 		const classificationUrl = `${baseUrl}#/pages/classification/classification`;
 		window.open(classificationUrl, '_blank');
 		// #endif
-		
+
 		// #ifndef H5
 		// 非H5环境下，正常跳转
 		uni.navigateTo({
 			url: '/pages/classification/classification'
 		});
 		// #endif
+	};
+
+	/**
+	 * 处理搜索输入
+	 */
+	const handleSearchInput = () => {
+		// 如果搜索框被清空，恢复到默认状态
+		if (!data.searchText) {
+			clearSearch();
+		}
+	};
+
+	/**
+	 * 处理搜索框获得焦点
+	 */
+	const handleSearchFocus = () => {
+		data.isSearchFocused = true;
+	};
+
+	/**
+	 * 处理搜索框失去焦点
+	 */
+	const handleSearchBlur = () => {
+		data.isSearchFocused = false;
 	};
 </script>
 
@@ -2675,6 +2754,7 @@
 		height: auto !important;
 		min-height: 100vh;
 	}
+
 	// #endif
 
 	.container {
@@ -2732,42 +2812,58 @@
 				border-radius: 4px;
 				padding: 0 15px;
 				margin: 0 10px;
-				position: relative; /* 添加相对定位 */
-			}
+				position: relative;
 
-			.search-bar input {
-				flex: 1;
-				height: 36px;
-				font-size: 14px;
-				background: transparent;
-				border: none;
-				padding-right: 40px; /* 为清除图标预留空间 */
-			}
+				.search-icon {
+					margin-right: 8px;
+				}
 
-			.clear-icon {
-				position: absolute;
-				right: 70px; /* 位于搜索按钮左侧 */
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				width: 30px;
-				height: 30px;
-				z-index: 2;
-			}
+				input {
+					flex: 1;
+					height: 36px;
+					font-size: 14px;
+					background: transparent;
+					border: none;
+					padding-right: 40px;
+				}
 
-			.clear-icon:active {
-				opacity: 0.7;
-			}
+				.clear-icon {
+					position: absolute;
+					right: 70px;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					width: 30px;
+					height: 30px;
+					z-index: 2;
+					cursor: pointer;
 
-			.search-btn {
-				padding: 0 15px;
-				height: 32px;
-				line-height: 32px;
-				font-size: 14px;
-				color: #fff;
-				background: #4361ee;
-				border-radius: 4px;
-				margin-left: 10px;
+					&:hover {
+						background-color: rgba(0, 0, 0, 0.05);
+						border-radius: 50%;
+					}
+				}
+
+				.search-btn {
+					padding: 0 15px;
+					height: 32px;
+					line-height: 32px;
+					font-size: 14px;
+					color: #fff;
+					background: #4361ee;
+					border-radius: 4px;
+					margin-left: 10px;
+					cursor: pointer;
+					transition: all 0.3s;
+
+					&:hover {
+						background: #3651d4;
+					}
+
+					&:active {
+						transform: scale(0.95);
+					}
+				}
 			}
 
 			.header-right {
@@ -2790,7 +2886,7 @@
 					padding: 4px 8px;
 					border-radius: 20px;
 					transition: background-color 0.3s;
-					
+
 					&:hover {
 						background-color: #f5f5f5;
 					}
@@ -2834,7 +2930,7 @@
 				position: relative;
 				cursor: pointer;
 				transition: color 0.3s;
-				
+
 				&:first-child {
 					// #ifdef H5
 					margin-left: 150px;
@@ -2848,6 +2944,7 @@
 					color: #4361ee;
 					font-weight: bold;
 
+					// 只有在非搜索状态下显示下划线
 					&::after {
 						content: '';
 						position: absolute;
@@ -2858,7 +2955,13 @@
 						height: 3px;
 						background-color: #4361ee;
 						border-radius: 1.5px;
+						display: block;
 					}
+				}
+
+				// 搜索状态下隐藏下划线
+				&.search-active::after {
+					display: none;
 				}
 
 				&:hover {
@@ -2881,12 +2984,13 @@
 		gap: 0;
 		position: relative;
 		min-height: calc(100vh - 106px);
-		
+
 		// #ifdef H5
 		// 增加适应性和一致性
 		@media screen and (max-width: 1200px) {
 			width: 1100px; // 小屏幕下使用固定宽度
 		}
+
 		// #endif
 
 		.left-sidebar {
@@ -2916,22 +3020,25 @@
 			// #endif
 			margin-right: 0;
 			min-height: 200px;
-			
+
 			// 添加此样式，确保文章列表可见
 			:deep(.article-list-container) {
 				width: 100%;
 				min-height: 500px;
-				display: block !important; /* 强制显示 */
-				
+				display: block !important;
+				/* 强制显示 */
+
 				.article-grid.global-scroll {
-					display: flex !important; /* 强制显示 */
+					display: flex !important;
+					/* 强制显示 */
 					flex-direction: column;
 					width: 100%;
-					
+
 					.article-grid-item {
 						width: 100%;
 						margin-bottom: 20px;
-						display: block !important; /* 强制显示 */
+						display: block !important;
+						/* 强制显示 */
 					}
 				}
 			}
@@ -2950,20 +3057,20 @@
 			background: transparent;
 			margin-left: 0;
 			padding-top: 0;
-			
+
 			.creator-center {
 				position: sticky;
 				top: 106px;
 				background: #fff;
 				border-radius: 0 4px 4px 0;
 				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-				
+
 				.creator-header {
 					display: flex;
 					align-items: center;
 					padding: 20px;
 					border-bottom: 1px solid #f0f0f0;
-					
+
 					text {
 						font-size: 16px;
 						font-weight: bold;
@@ -2971,7 +3078,7 @@
 						margin-left: 10px;
 					}
 				}
-				
+
 				.write-btn {
 					display: flex;
 					align-items: center;
@@ -2983,18 +3090,19 @@
 					border-radius: 4px;
 					font-size: 14px;
 					transition: all 0.3s;
+
 					&:hover {
 						background: #3651d4;
 						transform: translateY(-2px);
 						box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
 					}
-					
+
 					text {
 						margin-left: 8px;
 					}
 				}
 			}
-			
+
 			.user-stats {
 				position: sticky;
 				top: 286px;
@@ -3004,38 +3112,38 @@
 				margin-bottom: 20px;
 				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 				padding: 20px;
-				
+
 				.stat-item {
 					display: flex;
 					align-items: center;
 					padding: 15px 0;
 					cursor: pointer;
 					transition: all 0.5s ease;
-					
+
 					&:not(:last-child) {
 						border-bottom: 1px solid #f0f0f0;
 					}
-					
+
 					&:hover {
 						background: #f8f9fa;
 						padding-left: 10px;
 					}
-					
+
 					text {
 						font-size: 14px;
 						color: #333;
 						margin-left: 10px;
-						
+
 						&.count {
 							margin-left: auto;
 							color: #666;
 						}
 					}
-					
+
 					&.animated-stat {
 						position: relative;
 						padding-left: 15px;
-						
+
 						&::before {
 							content: '';
 							position: absolute;
@@ -3049,11 +3157,11 @@
 							transform-origin: center center;
 							border-radius: 2px;
 						}
-						
+
 						&:hover::before {
 							transform: translateY(-50%) scaleY(1);
 						}
-						
+
 						&:active::before {
 							background-color: #3651d4;
 							transform: translateY(-50%) scaleY(1.1);
@@ -3076,7 +3184,7 @@
 		background: #ddd;
 		border-radius: 3px;
 	}
-	
+
 	::-webkit-scrollbar-track {
 		background: #f5f5f5;
 	}
@@ -3087,9 +3195,11 @@
 			.left-sidebar {
 				display: none;
 			}
+
 			.main-content {
 				margin-left: 20px;
 			}
+
 			.right-sidebar {
 				right: 50px;
 			}
@@ -3101,6 +3211,7 @@
 			.main-content {
 				margin-right: 20px;
 			}
+
 			.right-sidebar {
 				display: none;
 			}
@@ -3124,7 +3235,7 @@
 			padding: 15rpx 20rpx;
 			padding-top: calc(15rpx + var(--status-bar-height));
 			background: #fff;
-			
+
 			input {
 				flex: 1;
 				height: 70rpx;
@@ -3133,7 +3244,7 @@
 				padding: 0 30rpx;
 				font-size: 28rpx;
 			}
-			
+
 			.search-btn {
 				margin-left: 20rpx;
 				height: 70rpx;
@@ -3154,7 +3265,7 @@
 			white-space: nowrap;
 			background-color: #f5f5f5;
 			border-bottom: 1rpx solid #f0f0f0;
-			
+
 			.nav-item {
 				padding: 10rpx 24rpx;
 				margin: 0 10rpx;
@@ -3162,7 +3273,7 @@
 				color: #666;
 				border-radius: 30rpx;
 				transition: all 0.3s;
-				
+
 				&.active {
 					color: #fff;
 					background-color: #4361ee;
@@ -3173,14 +3284,15 @@
 	}
 
 	.mp-content {
-		padding-top: calc(var(--status-bar-height) + 150rpx); /* 调整内容区域的顶部间距 */
+		padding-top: calc(var(--status-bar-height) + 150rpx);
+		/* 调整内容区域的顶部间距 */
 		background: #f5f5f5;
 		width: 100%;
-		
+
 		.article-list {
 			height: calc(100vh - 212rpx); // 减去顶部导航栏高度
 		}
-		
+
 		// 文章卡片
 		.article-card {
 			background-color: #fff;
@@ -3189,13 +3301,13 @@
 			margin-top: 5rpx;
 			margin-bottom: 20rpx;
 			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-			
+
 			// 用户信息
 			.user-info {
 				display: flex;
 				align-items: center;
 				margin-bottom: 20rpx;
-				
+
 				.avatar {
 					width: 80rpx;
 					height: 80rpx;
@@ -3203,7 +3315,7 @@
 					margin-right: 20rpx;
 					background-color: #eee;
 				}
-				
+
 				.nickname {
 					font-size: 28rpx;
 					color: #333;
@@ -3214,9 +3326,9 @@
 					white-space: nowrap;
 					flex: 1;
 				}
-				
+
 				/* 移除旧的关注按钮样式 */
-				
+
 				/* 添加关注按钮组件样式 */
 				:deep(.follow-btn) {
 					height: 50rpx;
@@ -3227,11 +3339,11 @@
 					margin-left: 10rpx;
 				}
 			}
-			
+
 			// 文章内容
 			.article-content {
 				margin-bottom: 20rpx;
-				
+
 				.article-title {
 					font-size: 32rpx;
 					font-weight: bold;
@@ -3240,7 +3352,7 @@
 					display: block;
 					line-height: 1.4;
 				}
-				
+
 				.article-summary {
 					font-size: 28rpx;
 					color: #666;
@@ -3253,9 +3365,10 @@
 					-webkit-line-clamp: 3;
 					-webkit-box-orient: vertical;
 					word-break: break-all;
-					max-height: 126rpx; /* 添加最大高度限制，防止内容溢出 */
+					max-height: 126rpx;
+					/* 添加最大高度限制，防止内容溢出 */
 				}
-				
+
 				// 单图布局
 				.article-image {
 					width: 100%;
@@ -3264,32 +3377,32 @@
 					overflow: hidden;
 					margin-bottom: 20rpx;
 					position: relative;
-					
+
 					.single-image {
 						width: 100%;
 						height: 100%;
 						background-color: #f5f5f5;
 					}
-					
+
 					.debug-info {
 						position: absolute;
 						bottom: 0;
 						left: 0;
 						right: 0;
-						background: rgba(0,0,0,0.5);
+						background: rgba(0, 0, 0, 0.5);
 						color: #fff;
 						font-size: 20rpx;
 						padding: 4rpx 10rpx;
 						word-break: break-all;
 					}
 				}
-				
+
 				// 文章标签
 				.article-tags {
 					display: flex;
 					flex-wrap: wrap;
 					margin-top: 10rpx;
-					
+
 					.tag-item {
 						padding: 6rpx 16rpx;
 						font-size: 22rpx;
@@ -3301,27 +3414,27 @@
 					}
 				}
 			}
-			
+
 			// 文章操作按钮
 			.article-actions {
 				display: flex;
 				justify-content: space-around;
 				border-top: 2rpx solid #f0f0f0;
 				padding-top: 20rpx;
-				
+
 				.action-item {
 					display: flex;
 					align-items: center;
-					
+
 					text {
 						font-size: 24rpx;
 						color: #666;
 						margin-left: 6rpx;
-						
+
 						&.liked {
 							color: #ff6b6b;
 						}
-						
+
 						&.collected {
 							color: #ffc107;
 						}
@@ -3329,7 +3442,7 @@
 				}
 			}
 		}
-		
+
 		// 加载状态
 		.loading-state {
 			text-align: center;
@@ -3340,6 +3453,7 @@
 			padding-bottom: 120rpx; // 增加底部间距，确保在底部导航栏上方可见
 		}
 	}
+
 	// #endif
 
 	.settings-mask {
@@ -3366,20 +3480,20 @@
 		max-height: 90vh;
 		display: flex;
 		flex-direction: column;
-		
+
 		.settings-header {
 			padding: 16px 20px;
 			border-bottom: 1px solid #eee;
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			
+
 			.title {
 				font-size: 16px;
 				font-weight: bold;
 				color: #333;
 			}
-			
+
 			.close-btn {
 				cursor: pointer;
 				width: 32px;
@@ -3388,26 +3502,26 @@
 				align-items: center;
 				justify-content: center;
 				border-radius: 4px;
-				
+
 				&:hover {
 					background: #f5f5f5;
 				}
 			}
 		}
-		
+
 		.settings-body {
 			flex: 1;
 			overflow: hidden;
-			
+
 			:deep(.user-settings-wrapper) {
 				height: 100%;
 				background: transparent;
 				overflow: hidden;
-				
+
 				.mask {
 					display: none;
 				}
-				
+
 				.settings-panel {
 					position: relative;
 					top: 0;
@@ -3419,34 +3533,34 @@
 					border-radius: 0;
 					transform: none !important;
 					transition: none !important;
-					
+
 					&.visible {
 						transform: none !important;
 					}
-					
+
 					.panel-header {
 						display: none;
 					}
-					
+
 					.panel-content,
 					.nickname-edit-panel,
 					.logout-confirm-panel {
 						padding: 20px;
 						overflow-y: auto;
-						
+
 						.settings-item {
 							padding: 15px;
 							border-bottom: 1px solid #f0f0f0;
-							
+
 							&:last-child {
 								border-bottom: none;
 							}
-							
+
 							.item-label {
 								font-size: 14px;
 								color: #333;
 							}
-							
+
 							.item-content {
 								margin-top: 10px;
 							}
@@ -3463,7 +3577,7 @@
 		overflow-y: scroll;
 		overflow-x: auto;
 		min-width: 1000px;
-		
+
 		&::-webkit-scrollbar {
 			width: 6px;
 			height: 6px;
@@ -3472,7 +3586,7 @@
 		&::-webkit-scrollbar-thumb {
 			background: #ddd;
 			border-radius: 3px;
-			
+
 			&:hover {
 				background: #bbb;
 			}
@@ -3486,6 +3600,7 @@
 	body {
 		min-width: 1000px;
 	}
+
 	// #endif
 
 	// 添加"我的"链接悬停和点击动画效果
@@ -3496,10 +3611,10 @@
 		white-space: nowrap;
 		position: relative;
 		transition: all 0.5s ease;
-		
+
 		&.hover-effect {
 			cursor: pointer;
-			
+
 			&::after {
 				content: '';
 				position: absolute;
@@ -3511,10 +3626,10 @@
 				background-color: #4361ee;
 				transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 			}
-			
+
 			&:hover {
 				color: #4361ee;
-				
+
 				&::after {
 					transform: translateX(-50%) scaleX(1);
 				}
@@ -3532,12 +3647,14 @@
 	// #ifndef H5
 	.mp-header {
 		.mp-top-nav {
-			.mp-logo, .mp-my-btn {
+
+			.mp-logo,
+			.mp-my-btn {
 				position: relative;
 				transition: all 0.2s ease;
 				border-radius: 8rpx;
 				padding: 10rpx 20rpx;
-				
+
 				&::after {
 					content: '';
 					position: absolute;
@@ -3549,17 +3666,17 @@
 					background-color: #4361ee;
 					transition: transform 0.3s ease;
 				}
-				
+
 				&:hover {
 					color: #4361ee;
 				}
 			}
-			
+
 			.mp-my-btn {
 				position: relative;
 				overflow: hidden;
 				border-radius: 30rpx;
-				
+
 				&::before {
 					content: '';
 					position: absolute;
@@ -3572,7 +3689,7 @@
 					transform: translate(-50%, -50%) scale(0);
 					transition: transform 0.3s ease;
 				}
-				
+
 				&:hover::before {
 					transform: translate(-50%, -50%) scale(1);
 				}
@@ -3585,13 +3702,15 @@
 		color: #4361ee !important;
 		font-weight: bold;
 	}
+
 	// #endif
 
 	// 添加禁用时的样式
-	.my-link.disabled, .mp-my-btn.disabled {
+	.my-link.disabled,
+	.mp-my-btn.disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
-		
+
 		&:hover {
 			transform: none;
 			color: #666;
@@ -3602,15 +3721,17 @@
 	// 小程序和APP的样式
 	.content-area.mp-content {
 		padding: 20rpx;
-		padding-top: calc(var(--status-bar-height) + 85rpx); /* 进一步减少顶部间距 */
+		padding-top: calc(var(--status-bar-height) + 85rpx);
+		/* 进一步减少顶部间距 */
 		background: #f5f5f5;
 		flex: 1;
 		box-sizing: border-box;
-		
+
 		.article-list {
-			height: calc(100vh - 85rpx - var(--status-bar-height)); /* 匹配header高度 */
+			height: calc(100vh - 85rpx - var(--status-bar-height));
+			/* 匹配header高度 */
 		}
-		
+
 		// 文章卡片
 		.article-card {
 			background-color: #fff;
@@ -3619,13 +3740,13 @@
 			margin-top: 5rpx;
 			margin-bottom: 20rpx;
 			box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
-			
+
 			// 用户信息
 			.user-info {
 				display: flex;
 				align-items: center;
 				margin-bottom: 20rpx;
-				
+
 				.avatar {
 					width: 80rpx;
 					height: 80rpx;
@@ -3633,14 +3754,14 @@
 					margin-right: 20rpx;
 					background-color: #eee;
 				}
-				
+
 				.nickname {
 					flex: 1;
 					font-size: 28rpx;
 					color: #333;
 					font-weight: 500;
 				}
-				
+
 				.follow-btn {
 					height: 50rpx;
 					line-height: 50rpx;
@@ -3651,18 +3772,18 @@
 					border-radius: 25rpx;
 					padding: 0 20rpx;
 					margin: 0;
-					
+
 					&.followed {
 						color: #999;
 						border-color: #999;
 					}
 				}
 			}
-			
+
 			// 文章内容
 			.article-content {
 				margin-bottom: 20rpx;
-				
+
 				.article-title {
 					font-size: 32rpx;
 					font-weight: bold;
@@ -3671,7 +3792,7 @@
 					display: block;
 					line-height: 1.4;
 				}
-				
+
 				.article-summary {
 					font-size: 28rpx;
 					color: #666;
@@ -3684,9 +3805,10 @@
 					-webkit-line-clamp: 3;
 					-webkit-box-orient: vertical;
 					word-break: break-all;
-					max-height: 126rpx; /* 添加最大高度限制，防止内容溢出 */
+					max-height: 126rpx;
+					/* 添加最大高度限制，防止内容溢出 */
 				}
-				
+
 				// 单图布局
 				.article-image {
 					width: 100%;
@@ -3695,32 +3817,32 @@
 					overflow: hidden;
 					margin-bottom: 20rpx;
 					position: relative;
-					
+
 					.single-image {
 						width: 100%;
 						height: 100%;
 						background-color: #f5f5f5;
 					}
-					
+
 					.debug-info {
 						position: absolute;
 						bottom: 0;
 						left: 0;
 						right: 0;
-						background: rgba(0,0,0,0.5);
+						background: rgba(0, 0, 0, 0.5);
 						color: #fff;
 						font-size: 20rpx;
 						padding: 4rpx 10rpx;
 						word-break: break-all;
 					}
 				}
-				
+
 				// 文章标签
 				.article-tags {
 					display: flex;
 					flex-wrap: wrap;
 					margin-top: 10rpx;
-					
+
 					.tag-item {
 						padding: 6rpx 16rpx;
 						font-size: 22rpx;
@@ -3732,27 +3854,27 @@
 					}
 				}
 			}
-			
+
 			// 文章操作按钮
 			.article-actions {
 				display: flex;
 				justify-content: space-around;
 				border-top: 2rpx solid #f0f0f0;
 				padding-top: 20rpx;
-				
+
 				.action-item {
 					display: flex;
 					align-items: center;
-					
+
 					text {
 						font-size: 24rpx;
 						color: #666;
 						margin-left: 6rpx;
-						
+
 						&.liked {
 							color: #ff6b6b;
 						}
-						
+
 						&.collected {
 							color: #ffc107;
 						}
@@ -3760,7 +3882,7 @@
 				}
 			}
 		}
-		
+
 		// 加载状态
 		.loading-state {
 			text-align: center;
@@ -3771,6 +3893,7 @@
 			padding-bottom: 120rpx; // 增加底部间距，确保在底部导航栏上方可见
 		}
 	}
+
 	// #endif
 
 	// APP和小程序样式增强
@@ -3783,23 +3906,30 @@
 		right: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0; /* 减少垂直间隔 */
+		gap: 0;
+		/* 减少垂直间隔 */
 		padding: 0;
-		margin: 0; /* 确保外边距为0 */
-		padding-top: var(--status-bar-height); /* 仅保留状态栏高度的内边距 */
+		margin: 0;
+		/* 确保外边距为0 */
+		padding-top: var(--status-bar-height);
+		/* 仅保留状态栏高度的内边距 */
 		background: #f5f5f5;
 		z-index: 100;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-		
+
 		// 顶部区域
 		.header-top {
 			display: flex;
 			align-items: center;
-			padding: 15rpx 20rpx; /* 保持左右内边距 */
-			padding-top: 5rpx; /* 减少顶部内边距 */
-			padding-bottom: 5rpx; /* 减少底部内边距 */
-			margin: 0; /* 确保外边距为0 */
-			
+			padding: 15rpx 20rpx;
+			/* 保持左右内边距 */
+			padding-top: 5rpx;
+			/* 减少顶部内边距 */
+			padding-bottom: 5rpx;
+			/* 减少底部内边距 */
+			margin: 0;
+			/* 确保外边距为0 */
+
 			// 搜索栏样式
 			.search-bar {
 				display: flex;
@@ -3811,17 +3941,19 @@
 				flex: 1;
 				box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.05);
 				height: 80rpx;
-				margin: 0; /* 确保外边距为0 */
-				
+				margin: 0;
+				/* 确保外边距为0 */
+
 				input {
 					flex: 1;
 					height: 80rpx;
 					padding: 0 25rpx;
 					font-size: 32rpx;
-					margin: 0; /* 确保外边距为0 */
+					margin: 0;
+					/* 确保外边距为0 */
 				}
 			}
-			
+
 			// 搜索按钮
 			.search-btn {
 				height: 70rpx;
@@ -3834,28 +3966,32 @@
 				padding: 0 30rpx;
 			}
 		}
-		
+
 		// 分类标签导航
 		.category-scroll {
 			width: 100%;
 			white-space: nowrap;
 			background-color: #f5f5f5;
-			padding: 5rpx 0; /* 减少上下内边距 */
-			margin: 0; /* 确保外边距为0 */
-			
+			padding: 5rpx 0;
+			/* 减少上下内边距 */
+			margin: 0;
+			/* 确保外边距为0 */
+
 			.category-list {
 				display: inline-flex;
 				padding: 0 20rpx;
-				margin: 0; /* 确保外边距为0 */
-				
+				margin: 0;
+				/* 确保外边距为0 */
+
 				.category-item {
-					padding: 8rpx 25rpx; /* 减少上下内边距 */
+					padding: 8rpx 25rpx;
+					/* 减少上下内边距 */
 					margin: 0 10rpx;
 					font-size: 30rpx;
 					color: #666;
 					border-radius: 30rpx;
 					transition: all 0.3s;
-					
+
 					&.active {
 						color: #fff;
 						background-color: #4361ee;
@@ -3864,7 +4000,7 @@
 				}
 			}
 		}
-		
+
 		// 搜索结果状态显示
 		.search-status {
 			width: 100%;
@@ -3873,7 +4009,7 @@
 			background-color: #f8f9fa;
 			border-bottom: 1rpx solid #e0e0e0;
 			z-index: 101; // 确保高于内容区域
-			
+
 			.search-info {
 				display: flex;
 				align-items: center;
@@ -3882,12 +4018,12 @@
 				padding: 15rpx 20rpx;
 				border-radius: 8rpx;
 				border: 1rpx solid #e0e0e0;
-				
+
 				text {
 					font-size: 26rpx;
 					color: #666;
 				}
-				
+
 				.clear-search {
 					display: flex;
 					align-items: center;
@@ -3895,12 +4031,12 @@
 					background-color: #f5f5f5;
 					border-radius: 30rpx;
 					border: 1rpx solid #eee;
-					
+
 					&:active {
 						background-color: #f0f0f0;
 						transform: scale(0.95);
 					}
-					
+
 					text {
 						font-size: 24rpx;
 						color: #666;
@@ -3910,18 +4046,21 @@
 			}
 		}
 	}
+
 	// #endif
 
 	// 内容区域样式调整 - 也需要修改顶部间距以适应更大的搜索框
 	.content-area.mp-content {
 		padding: 20rpx;
-		padding-top: calc(var(--status-bar-height) + 170rpx + (var(--search-status-height, 0rpx))); /* 增加顶部间距，考虑搜索状态的高度 */
+		padding-top: calc(var(--status-bar-height) + 170rpx + (var(--search-status-height, 0rpx)));
+		/* 增加顶部间距，考虑搜索状态的高度 */
 		background: #f5f5f5;
 		flex: 1;
 		box-sizing: border-box;
-		
+
 		.article-list {
-			height: calc(100vh - 170rpx - var(--status-bar-height) - (var(--search-status-height, 0rpx))); /* 匹配调整后的header高度 */
+			height: calc(100vh - 170rpx - var(--status-bar-height) - (var(--search-status-height, 0rpx)));
+			/* 匹配调整后的header高度 */
 		}
 	}
 
@@ -3934,15 +4073,19 @@
 		0% {
 			transform: scale(1);
 		}
+
 		50% {
 			transform: scale(1.5);
 		}
+
 		70% {
 			transform: scale(0.8);
 		}
+
 		85% {
 			transform: scale(1.2);
 		}
+
 		100% {
 			transform: scale(1);
 		}
@@ -3956,14 +4099,14 @@
 				font-weight: bold;
 				transition: all 0.3s ease;
 			}
-			
+
 			&.collected {
 				color: #ffc107 !important;
 				font-weight: bold;
 				transition: all 0.3s ease;
 			}
 		}
-		
+
 		// 增加点击反馈
 		&:active {
 			transform: scale(0.95);
@@ -3977,17 +4120,17 @@
 		border-radius: 10rpx;
 		margin-bottom: 20rpx;
 		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-		
+
 		.search-info {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
-			
+
 			text {
 				font-size: 28rpx;
 				color: #666;
 			}
-			
+
 			.clear-search {
 				display: flex;
 				align-items: center;
@@ -3995,15 +4138,15 @@
 				padding: 10rpx;
 				border-radius: 8rpx;
 				transition: all 0.3s;
-				
+
 				&:hover {
 					background-color: #f5f5f5;
 				}
-				
+
 				&:active {
 					transform: scale(0.95);
 				}
-				
+
 				text {
 					font-size: 24rpx;
 					color: #999;
@@ -4022,14 +4165,16 @@
 	}
 
 	.header-top .search-bar input {
-		padding-right: 80rpx; /* 为清除图标预留空间 */
+		padding-right: 80rpx;
+		/* 为清除图标预留空间 */
 	}
+
 	/* #endif */
 
 	// 微信小程序卡片布局样式
 	.mp-content {
 		background-color: #f5f5f5;
-		
+
 		.article-list {
 			width: 100%;
 		}
@@ -4060,7 +4205,7 @@
 				flex: 1;
 			}
 		}
-		
+
 		/* 添加关注按钮容器样式 */
 		.follow-button-container {
 			position: absolute;
