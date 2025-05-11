@@ -1,7 +1,21 @@
 <template>
+	<!-- 关注按钮 -->
 	<button class="follow-btn" :class="{'followed': isFollowed}" @click.stop="toggleFollow" v-if="showButton">
 		{{ isFollowed ? '已关注' : '+ 关注' }}
 	</button>
+
+	<!-- 自定义取消关注确认弹窗 -->
+	<view class="custom-popup" v-if="showConfirmDialog" @touchmove.stop.prevent>
+		<view class="popup-mask" @click="closeConfirmDialog"></view>
+		<view class="popup-content">
+			<view class="popup-title">取消关注</view>
+			<view class="popup-message">确定不再关注"{{props.nickname}}"吗？</view>
+			<view class="popup-buttons">
+				<button class="popup-btn cancel-btn" @click="closeConfirmDialog">取消</button>
+				<button class="popup-btn confirm-btn" @click="confirmUnfollow">确定</button>
+			</view>
+		</view>
+	</view>
 </template>
 
 <script setup>
@@ -41,6 +55,8 @@ const isFollowed = ref(props.followed);
 const currentUserId = ref(null);
 // 是否正在加载
 const isLoading = ref(false);
+// 自定义弹窗状态
+const showConfirmDialog = ref(false);
 
 // 计算属性：是否显示关注按钮（不能关注自己）
 const showButton = computed(() => {
@@ -161,110 +177,84 @@ const toggleFollow = () => {
 		return;
 	}
 	
-	isLoading.value = true;
-	const currentFollowState = isFollowed.value;
-
-	// 如果当前是已关注状态，执行取消关注操作
-	if (currentFollowState) {
-		// 显示确认对话框
-		uni.showModal({
-			title: '取消关注',
-			content: `确定不再关注"${props.nickname}"吗？`,
-			success: (res) => {
-				if (res.confirm) {
-					// 显示加载中
-					uni.showLoading({ title: '取消关注中...' });
-					
-					// 调用取消关注API
-					followUser(props.userId, false).then(res => {
-						if (res.code === 200) {
-							// 更新UI状态
-							isFollowed.value = false;
-							
-							// 触发事件通知父组件
-							emit('follow-change', false);
-							emit('update:followed', false);
-							
-							uni.showToast({
-								title: '已取消关注',
-								icon: 'none'
-							});
-						} else if (res.code === 409) {
-							// 处理409错误（未关注该用户）
-							isFollowed.value = false;
-							emit('follow-change', false);
-							emit('update:followed', false);
-							
-							uni.showToast({
-								title: '未关注该用户',
-								icon: 'none'
-							});
-						} else {
-							uni.showToast({
-								title: res.message || '取消关注失败',
-								icon: 'none'
-							});
-						}
-					}).catch(err => {
-						console.error('取消关注失败', err);
-						uni.showToast({
-							title: '取消关注失败，请重试',
-							icon: 'none'
-						});
-					}).finally(() => {
-						uni.hideLoading();
-						isLoading.value = false;
-					});
-				} else {
-					// 用户取消操作
-					isLoading.value = false;
-				}
-			}
-		});
+	// 如果当前是已关注状态，显示自定义确认弹窗
+	if (isFollowed.value) {
+		showConfirmDialog.value = true;
 	} else {
 		// 当前是未关注状态，执行关注操作
-		uni.showLoading({ title: '关注中...' });
+		performFollowAction();
+	}
+};
+
+/**
+ * 关闭确认弹窗
+ */
+const closeConfirmDialog = () => {
+	showConfirmDialog.value = false;
+};
+
+/**
+ * 确认取消关注
+ */
+const confirmUnfollow = () => {
+	// 关闭弹窗
+	closeConfirmDialog();
+	// 执行取消关注操作
+	performFollowAction(false);
+};
+
+/**
+ * 执行关注/取消关注操作
+ * @param {Boolean} isFollow - 是否关注，不传则根据当前状态取反
+ */
+const performFollowAction = async (isFollow = !isFollowed.value) => {
+	isLoading.value = true;
+	
+	// 显示加载中
+	uni.showLoading({ 
+		title: isFollow ? '关注中...' : '取消关注中...' 
+	});
+	
+	try {
+		// 调用关注/取消关注API
+		const res = await followUser(props.userId, isFollow);
 		
-		// 调用关注API
-		followUser(props.userId, true).then(res => {
-			if (res.code === 200) {
-				// 更新UI状态
-				isFollowed.value = true;
-				
-				// 触发事件通知父组件
-				emit('follow-change', true);
-				emit('update:followed', true);
-				
-				uni.showToast({
-					title: '关注成功',
-					icon: 'success'
-				});
-			} else if (res.code === 409) {
-				// 处理409已关注的情况
-				isFollowed.value = true;
-				emit('follow-change', true);
-				emit('update:followed', true);
-				
-				uni.showToast({
-					title: '已关注该用户',
-					icon: 'none'
-				});
-			} else {
-				uni.showToast({
-					title: res.message || '关注失败',
-					icon: 'none'
-				});
-			}
-		}).catch(err => {
-			console.error('关注失败', err);
+		if (res.code === 200) {
+			// 更新UI状态
+			isFollowed.value = isFollow;
+			
+			// 触发事件通知父组件
+			emit('follow-change', isFollow);
+			emit('update:followed', isFollow);
+			
+			// 显示成功提示
 			uni.showToast({
-				title: '关注失败，请重试',
+				title: isFollow ? '关注成功' : '已取消关注',
+				icon: isFollow ? 'success' : 'none'
+			});
+		} else if (res.code === 409) {
+			// 处理409错误
+			isFollowed.value = !isFollow; // 恢复原来的状态
+			
+			uni.showToast({
+				title: isFollow ? '已关注该用户' : '未关注该用户',
 				icon: 'none'
 			});
-		}).finally(() => {
-			uni.hideLoading();
-			isLoading.value = false;
+		} else {
+			uni.showToast({
+				title: res.message || (isFollow ? '关注失败' : '取消关注失败'),
+				icon: 'none'
+			});
+		}
+	} catch (error) {
+		console.error(isFollow ? '关注失败' : '取消关注失败', error);
+		uni.showToast({
+			title: (isFollow ? '关注' : '取消关注') + '失败，请重试',
+			icon: 'none'
 		});
+	} finally {
+		uni.hideLoading();
+		isLoading.value = false;
 	}
 };
 
@@ -281,6 +271,7 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
+/* 关注按钮样式 */
 .follow-btn {
 	height: 50rpx;
 	line-height: 50rpx;
@@ -297,5 +288,128 @@ onMounted(async () => {
 		color: #999;
 		border-color: #999;
 	}
+	
+	&:active {
+		opacity: 0.8;
+		transform: scale(0.98);
+	}
 }
+
+/* 自定义弹窗样式 */
+.custom-popup {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	
+	.popup-mask {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.5);
+	}
+	
+	.popup-content {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 80%;
+		max-width: 600rpx;
+		background-color: #fff;
+		border-radius: 16rpx;
+		padding: 40rpx 30rpx;
+		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+		animation: popup-in 0.3s ease-out;
+		
+		.popup-title {
+			font-size: 34rpx;
+			font-weight: bold;
+			color: #333;
+			text-align: center;
+			margin-bottom: 30rpx;
+		}
+		
+		.popup-message {
+			font-size: 30rpx;
+			color: #666;
+			text-align: center;
+			margin-bottom: 40rpx;
+			padding: 0 20rpx;
+			line-height: 1.5;
+		}
+		
+		.popup-buttons {
+			display: flex;
+			justify-content: space-between;
+			gap: 30rpx;
+			
+			.popup-btn {
+				flex: 1;
+				height: 80rpx;
+				line-height: 80rpx;
+				text-align: center;
+				border-radius: 40rpx;
+				font-size: 30rpx;
+				margin: 0;
+				
+				&.cancel-btn {
+					background-color: #f5f5f5;
+					color: #666;
+					
+					&:active {
+						background-color: #eaeaea;
+					}
+				}
+				
+				&.confirm-btn {
+					background-color: #4361ee;
+					color: #fff;
+					
+					&:active {
+						background-color: #3651d4;
+					}
+				}
+			}
+		}
+	}
+}
+
+@keyframes popup-in {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -60%);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+}
+
+/* 适配不同平台 */
+/* #ifdef MP-WEIXIN */
+.custom-popup .popup-content {
+	padding: 40rpx 30rpx 30rpx;
+}
+
+.custom-popup .popup-buttons .popup-btn {
+	height: 76rpx;
+	line-height: 76rpx;
+	font-size: 28rpx;
+}
+/* #endif */
+
+/* #ifdef APP-PLUS */
+.custom-popup .popup-content {
+	padding: 44rpx 30rpx;
+}
+
+.custom-popup .popup-title {
+	font-size: 36rpx;
+}
+/* #endif */
 </style> 

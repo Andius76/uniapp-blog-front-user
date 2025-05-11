@@ -148,13 +148,9 @@
 
 					<!-- 添加关注按钮到最右侧 -->
 					<view class="follow-button-container">
-						<follow-button 
-							:user-id="article.author?.id" 
-							:nickname="article.author?.nickname || '该用户'" 
-							:followed="article.author?.isFollowed?.following || false"
-							:auto-check="true"
-							@follow-change="(isFollowed) => updateFollowState(article, isFollowed)" 
-						/>
+						<follow-button :user-id="article.author?.id" :nickname="article.author?.nickname || '该用户'"
+							:followed="article.author?.isFollowed?.following || false" :auto-check="true"
+							@follow-change="(isFollowed) => updateFollowState(article, isFollowed)" />
 					</view>
 
 					<!-- 文章内容 -->
@@ -674,7 +670,7 @@
 			// APP环境下特别处理localhost
 			// #ifdef APP-PLUS
 			if (url.includes('localhost') || url.includes('127.0.0.1')) {
-				const appBaseUrl = 'http://10.9.135.132:8080';
+				const appBaseUrl = 'http://10.9.218.247:8080';
 				const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
 				return appBaseUrl + urlPath;
 			}
@@ -1643,16 +1639,16 @@
 	 */
 	const updateFollowState = (article, isFollowed) => {
 		if (!article || !article.author) return;
-		
+
 		console.log(`用户${article.author.id}关注状态变化:`, isFollowed);
-		
+
 		// 更新当前文章的作者关注状态
 		if (typeof article.author.isFollowed === 'object') {
 			article.author.isFollowed.following = isFollowed;
 		} else {
 			article.author.isFollowed = isFollowed;
 		}
-		
+
 		// 更新所有相同作者的文章
 		articleList.value.forEach(item => {
 			if (item.author && item.author.id === article.author.id) {
@@ -1663,7 +1659,7 @@
 				}
 			}
 		});
-		
+
 		// 发送全局事件，通知其他页面更新关注状态
 		uni.$emit('user_follow_updated', {
 			userId: article.author.id,
@@ -2334,7 +2330,7 @@
 		data.currentNav = 1;
 		// 先加载文章列表
 		loadArticleList();
-		
+
 		// 文章列表加载完成后，同步收藏状态
 		setTimeout(() => {
 			syncCollectionStatus();
@@ -2494,12 +2490,12 @@
 		data.searchText = '';
 		// 切换回推荐标签（第二个选项）
 		data.currentNav = 1;
-		
+
 		// 重置文章列表
 		currentPage.value = 1;
 		noMoreData.value = false;
 		articleList.value = [];
-		
+
 		// 重新加载文章列表
 		loadArticleList();
 	};
