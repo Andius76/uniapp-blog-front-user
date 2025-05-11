@@ -842,15 +842,14 @@ const handleCollect = async (article) => {
  * 处理点赞/取消点赞
  */
 const handleLike = async (article) => {
-	// 检查参数合法性
+	// 检查参数合法性 - 简化检查
 	if (!article || !article.id) {
 		console.error('点赞失败：无效的文章ID', article);
-		uni.showToast({
-			title: '操作失败，文章信息不完整',
-			icon: 'none'
-		});
 		return;
 	}
+	
+	// 记录调试信息但不显示给用户
+	console.log('准备点赞文章，ID:', article.id, '类型:', typeof article.id);
 	
 	// 检查登录状态
 	const token = uni.getStorageSync('token');
@@ -867,31 +866,52 @@ const handleLike = async (article) => {
 		return;
 	}
 	
+	// 保存点赞前的状态
+	const originalState = article.isLiked;
+	const originalCount = article.likeCount || 0;
+	
 	try {
+		// 立即反馈UI (乐观更新)
+		article.isLiked = !article.isLiked;
+		article.likeCount = article.isLiked ? (article.likeCount || 0) + 1 : Math.max(0, (article.likeCount || 0) - 1);
+		
 		// 添加动画效果
 		article.isAnimating = true;
 		article.animationType = 'like';
 		
-		console.log('点赞文章:', article.id, !article.isLiked);
+		console.log('点赞文章:', article.id, article.isLiked);
 		
 		// 调用点赞API
-		const res = await likeArticle(article.id, !article.isLiked);
+		const res = await likeArticle(article.id, article.isLiked);
 		
 		if (res.code === 200) {
-			// 更新文章点赞状态
-			article.isLiked = !article.isLiked;
-			// 更新点赞数量
-			article.likeCount = article.isLiked ? 
-				(article.likeCount || 0) + 1 : 
-				Math.max(0, (article.likeCount || 0) - 1);
+			// 点赞成功，静默处理，不打扰用户
+			// API成功后，确保UI反映正确的计数
+			if (res.data && typeof res.data.likeCount !== 'undefined') {
+				article.likeCount = res.data.likeCount;
+			}
 		} else {
+			// 恢复原状态
+			article.isLiked = originalState;
+			article.likeCount = originalCount;
+			
+			// 记录错误但不显示给用户
+			console.error('点赞操作失败:', res.message);
+		}
+	} catch (error) {
+		// 恢复原状态
+		article.isLiked = originalState;
+		article.likeCount = originalCount;
+		
+		console.error('点赞操作失败:', error);
+		
+		// 只在严重的网络错误时显示提示
+		if (error.errMsg && error.errMsg.includes('request:fail')) {
 			uni.showToast({
-				title: res.message || '操作失败',
+				title: '网络异常，请稍后再试',
 				icon: 'none'
 			});
 		}
-	} catch (error) {
-		console.error('点赞操作失败:', error);
 	} finally {
 		// 动画结束后清除动画状态
 		setTimeout(() => {

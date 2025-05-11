@@ -1721,15 +1721,15 @@
 		// 在点赞之前，保存当前的点赞状态
 		const article = articleList.value[index];
 		
-		// 检查文章ID是否存在
+		// 检查文章ID是否存在 - 只保留基本检查，合并多个检查为一个
 		if (!article || !article.id) {
 			console.error('点赞失败：无效的文章ID', article);
-			uni.showToast({
-				title: '操作失败，文章信息不完整',
-				icon: 'none'
-			});
+			// 不显示toast，避免干扰用户体验
 			return;
 		}
+		
+		// 记录调试信息但不显示给用户
+		console.log('准备点赞文章，ID:', article.id, '类型:', typeof article.id);
 		
 		const currentIsLiked = article.isLiked;
 		const currentLikeCount = article.likeCount || 0;
@@ -1742,9 +1742,6 @@
 			// 添加动画效果
 			article.isAnimating = true;
 			article.animationType = 'like';
-			
-			// 输出调试信息
-			console.log('点赞文章:', article.id, !currentIsLiked);
 			
 			// 延迟后移除动画效果
 			setTimeout(() => {
@@ -1762,14 +1759,8 @@
 				article.isLiked = currentIsLiked;
 				article.likeCount = currentLikeCount;
 				
-				// 打印错误
+				// 记录错误但不显示给用户
 				console.error('点赞操作失败:', res.message);
-				
-				// 提示错误
-				uni.showToast({
-					title: res.message || '操作失败',
-					icon: 'none'
-				});
 			} else {
 				// API返回了新的点赞数，使用返回的数据
 				if (res.data && res.data.likeCount !== undefined) {
@@ -1793,7 +1784,19 @@
 				console.log(`文章[${article.id}]点赞状态更新成功: ${article.isLiked}, 点赞数: ${article.likeCount}`);
 			}
 		} catch (error) {
+			// 恢复原始状态
+			article.isLiked = currentIsLiked;
+			article.likeCount = currentLikeCount;
+			
 			console.error('点赞操作异常:', error);
+			
+			// 只在真正的网络错误时显示提示
+			if (error.errMsg && error.errMsg.includes('request:fail')) {
+				uni.showToast({
+					title: '网络异常，请稍后再试',
+					icon: 'none'
+				});
+			}
 		}
 	};
 

@@ -1000,15 +1000,14 @@
 	 * @param {Object} article - 文章对象
 	 */
 	const handleLike = (article) => {
-		// 检查参数合法性
+		// 检查参数合法性 - 简化检查
 		if (!article || !article.id) {
 			console.error('点赞失败：无效的文章ID', article);
-			uni.showToast({
-				title: '操作失败，文章信息不完整',
-				icon: 'none'
-			});
 			return;
 		}
+		
+		// 记录调试信息但不显示给用户
+		console.log('准备点赞文章，ID:', article.id, '类型:', typeof article.id);
 
 		// 检查登录状态
 		const token = uni.getStorageSync('token');
@@ -1043,11 +1042,7 @@
 		likeArticle(article.id, article.isLiked)
 			.then(res => {
 				if (res.code === 200) {
-					uni.showToast({
-						title: article.isLiked ? '点赞成功' : '已取消点赞',
-						icon: article.isLiked ? 'success' : 'none'
-					});
-
+					// 点赞成功，不显示过多提示，减少干扰
 					// API成功后，确保UI反映正确的计数
 					if (res.data && typeof res.data.likeCount !== 'undefined') {
 						article.likeCount = res.data.likeCount;
@@ -1058,10 +1053,8 @@
 					article.likeCount = originalState ? (article.likeCount || 0) + 1 : Math.max(0, (article
 						.likeCount || 0) - 1);
 
-					uni.showToast({
-						title: res.message || '操作失败',
-						icon: 'none'
-					});
+					// 记录错误但不显示给用户
+					console.error('点赞操作失败:', res.message);
 				}
 			})
 			.catch(err => {
@@ -1071,6 +1064,14 @@
 					.likeCount || 0) - 1);
 
 				console.error('点赞失败:', err);
+				
+				// 只在严重的网络错误时显示提示
+				if (err.errMsg && err.errMsg.includes('request:fail')) {
+					uni.showToast({
+						title: '网络异常，请稍后再试',
+						icon: 'none'
+					});
+				}
 			})
 			.finally(() => {
 				// 700ms后移除动画标记
