@@ -747,20 +747,20 @@
 				title: articleData.title,
 				content: articleData.content,
 				htmlContent: ensureCorrectHtmlFormat(articleData.htmlContent), // 使用增强的HTML格式
-				// 确保标签数据是简单的字符串数组，并过滤掉HTML标签
-				tags: prepareTags(articleData.tags),
+				// 只使用tagNames字段，移除tags字段避免冲突
+				tagNames: prepareTags(articleData.tags),
 				images: articleData.images,
 				wordCount: articleData.wordCount
 			};
 			
-			// 如果标签为空数组，则传递空数组而不是undefined
-			requestData.tagNames = requestData.tags.length > 0 ? [...requestData.tags] : [];
+			// 确保tagNames是有效的数组
+			if (!Array.isArray(requestData.tagNames)) {
+				requestData.tagNames = [];
+			}
 			
 			// 日志记录标签数据，帮助调试
 			console.log('发送的标签数据:', {
-				tags: JSON.stringify(requestData.tags || []),
 				tagNames: JSON.stringify(requestData.tagNames || []),
-				tagsCount: (requestData.tags || []).length,
 				tagNamesCount: (requestData.tagNames || []).length
 			});
 			
@@ -784,9 +784,6 @@
 			
 			// 添加请求时间戳，用于后续验证
 			const requestTimestamp = Date.now();
-			
-			// 第一级策略：标准方式发布（同时使用tags和tagNames字段）
-			console.log('尝试第一级策略: 标准方式发布文章');
 			
 			// 调用API，内部会处理图片上传和文章发布
 			const apiCall = mode.value === 'edit' 
@@ -885,10 +882,8 @@
 					console.log('捕获到标签相关错误，尝试第二级策略');
 					tryEditModeTagsStrategy(requestData);
 				} else {
-					uni.showToast({
-						title: '发布失败:' + errorMessage,
-						icon: 'none'
-					});
+					// 检查文章是否可能已发布成功
+					checkArticlePublishStatus();
 				}
 			});
 		} catch (error) {
@@ -916,11 +911,10 @@
 			mask: true
 		});
 		
-		// 创建新的请求数据，使用单一标签字段
+		// 创建新的请求数据，标签处理更严格
 		const newRequestData = {
 			...originalRequestData,
-			// 只使用tagNames字段，确保是基本字符串数组
-			tags: undefined,
+			// 使用更严格的标签处理
 			tagNames: Array.isArray(originalRequestData.tagNames) 
 				? originalRequestData.tagNames
 					.map(t => String(t).trim())
@@ -1075,139 +1069,143 @@
 			title: articleData.title,
 			content: articleData.content,
 			htmlContent: ensureCorrectHtmlFormat(articleData.htmlContent), // 使用增强的HTML格式
-			// 确保标签数据是字符串数组，并过滤掉可能含有HTML标签的内容
-			tags: prepareTags(articleData.tags),
+			// 只使用tagNames字段，移除tags字段避免冲突
+			tagNames: prepareTags(articleData.tags),
 			wordCount: articleData.wordCount
 		};
 		
-		// 如果标签为空数组，则传递空数组而不是undefined
-		requestData.tagNames = requestData.tags.length > 0 ? [...requestData.tags] : [];
+		// 确保tagNames是有效的数组
+		if (!Array.isArray(requestData.tagNames)) {
+			requestData.tagNames = [];
+		}
 		
 		// 日志记录标签数据
 		console.log('发送的标签数据:', {
-			tags: JSON.stringify(requestData.tags || []),
 			tagNames: JSON.stringify(requestData.tagNames || []),
-			tagsCount: (requestData.tags || []).length,
 			tagNamesCount: (requestData.tagNames || []).length
 		});
 		
 		// 处理封面图片
 		if (articleData.isCoverDeleted) {
-			requestData.coverImage = null;
-			console.log('封面已标记为删除，提交请求时设置coverImage为null');
-		} else if (articleData.coverImage) {
-			requestData.coverImage = articleData.coverImage;
-		} else if (mode.value === 'edit' && articleData.originalCoverImage && !articleData.isCoverDeleted) {
-			requestData.coverImage = articleData.originalCoverImage;
-		}
-		
-		// 如果是编辑模式，添加文章ID
-		if (mode.value === 'edit' && articleData.id) {
-			requestData.id = articleData.id;
-		}
-		
-		// 添加请求时间戳，用于后续验证
-		const requestTimestamp = Date.now();
-		
-		// 第一级策略：标准方式发布（同时使用tags和tagNames字段）
-		console.log('尝试第一级策略: 标准方式发布文章');
-		
-		// 调用API
-		const apiCall = mode.value === 'edit' 
-			? updateArticle(requestData) 
-			: publishArticleApi(requestData);
-			
-		apiCall.then(res => {
-			uni.hideLoading();
-			isLoading.value = false;
-			
-			// 检查响应是否有效
-			if (!res) {
-				console.error('发布请求返回数据为空');
-				uni.showToast({
-					title: '网络异常，请重试',
-					icon: 'none'
-				});
-				return;
+				requestData.coverImage = null;
+				console.log('封面已标记为删除，提交请求时设置coverImage为null');
+			} else if (articleData.coverImage) {
+				requestData.coverImage = articleData.coverImage;
+			} else if (mode.value === 'edit' && articleData.originalCoverImage && !articleData.isCoverDeleted) {
+				requestData.coverImage = articleData.originalCoverImage;
 			}
 			
-			// 首先检查是否成功发布文章
-			if (res.code === 200) {
-				// 保存文章ID（发布成功时服务器会返回）
-				const articleId = res.data?.id || articleData.id;
+			// 如果是编辑模式，添加文章ID
+			if (mode.value === 'edit' && articleData.id) {
+				requestData.id = articleData.id;
+			}
+			
+			// 添加请求时间戳，用于后续验证
+			const requestTimestamp = Date.now();
+			
+			// 第一级策略：标准方式发布（只使用tagNames字段）
+			console.log('尝试第一级策略: 标准方式发布文章');
+			
+			// 调用API
+			const apiCall = mode.value === 'edit' 
+				? updateArticle(requestData) 
+				: publishArticleApi(requestData);
 				
-				// 显示成功提示
-				uni.showToast({
-					title: mode.value === 'edit' ? '更新成功' : '发布成功',
-					icon: 'success',
-					duration: 2000
-				});
+			apiCall.then(res => {
+				uni.hideLoading();
+				isLoading.value = false;
 				
-				// 发布成功后清空内容并标记为已确认离开
-				clearAndRefresh();
-				
-				// 如果是新文章且返回了ID，跳转到文章详情页
-				if (mode.value === 'new' && articleId) {
-					// 添加全局事件，通知文章列表刷新
-					uni.$emit('article_published', {
-						articleId: articleId,
-						timestamp: Date.now()
-					});
-					console.log('发布成功，触发全局刷新事件');
-					
-					setTimeout(() => {
-						uni.redirectTo({
-							url: `/pages/article-detail/article-detail?id=${articleId}`
-						});
-					}, 1500);
-				} else {
-					// 编辑模式或没有返回ID，返回上一页
-					setTimeout(() => {
-						uni.navigateBack();
-					}, 1500);
-				}
-			} else {
-				// API返回错误情况
-				console.error('文章发布/更新失败:', res);
-				
-				// 检查是否是标签相关的错误
-				if (res.message && res.message.includes('标签')) {
-					// 尝试第二级策略
-					tryEditModeTagsStrategy(requestData);
-				} else if (res.message === 'null' || !res.message) {
-					// 特殊情况：没有明确错误消息，但可能是标签问题导致
-					tryEditModeTagsStrategy(requestData);
-				} else {
-					// 其他明确的错误，显示错误消息
+				// 检查响应是否有效
+				if (!res) {
+					console.error('发布请求返回数据为空');
 					uni.showToast({
-						title: res.message || '发布失败，请重试',
+						title: '网络异常，请重试',
 						icon: 'none'
 					});
+					return;
 				}
-			}
-		}).catch(err => {
-			console.error('发布请求失败', err);
-			console.error('错误详情:', JSON.stringify(err));
-			
-			// 检查是否是标签相关的错误
-			const errorMsg = err.message || err.errMsg || String(err);
-			const isTagError = errorMsg.includes('tag') || errorMsg.includes('标签');
-			
-			// 隐藏加载提示
-			uni.hideLoading();
-			isLoading.value = false;
-			
-			if (isTagError || errorMsg === 'null') {
-				// 尝试第二级策略
-				tryEditModeTagsStrategy(requestData);
-			} else {
-				uni.showToast({
-					title: '发布失败: ' + errorMsg,
-					icon: 'none'
-				});
-			}
-		});
-	};
+				
+				// 首先检查是否成功发布文章
+				if (res.code === 200) {
+					// 保存文章ID（发布成功时服务器会返回）
+					const articleId = res.data?.id || articleData.id;
+					
+					// 显示成功提示
+					uni.showToast({
+						title: mode.value === 'edit' ? '更新成功' : '发布成功',
+						icon: 'success',
+						duration: 2000
+					});
+					
+					// 发布成功后清空内容并标记为已确认离开
+					clearAndRefresh();
+					
+					// 如果是新文章且返回了ID，跳转到文章详情页
+					if (mode.value === 'new' && articleId) {
+						// 添加全局事件，通知文章列表刷新
+						uni.$emit('article_published', {
+							articleId: articleId,
+							timestamp: Date.now()
+						});
+						console.log('发布成功，触发全局刷新事件');
+						
+						setTimeout(() => {
+							uni.redirectTo({
+								url: `/pages/article-detail/article-detail?id=${articleId}`
+							});
+						}, 1500);
+					} else {
+						// 编辑模式或没有返回ID，返回上一页
+						setTimeout(() => {
+							uni.navigateBack();
+						}, 1500);
+					}
+				} else {
+					// API返回错误情况
+					console.error('文章发布/更新失败:', res);
+					
+					// 检查是否是标签相关的错误
+					if (res.message && res.message.includes('标签')) {
+						// 尝试第二级策略
+						tryEditModeTagsStrategy(requestData);
+					} else if (res.message === 'null' || !res.message) {
+						// 特殊情况：没有明确错误消息，但可能是标签问题导致
+						tryEditModeTagsStrategy(requestData);
+					} else {
+						// 其他明确的错误，显示错误消息
+						uni.showToast({
+							title: res.message || '发布失败，请重试',
+							icon: 'none'
+						});
+						// 检查文章是否可能已发布成功
+						checkArticlePublishStatus();
+					}
+				}
+			}).catch(err => {
+				console.error('发布请求失败', err);
+				console.error('错误详情:', JSON.stringify(err));
+				
+				// 检查是否是标签相关的错误
+				const errorMsg = err.message || err.errMsg || String(err);
+				const isTagError = errorMsg.includes('tag') || errorMsg.includes('标签');
+				
+				// 隐藏加载提示
+				uni.hideLoading();
+				isLoading.value = false;
+				
+				if (isTagError || errorMsg === 'null') {
+					// 尝试第二级策略
+					tryEditModeTagsStrategy(requestData);
+				} else {
+					uni.showToast({
+						title: '发布失败: ' + errorMsg,
+						icon: 'none'
+					});
+					// 检查文章是否可能已发布成功
+					checkArticlePublishStatus();
+				}
+			});
+		};
 
 	/**
 	 * 检查文章是否发布成功的辅助函数
