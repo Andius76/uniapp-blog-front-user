@@ -9,7 +9,7 @@ import http from '@/utils/request';
  * @returns {Promise} - 返回消息列表Promise
  */
 export function getMessages(params) {
-  return http.get('/api/message', { params });
+  return http.get('/api/message', params);
 }
 
 /**

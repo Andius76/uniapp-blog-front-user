@@ -181,6 +181,8 @@ function request(options) {
 	console.log('请求URL:', interceptedOptions.url);
 	console.log('请求方法:', interceptedOptions.method);
 	console.log('请求头:', JSON.stringify(interceptedOptions.header));
+	console.log('Authorization:', interceptedOptions.header['Authorization'] || '未设置');
+	console.log('本地存储的Token:', getToken() || '未存储Token');
 	if (interceptedOptions.data) {
 		console.log('请求数据:', JSON.stringify(interceptedOptions.data));
 	}

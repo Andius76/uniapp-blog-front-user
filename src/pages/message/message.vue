@@ -75,6 +75,35 @@
 	import { getMessages, markMessageRead, markAllMessagesRead } from '@/api/message';
 	import { formatAvatarUrl } from '@/utils/format'; // 引入头像格式化工具方法
 
+	// 检查登录状态
+	const checkLoginStatus = () => {
+		// 获取token
+		const token = uni.getStorageSync('token');
+		if (!token) {
+			// 未登录，跳转到登录页
+			uni.showToast({
+				title: '请先登录',
+				icon: 'none',
+				duration: 1500
+			});
+			
+			// 保存当前页面路径，以便登录后返回
+			const pages = getCurrentPages();
+			const currentPage = pages[pages.length - 1];
+			const currentPath = `/${currentPage.route}`;
+			const redirectUrl = encodeURIComponent(currentPath);
+			
+			setTimeout(() => {
+				uni.navigateTo({
+					url: `/pages/login/login?redirect=${redirectUrl}`
+				});
+			}, 1500);
+			
+			return false;
+		}
+		return true;
+	};
+
 	// 当前选中的选项卡
 	const currentTab = ref(0);
 	// 刷新和加载状态
@@ -190,20 +219,26 @@
 			case 0: // 系统公告
 				return '系统公告';
 			case 1: // 点赞通知
-				// 从fromUserInfo获取用户信息，如果后端提供
+				// 从fromUserInfo获取用户信息
 				const fromUserName = message.fromUserInfo ? message.fromUserInfo.nickname : 
 					(message.fromUserId ? `用户ID:${message.fromUserId}` : '有人');
-				return `${fromUserName}点赞了您`;
+				// 内容已经包含 "点赞了您的文章《[文章标题]》"，直接返回用户名即可
+				return `${fromUserName}点赞了您的文章`;
 			case 2: // 关注通知
-				// 从fromUserInfo获取用户信息，如果后端提供
+				// 从fromUserInfo获取用户信息
 				const followerName = message.fromUserInfo ? message.fromUserInfo.nickname : 
 					(message.fromUserId ? `用户ID:${message.fromUserId}` : '有人');
 				return `${followerName}关注了您`;
 			case 3: // 评论通知
-				// 从fromUserInfo获取用户信息，如果后端提供
+				// 从fromUserInfo获取用户信息
 				const commenterName = message.fromUserInfo ? message.fromUserInfo.nickname : 
 					(message.fromUserId ? `用户ID:${message.fromUserId}` : '有人');
-				return `${commenterName}评论了您`;
+				// 内容已经区分 "评论了您的文章" 和 "回复了您的评论"
+				if (message.content.includes('回复了')) {
+					return `${commenterName}回复了您`;
+				} else {
+					return `${commenterName}评论了您的文章`;
+				}
 			default:
 				return '消息通知';
 		}
@@ -213,10 +248,16 @@
 	 * 加载消息列表
 	 */
 	const loadMessages = () => {
+		// 检查登录状态
+		if (!checkLoginStatus()) return;
+		
 		// 如果已经没有更多数据或正在加载中，则不处理
 		if (noMoreData.value || isLoading.value) return;
 
 		isLoading.value = true;
+		
+		// 打印当前token，帮助调试
+		console.log('当前Token:', uni.getStorageSync('token'));
 
 		// 准备请求参数
 		const params = {
@@ -225,9 +266,12 @@
 			pageSize: pageSize
 		};
 		
+		console.log('请求参数:', params);
+		
 		// 调用API获取消息列表
 		getMessages(params)
 			.then(res => {
+				console.log('消息列表返回:', res);
 				if (res.code === 200) {
 					// 格式化消息数据
 					const formattedGroups = formatMessages(res.data.list);
@@ -376,25 +420,23 @@
 				break;
 				
 			case 1: // 点赞通知
-				// 由于数据库没有targetType字段，我们需要通过消息内容判断目标类型
-				// 这里假设只有文章点赞，实际情况根据消息内容或其他字段区分
+				// 后端设置targetId为被点赞的文章ID，便于跳转
 				uni.navigateTo({
 					url: `/pages/article-detail/article-detail?id=${originalMessage.targetId}`
 				});
 				break;
 				
 			case 2: // 关注通知
-				// 跳转到关注用户的资料页
-				if (originalMessage.fromUserId) {
+				// 后端设置targetId为关注者的用户ID，方便跳转到用户主页
+				if (originalMessage.targetId) {
 					uni.navigateTo({
-						url: `/pages/user-profile/user-profile?id=${originalMessage.fromUserId}`
+						url: `/pages/user-profile/user-profile?id=${originalMessage.targetId}`
 					});
 				}
 				break;
 				
 			case 3: // 评论通知
-				// 跳转到评论所在的文章
-				// 假设targetId是文章ID，如果后端没有提供评论ID，则无法定位到具体评论
+				// 后端设置targetId为评论所属的文章ID
 				uni.navigateTo({
 					url: `/pages/article-detail/article-detail?id=${originalMessage.targetId}`
 				});
@@ -458,8 +500,11 @@
 
 	// 页面初始化
 	onMounted(() => {
-		// 加载默认选项卡的消息
-		loadMessages();
+		// 检查登录状态
+		if (checkLoginStatus()) {
+			// 加载默认选项卡的消息
+			loadMessages();
+		}
 	});
 </script>
 
