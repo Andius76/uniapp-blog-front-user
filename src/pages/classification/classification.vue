@@ -72,9 +72,9 @@
 				refresher-background="#f5f5f5"
 			>
 				<!-- 文章列表循环显示 -->
-				<view v-for="(article, index) in articleList" :key="article.id" class="article-card">
+				<view v-for="(article, index) in articleList" :key="article.id" class="mp-item">
 					<!-- 用户信息 -->
-					<view class="user-info">
+					<view class="user-info" @click.stop="viewAuthorProfile(article.author?.id)">
 						<image class="avatar" :src="article.author && formatAvatarUrl(article.author?.avatar) || '/static/images/avatar.png'" mode="aspectFill" @error="handleUserAvatarError(index)"></image>
 						<text class="nickname">{{article.author?.nickname || '未知用户'}}</text>
 						<follow-button 
@@ -87,48 +87,48 @@
 					</view>
 
 					<!-- 文章内容 -->
-					<view class="article-content" @click="viewArticleDetail(article.id)" :class="{'no-cover': !article.coverImage}">
-						<text class="article-title">{{article.title}}</text>
-						<text class="article-summary">{{formatArticleSummary(article.summary)}}</text>
+					<view class="article-content" @click="viewArticleDetail(article.id)">
+						<text class="mp-title">{{article.title}}</text>
+						<text class="mp-summary">{{formatArticleSummary(article.summary)}}</text>
 
 						<!-- 文章封面图片 - 仅当真正有封面时才显示 -->
-						<view class="article-image" v-if="article.coverImage">
-							<image :src="article.coverImage" mode="aspectFill" class="single-image" @error="handleImageError(article)"></image>
+						<view class="mp-image" v-if="article.coverImage">
+							<image :src="article.coverImage" mode="aspectFill" @error="handleImageError(article)"></image>
 						</view>
 						
 						<!-- 文章标签 -->
 						<view class="article-tags" v-if="article.tags && article.tags.length > 0">
 							<view v-for="(tag, tagIndex) in article.tags" :key="tagIndex" class="tag-item" @click.stop="handleTagClick(tag)">
-								{{ tag }}
+								#{{ tag }}
 							</view>
 						</view>
 					</view>
 
 					<!-- 文章操作按钮 -->
-					<view class="article-actions">
-						<view class="action-item" @click.stop="handleShare(article)">
-							<uni-icons type="redo-filled" size="20" color="#666"></uni-icons>
+					<view class="mp-actions">
+						<view class="mp-action" @click.stop="handleShare(article)">
+							<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
 							<text>分享</text>
 						</view>
-						<view class="action-item" @click.stop="handleComment(article)">
-							<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
+						<view class="mp-action" @click.stop="handleComment(article)">
+							<uni-icons type="chat" size="16" color="#666"></uni-icons>
 							<text>{{article.commentCount || 0}}</text>
 						</view>
-						<view class="action-item" @click.stop="handleCollect(article)">
-							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20" :color="article.isCollected ? '#ffc107' : '#666'" 
+						<view class="mp-action" @click.stop="handleCollect(article)">
+							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="16" :color="article.isCollected ? '#ffc107' : '#666'" 
 								:class="{'animate-icon': article.isAnimating && article.animationType === 'collect'}"></uni-icons>
-							<text :class="{'collected': article.isCollected}">{{article.collectCount || 0}}</text>
+							<text :class="{'mp-collected': article.isCollected}">{{article.collectCount || 0}}</text>
 						</view>
-						<view class="action-item" @click.stop="handleLike(article)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20" :color="article.isLiked ? '#ff6b6b' : '#666'"
+						<view class="mp-action" @click.stop="handleLike(article)">
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16" :color="article.isLiked ? '#ff6b6b' : '#666'"
 								:class="{'animate-icon': article.isAnimating && article.animationType === 'like'}"></uni-icons>
-							<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
+							<text :class="{'mp-liked': article.isLiked}">{{article.likeCount || 0}}</text>
 						</view>
 					</view>
 				</view>
 
 				<!-- 加载状态 -->
-				<view class="loading-state">
+				<view class="mp-loading">
 					<text v-if="isLoading">加载中...</text>
 					<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
 					<text v-else-if="articleList.length === 0 && !isLoading">{{emptyText}}</text>
@@ -1733,23 +1733,20 @@ const clearSearch = () => {
 	width: 100%;
 }
 
-/* 文章卡片样式 */
-.article-card {
+/* 文章列表项样式 */
+.mp-item {
 	margin: 20rpx;
 	padding: 20rpx;
 	background-color: #fff;
 	border-radius: 12rpx;
 	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
-	min-height: 200rpx;
-	max-height: 600rpx;
-	overflow: hidden;
 }
 
 /* 用户信息样式 */
 .user-info {
 	display: flex;
 	align-items: center;
-	margin-bottom: 15rpx;
+	padding: 10rpx 0;
 }
 
 .avatar {
@@ -1757,7 +1754,7 @@ const clearSearch = () => {
 	height: 64rpx;
 	border-radius: 50%;
 	margin-right: 15rpx;
-	background-color: #f2f2f2;
+	background-color: #f5f5f5;
 }
 
 .nickname {
@@ -1771,7 +1768,7 @@ const clearSearch = () => {
 	padding: 10rpx 0;
 }
 
-.article-title {
+.mp-title {
 	font-size: 32rpx;
 	font-weight: bold;
 	color: #222;
@@ -1785,7 +1782,7 @@ const clearSearch = () => {
 	-webkit-box-orient: vertical;
 }
 
-.article-summary {
+.mp-summary {
 	font-size: 28rpx;
 	color: #666;
 	line-height: 1.5;
@@ -1797,33 +1794,17 @@ const clearSearch = () => {
 	-webkit-line-clamp: 3;
 	-webkit-box-orient: vertical;
 	word-break: break-all;
-	max-height: 126rpx; /* 添加最大高度限制，防止内容溢出 */
-}
-
-/* 针对无封面文章的样式调整 */
-.no-cover .article-title {
-	font-size: 34rpx;
-	margin-bottom: 20rpx;
-}
-
-.no-cover .article-summary {
-	font-size: 30rpx;
-	margin-bottom: 20rpx;
-}
-
-.no-cover .article-tags {
-	margin-top: 15rpx;
 }
 
 /* 文章图片样式 */
-.article-image {
+.mp-image {
 	width: 100%;
 	margin: 15rpx 0;
 	border-radius: 8rpx;
 	overflow: hidden;
 }
 
-.single-image {
+.mp-image image {
 	width: 100%;
 	height: 340rpx;
 	display: block;
@@ -1840,44 +1821,45 @@ const clearSearch = () => {
 .tag-item {
 	display: inline-block;
 	padding: 5rpx 15rpx;
-	font-size: 22rpx;
+	font-size: 24rpx;
 	color: #3170f9;
-	background-color: #f0f2f7;
+	background-color: rgba(49, 112, 249, 0.1);
 	border-radius: 20rpx;
 	margin-right: 15rpx;
 	margin-bottom: 10rpx;
 }
 
-/* 文章操作区域样式 */
-.article-actions {
+/* 文章操作按钮样式 */
+.mp-actions {
 	display: flex;
 	justify-content: space-between;
 	padding-top: 15rpx;
 	border-top: 1rpx solid #f0f2f7;
+	margin-top: 15rpx;
 }
 
-.action-item {
+.mp-action {
 	display: flex;
 	align-items: center;
 	padding: 0 10rpx;
 }
 
-.action-item text {
+.mp-action text {
 	font-size: 24rpx;
 	color: #666;
 	margin-left: 8rpx;
 }
 
-.liked {
+.mp-liked {
 	color: #ff6b6b !important;
 }
 
-.collected {
+.mp-collected {
 	color: #ffc107 !important;
 }
 
 /* 加载状态样式 */
-.loading-state {
+.mp-loading {
 	padding: 30rpx;
 	text-align: center;
 	color: #999;
