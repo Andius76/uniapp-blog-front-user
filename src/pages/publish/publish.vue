@@ -747,21 +747,21 @@
 				title: articleData.title,
 				content: articleData.content,
 				htmlContent: ensureCorrectHtmlFormat(articleData.htmlContent), // 使用增强的HTML格式
-				// 只使用tagNames字段，移除tags字段避免冲突
-				tagNames: prepareTags(articleData.tags),
+				// 将 tagNames 修改为 tags
+				tags: prepareTags(articleData.tags),
 				images: articleData.images,
 				wordCount: articleData.wordCount
 			};
 			
 			// 确保tagNames是有效的数组
-			if (!Array.isArray(requestData.tagNames)) {
-				requestData.tagNames = [];
+			if (!Array.isArray(requestData.tags)) {
+				requestData.tags = [];
 			}
 			
 			// 日志记录标签数据，帮助调试
 			console.log('发送的标签数据:', {
-				tagNames: JSON.stringify(requestData.tagNames || []),
-				tagNamesCount: (requestData.tagNames || []).length
+				tags: JSON.stringify(requestData.tags || []),
+				tagsCount: (requestData.tags || []).length
 			});
 			
 			// 处理封面图片：如果封面已删除，明确设置为null；如果有新封面，使用新封面；否则保留原封面
@@ -915,8 +915,8 @@
 		const newRequestData = {
 			...originalRequestData,
 			// 使用更严格的标签处理
-			tagNames: Array.isArray(originalRequestData.tagNames) 
-				? originalRequestData.tagNames
+			tags: Array.isArray(originalRequestData.tags) 
+				? originalRequestData.tags
 					.map(t => String(t).trim())
 					.filter(t => t && !t.includes('<') && !t.includes('>'))
 				: []
@@ -924,8 +924,8 @@
 		
 		// 打印标签数据，帮助调试
 		console.log('第二级策略使用的标签数据:', {
-			tagNames: JSON.stringify(newRequestData.tagNames || []),
-			count: (newRequestData.tagNames || []).length
+			tags: JSON.stringify(newRequestData.tags || []),
+			count: (newRequestData.tags || []).length
 		});
 		
 		// 调用API
@@ -989,7 +989,7 @@
 		const lastAttemptData = {
 			...originalRequestData,
 			tags: [],
-			tagNames: []
+			tagNames: [] // 保留 tagNames 清空，因为原始逻辑有，但主要使用 tags
 		};
 		
 		console.log('第三级策略: 完全移除标签数据');
@@ -1069,20 +1069,20 @@
 			title: articleData.title,
 			content: articleData.content,
 			htmlContent: ensureCorrectHtmlFormat(articleData.htmlContent), // 使用增强的HTML格式
-			// 只使用tagNames字段，移除tags字段避免冲突
-			tagNames: prepareTags(articleData.tags),
+			// 将 tagNames 修改为 tags
+			tags: prepareTags(articleData.tags),
 			wordCount: articleData.wordCount
 		};
 		
 		// 确保tagNames是有效的数组
-		if (!Array.isArray(requestData.tagNames)) {
-			requestData.tagNames = [];
+		if (!Array.isArray(requestData.tags)) {
+			requestData.tags = [];
 		}
 		
 		// 日志记录标签数据
 		console.log('发送的标签数据:', {
-			tagNames: JSON.stringify(requestData.tagNames || []),
-			tagNamesCount: (requestData.tagNames || []).length
+			tags: JSON.stringify(requestData.tags || []),
+			tagsCount: (requestData.tags || []).length
 		});
 		
 		// 处理封面图片
