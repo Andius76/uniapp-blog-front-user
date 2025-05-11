@@ -111,17 +111,17 @@
 						</view>
 						<view class="mp-action" @click.stop="handleComment(article)">
 							<uni-icons type="chat" size="16" color="#666"></uni-icons>
-							<text>{{article.commentCount || 0}}</text>
+							<text>{{Number(article.commentCount) || 0}}</text>
 						</view>
 						<view class="mp-action" @click.stop="handleCollect(article)">
 							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="16" :color="article.isCollected ? '#ffc107' : '#666'" 
 								:class="{'animate-icon': article.isAnimating && article.animationType === 'collect'}"></uni-icons>
-							<text :class="{'mp-collected': article.isCollected}">{{article.collectCount || 0}}</text>
+							<text :class="{'mp-collected': article.isCollected}">{{Number(article.collectCount) || 0}}</text>
 						</view>
 						<view class="mp-action" @click.stop="handleLike(article)">
 							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16" :color="article.isLiked ? '#ff6b6b' : '#666'"
 								:class="{'animate-icon': article.isAnimating && article.animationType === 'like'}"></uni-icons>
-							<text :class="{'mp-liked': article.isLiked}">{{article.likeCount || 0}}</text>
+							<text :class="{'mp-liked': article.isLiked}">{{Number(article.likeCount) || 0}}</text>
 						</view>
 					</view>
 				</view>
@@ -776,13 +776,12 @@ const handleCollect = async (article) => {
 	// 检查参数合法性
 	if (!article || !article.id) {
 		console.error('收藏失败：无效的文章ID', article);
-		uni.showToast({
-			title: '操作失败，文章信息不完整',
-			icon: 'none'
-		});
 		return;
 	}
-
+	
+	// 记录调试信息但不显示给用户
+	console.log('准备收藏文章，ID:', article.id, '类型:', typeof article.id);
+	
 	// 检查登录状态
 	const token = uni.getStorageSync('token');
 	if (!token) {
@@ -790,6 +789,7 @@ const handleCollect = async (article) => {
 			title: '请先登录',
 			icon: 'none'
 		});
+		
 		setTimeout(() => {
 			uni.navigateTo({
 				url: '/pages/login/login'
@@ -798,23 +798,31 @@ const handleCollect = async (article) => {
 		return;
 	}
 	
+	// 保存收藏前的状态
+	const originalState = article.isCollected;
+	const originalCount = article.collectCount || 0;
+	
 	try {
+		// 立即反馈UI (乐观更新)
+		article.isCollected = !article.isCollected;
+		article.collectCount = article.isCollected ? (article.collectCount || 0) + 1 : Math.max(0, (article.collectCount || 0) - 1);
+		
 		// 添加动画效果
 		article.isAnimating = true;
 		article.animationType = 'collect';
 		
-		console.log('收藏文章:', article.id, !article.isCollected);
+		console.log('收藏文章:', article.id, article.isCollected);
+		console.log('更新前收藏数:', originalCount, '更新后收藏数:', article.collectCount);
 		
 		// 调用收藏API
-		const res = await collectArticle(article.id, !article.isCollected);
+		const res = await collectArticle(article.id, article.isCollected);
 		
 		if (res.code === 200) {
-			// 更新文章收藏状态
-			article.isCollected = !article.isCollected;
-			// 更新收藏数量
-			article.collectCount = article.isCollected ? 
-				(article.collectCount || 0) + 1 : 
-				Math.max(0, (article.collectCount || 0) - 1);
+			// API成功后，确保UI反映正确的计数
+			if (res.data && typeof res.data.collectCount !== 'undefined') {
+				console.log('API返回收藏数:', res.data.collectCount);
+				article.collectCount = res.data.collectCount;
+			}
 				
 			// 发送全局事件，通知其他页面更新
 			uni.$emit('article_collect_updated', {
@@ -822,14 +830,32 @@ const handleCollect = async (article) => {
 				isCollected: article.isCollected,
 				collectCount: article.collectCount
 			});
+			
+			console.log('收藏操作成功，当前状态:', article.isCollected, '当前收藏数:', article.collectCount);
 		} else {
+			// 恢复原状态
+			article.isCollected = originalState;
+			article.collectCount = originalCount;
+			
 			uni.showToast({
 				title: res.message || '操作失败',
 				icon: 'none'
 			});
 		}
 	} catch (error) {
+		// 恢复原状态
+		article.isCollected = originalState;
+		article.collectCount = originalCount;
+		
 		console.error('收藏操作失败:', error);
+		
+		// 只在严重的网络错误时显示提示
+		if (error.errMsg && error.errMsg.includes('request:fail')) {
+			uni.showToast({
+				title: '网络异常，请稍后再试',
+				icon: 'none'
+			});
+		}
 	} finally {
 		// 动画结束后清除动画状态
 		setTimeout(() => {
@@ -880,6 +906,7 @@ const handleLike = async (article) => {
 		article.animationType = 'like';
 		
 		console.log('点赞文章:', article.id, article.isLiked);
+		console.log('更新前点赞数:', originalCount, '更新后点赞数:', article.likeCount);
 		
 		// 调用点赞API
 		const res = await likeArticle(article.id, article.isLiked);
@@ -888,8 +915,18 @@ const handleLike = async (article) => {
 			// 点赞成功，静默处理，不打扰用户
 			// API成功后，确保UI反映正确的计数
 			if (res.data && typeof res.data.likeCount !== 'undefined') {
+				console.log('API返回点赞数:', res.data.likeCount);
 				article.likeCount = res.data.likeCount;
 			}
+			
+			// 发送全局事件，通知其他页面更新
+			uni.$emit('article_like_updated', {
+				articleId: article.id,
+				isLiked: article.isLiked,
+				likeCount: article.likeCount
+			});
+			
+			console.log('点赞操作成功，当前状态:', article.isLiked, '当前点赞数:', article.likeCount);
 		} else {
 			// 恢复原状态
 			article.isLiked = originalState;
@@ -1126,84 +1163,11 @@ const handleLoadMore = async () => {
 	// 判断当前是普通标签还是搜索模式
 	if (currentTag.value === searchText.value && searchText.value) {
 		// 搜索模式下加载更多
-		try {
-			// 调用搜索API
-			const res = await http.get('/api/article/search', {
-				keyword: searchText.value,
-				tag: searchText.value,
-				page: currentPage.value,
-				pageSize: 10
-			});
-			
-			if (res.code === 200 && res.data) {
-				const searchResults = res.data.list || [];
-				
-				// 如果没有更多结果
-				if (searchResults.length === 0) {
-					noMoreData.value = true;
-					isLoading.value = false;
-					return;
-				}
-				
-				// 处理搜索结果数据
-				const processedArticles = searchResults.map(article => {
-					// 处理作者头像
-					if (article.author && article.author.avatar) {
-						article.author.avatar = formatAvatarUrl(article.author.avatar);
-					}
-					
-					// 处理封面图片
-					if (article.coverImage) {
-						article.coverImage = formatArticleImage(article.coverImage);
-					} else if (article.cover_image) {
-						article.coverImage = formatArticleImage(article.cover_image);
-					}
-					
-					// 处理标签
-					if (article.tags && !Array.isArray(article.tags)) {
-						try {
-							if (typeof article.tags === 'string') {
-								article.tags = JSON.parse(article.tags);
-							}
-						} catch (e) {
-							article.tags = [];
-						}
-					}
-					
-					return article;
-				});
-				
-				// 检查作者关注状态
-				await checkArticleAuthorsFollowStatus(processedArticles);
-				
-				// 追加到文章列表
-				articleList.value = [...articleList.value, ...processedArticles];
-				
-				// 更新页码
-				currentPage.value++;
-				
-				// 判断是否还有更多数据
-				if (searchResults.length < 10) {
-					noMoreData.value = true;
-				}
-			} else {
-				// 处理搜索失败
-				uni.showToast({
-					title: res.message || '加载更多失败',
-					icon: 'none'
-				});
-			}
-		} catch (err) {
-			console.error('加载更多搜索结果失败:', err);
-			uni.showToast({
-				title: '网络异常，请稍后重试',
-				icon: 'none'
-			});
-		} finally {
-			isLoading.value = false;
-		}
+		console.log('加载更多搜索结果:', searchText.value);
+		await loadArticlesWithKeyword(searchText.value);
 	} else {
 		// 普通标签模式下加载更多
+		console.log('加载更多标签文章:', currentTag.value);
 		loadTagArticles();
 	}
 };
@@ -1226,6 +1190,8 @@ const scrollToTop = () => {
 onUnmounted(() => {
 	// 移除收藏状态更新事件监听
 	uni.$off('article_collect_updated');
+	// 移除点赞状态更新事件监听
+	uni.$off('article_like_updated');
 });
 
 // 页面加载时获取标签数据和文章列表
@@ -1250,6 +1216,20 @@ onMounted(() => {
 				console.log(`分类页更新文章[${data.articleId}]收藏状态:`, data);
 				article.isCollected = data.isCollected;
 				article.collectCount = data.collectCount;
+			}
+		}
+	});
+	
+	// 监听点赞状态更新事件
+	uni.$on('article_like_updated', (data) => {
+		console.log('分类页接收到文章点赞更新事件:', data);
+		if (data && data.articleId && data.likeCount !== undefined) {
+			// 查找文章并更新数据
+			const article = articleList.value.find(item => item.id == data.articleId);
+			if (article) {
+				console.log(`分类页更新文章[${data.articleId}]点赞状态:`, data);
+				article.isLiked = data.isLiked;
+				article.likeCount = data.likeCount;
 			}
 		}
 	});
@@ -1359,17 +1339,21 @@ const loadArticlesWithKeyword = async (keyword) => {
 	
 	console.log('[loadArticlesWithKeyword] 开始搜索关键词:', keyword);
 	
+	// 设置加载状态
 	isLoading.value = true;
-	noMoreData.value = false;
-	currentPage.value = 1;
-	articleList.value = [];
+	
+	// 如果是第一次搜索，重置状态
+	if (currentPage.value === 1) {
+		noMoreData.value = false;
+		articleList.value = [];
+	}
 	
 	try {
-		// 调用搜索API获取文章
+		// 调用搜索API
 		const res = await http.get('/api/article/search', {
 			keyword: keyword,
 			tag: keyword, // 同时将关键词作为标签搜索
-			page: 1,
+			page: currentPage.value,
 			pageSize: 10
 		});
 		
@@ -1379,7 +1363,7 @@ const loadArticlesWithKeyword = async (keyword) => {
 			const searchResults = res.data.list || [];
 			
 			// 如果搜索结果为空
-			if (searchResults.length === 0) {
+			if (searchResults.length === 0 && currentPage.value === 1) {
 				emptyText.value = `没有找到关于"${keyword}"的文章`;
 				noMoreData.value = true;
 				isLoading.value = false;
@@ -1388,6 +1372,16 @@ const loadArticlesWithKeyword = async (keyword) => {
 			
 			// 处理搜索结果数据
 			const processedArticles = searchResults.map(article => {
+				// 打印原始数据用于调试
+				console.log(`[搜索结果${article.id}] 原始数据:`, {
+					likeCount: article.likeCount,
+					like_count: article.like_count,
+					commentCount: article.commentCount,
+					comment_count: article.comment_count,
+					collectCount: article.collectCount,
+					collect_count: article.collect_count
+				});
+				
 				// 处理作者头像
 				if (article.author && article.author.avatar) {
 					article.author.avatar = formatAvatarUrl(article.author.avatar);
@@ -1413,18 +1407,55 @@ const loadArticlesWithKeyword = async (keyword) => {
 					}
 				}
 				
+				// 统一数量字段 - 确保所有数量相关的字段都被正确命名和初始化
+				// 统一点赞数字段
+				if (article.like_count !== undefined && article.likeCount === undefined) {
+					article.likeCount = article.like_count;
+				}
+				// 统一评论数字段
+				if (article.comment_count !== undefined && article.commentCount === undefined) {
+					article.commentCount = article.comment_count;
+				}
+				// 统一收藏数字段
+				if (article.collect_count !== undefined && article.collectCount === undefined) {
+					article.collectCount = article.collect_count;
+				}
+				
+				// 确保字段有默认值0
+				article.likeCount = article.likeCount !== undefined ? Number(article.likeCount) : 0;
+				article.commentCount = article.commentCount !== undefined ? Number(article.commentCount) : 0;
+				article.collectCount = article.collectCount !== undefined ? Number(article.collectCount) : 0;
+				
+				// 处理点赞和收藏状态
+				article.isLiked = !!article.isLiked || !!article.is_liked || false;
+				article.isCollected = !!article.isCollected || !!article.is_collected || !!article.is_favorite || false;
+				
+				// 记录处理后的数据
+				console.log(`[搜索结果${article.id}] 处理后的数据:`, {
+					likeCount: article.likeCount,
+					commentCount: article.commentCount,
+					collectCount: article.collectCount,
+					isLiked: article.isLiked,
+					isCollected: article.isCollected
+				});
+				
 				return article;
 			});
 			
-			// 更新文章列表
-			articleList.value = processedArticles;
+			// 更新文章列表 - 根据页码决定是替换还是追加
+			if (currentPage.value === 1) {
+				articleList.value = processedArticles;
+			} else {
+				articleList.value = [...articleList.value, ...processedArticles];
+			}
+			
 			console.log('[loadArticlesWithKeyword] 加载搜索结果数量:', articleList.value.length);
 			
 			// 检查作者关注状态
 			await checkArticleAuthorsFollowStatus(articleList.value);
 			
 			// 更新页码
-			currentPage.value = 2;
+			currentPage.value++;
 			
 			// 判断是否还有更多数据
 			if (searchResults.length < 10) {
@@ -1494,6 +1525,16 @@ const loadTagArticles = async () => {
 			
 			// 处理文章数据
 			const processedArticles = newArticles.map(article => {
+				// 打印原始数据用于调试
+				console.log(`[文章${article.id}] 原始数据:`, {
+					likeCount: article.likeCount,
+					like_count: article.like_count,
+					commentCount: article.commentCount,
+					comment_count: article.comment_count,
+					collectCount: article.collectCount,
+					collect_count: article.collect_count
+				});
+				
 				// 处理作者头像
 				if (article.author && article.author.avatar) {
 					article.author.avatar = formatAvatarUrl(article.author.avatar);
@@ -1516,6 +1557,38 @@ const loadTagArticles = async () => {
 						article.tags = [];
 					}
 				}
+				
+				// 统一数量字段 - 确保所有数量相关的字段都被正确命名和初始化
+				// 统一点赞数字段
+				if (article.like_count !== undefined && article.likeCount === undefined) {
+					article.likeCount = article.like_count;
+				}
+				// 统一评论数字段
+				if (article.comment_count !== undefined && article.commentCount === undefined) {
+					article.commentCount = article.comment_count;
+				}
+				// 统一收藏数字段
+				if (article.collect_count !== undefined && article.collectCount === undefined) {
+					article.collectCount = article.collect_count;
+				}
+				
+				// 确保字段有默认值0
+				article.likeCount = article.likeCount !== undefined ? Number(article.likeCount) : 0;
+				article.commentCount = article.commentCount !== undefined ? Number(article.commentCount) : 0;
+				article.collectCount = article.collectCount !== undefined ? Number(article.collectCount) : 0;
+				
+				// 处理点赞和收藏状态
+				article.isLiked = !!article.isLiked || !!article.is_liked || false;
+				article.isCollected = !!article.isCollected || !!article.is_collected || !!article.is_favorite || false;
+				
+				// 记录处理后的数据
+				console.log(`[文章${article.id}] 处理后的数据:`, {
+					likeCount: article.likeCount,
+					commentCount: article.commentCount,
+					collectCount: article.collectCount,
+					isLiked: article.isLiked,
+					isCollected: article.isCollected
+				});
 				
 				return article;
 			});
