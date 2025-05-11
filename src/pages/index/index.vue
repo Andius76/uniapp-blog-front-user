@@ -1644,17 +1644,23 @@
 	const updateFollowState = (article, isFollowed) => {
 		if (!article || !article.author) return;
 		
+		console.log(`用户${article.author.id}关注状态变化:`, isFollowed);
+		
 		// 更新当前文章的作者关注状态
-		article.author.isFollowed = {
-			following: isFollowed
-		};
+		if (typeof article.author.isFollowed === 'object') {
+			article.author.isFollowed.following = isFollowed;
+		} else {
+			article.author.isFollowed = isFollowed;
+		}
 		
 		// 更新所有相同作者的文章
 		articleList.value.forEach(item => {
 			if (item.author && item.author.id === article.author.id) {
-				item.author.isFollowed = {
-					following: isFollowed
-				};
+				if (typeof item.author.isFollowed === 'object') {
+					item.author.isFollowed.following = isFollowed;
+				} else {
+					item.author.isFollowed = isFollowed;
+				}
 			}
 		});
 		

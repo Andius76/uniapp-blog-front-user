@@ -868,17 +868,23 @@ const handleLike = async (article) => {
 const handleFollowChange = (isFollowed, article) => {
 	if (!article || !article.author) return;
 	
+	console.log(`用户${article.author.id}关注状态变化:`, isFollowed);
+	
 	// 更新当前文章的作者关注状态
-	article.author.isFollowed = {
-		following: isFollowed
-	};
+	if (typeof article.author.isFollowed === 'object') {
+		article.author.isFollowed.following = isFollowed;
+	} else {
+		article.author.isFollowed = isFollowed;
+	}
 	
 	// 更新所有相同作者的文章
 	articleList.value.forEach(item => {
 		if (item.author && item.author.id === article.author.id) {
-			item.author.isFollowed = {
-				following: isFollowed
-			};
+			if (typeof item.author.isFollowed === 'object') {
+				item.author.isFollowed.following = isFollowed;
+			} else {
+				item.author.isFollowed = isFollowed;
+			}
 		}
 	});
 	
@@ -1232,9 +1238,17 @@ const checkArticleAuthorsFollowStatus = async (articles) => {
 		return;
 	}
 	
-	// 收集所有需要检查关注状态的作者ID
+	// 获取当前登录用户的ID
+	const userInfo = uni.getStorageSync('userInfo');
+	const currentUserId = userInfo?.id;
+	if (!currentUserId) {
+		console.log('无法获取当前用户ID，不检查关注状态');
+		return;
+	}
+	
+	// 收集所有需要检查关注状态的作者ID（排除自己）
 	const authorIds = articles
-		.filter(article => article.author && article.author.id)
+		.filter(article => article.author && article.author.id && article.author.id !== currentUserId)
 		.map(article => article.author.id);
 	
 	// 去重
@@ -1255,9 +1269,18 @@ const checkArticleAuthorsFollowStatus = async (articles) => {
 				// 更新所有该作者的文章
 				articles.forEach(article => {
 					if (article.author && article.author.id === authorId) {
-						// 将关注状态对象转换为布尔值
-						article.author.isFollowed = result.data?.following || false;
-						console.log(`作者 ${authorId} 的关注状态: ${article.author.isFollowed}`);
+						// 处理可能的不同响应格式
+						if (typeof result.data === 'boolean') {
+							article.author.isFollowed = result.data;
+						} else if (result.data && typeof result.data.following === 'boolean') {
+							article.author.isFollowed = {
+								following: result.data.following
+							};
+						} else {
+							// 默认设置为false
+							article.author.isFollowed = false;
+						}
+						console.log(`作者 ${authorId} 的关注状态:`, article.author.isFollowed);
 					}
 				});
 			}
