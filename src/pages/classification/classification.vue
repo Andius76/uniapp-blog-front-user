@@ -866,10 +866,27 @@ const handleLike = async (article) => {
  * @param {Object} article - 文章对象
  */
 const handleFollowChange = (isFollowed, article) => {
-	if (article && article.author) {
-		// 直接使用布尔值
-		article.author.isFollowed = isFollowed;
-	}
+	if (!article || !article.author) return;
+	
+	// 更新当前文章的作者关注状态
+	article.author.isFollowed = {
+		following: isFollowed
+	};
+	
+	// 更新所有相同作者的文章
+	articleList.value.forEach(item => {
+		if (item.author && item.author.id === article.author.id) {
+			item.author.isFollowed = {
+				following: isFollowed
+			};
+		}
+	});
+	
+	// 发送全局事件，通知其他页面更新关注状态
+	uni.$emit('user_follow_updated', {
+		userId: article.author.id,
+		isFollowed: isFollowed
+	});
 };
 
 // 保留原来的handleFollow方法，以便在H5环境中使用
