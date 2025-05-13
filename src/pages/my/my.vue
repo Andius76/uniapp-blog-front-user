@@ -70,7 +70,7 @@
 					<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
 					<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
 						ref="articleListRef" :key="data.currentTab"
-						:list-type="data.currentTab === 0 ? 'myPosts' : 'like'" :userId="data.userInfo.id"
+						:list-type="data.currentTab === 0 ? 'myPosts' : 'likes'" :userId="data.userInfo.id"
 						:show-manage-options="true" :show-edit-for-all-users="data.currentTab === 0"
 						:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'" :height="'calc(100vh - 445rpx)'"
 						:use-global-scroll="true" @article-click="viewArticleDetail" @like="handleLike"
@@ -187,7 +187,7 @@
 		<view class="content-area">
 			<!-- 使用ArticleList组件，添加v-if防止多次初始化 -->
 			<ArticleList v-if="data.userInfo.id && !data.preventArticleListRender && !data.showUserSettings"
-				ref="articleListRef" :key="data.currentTab" :list-type="data.currentTab === 0 ? 'myPosts' : 'like'"
+				ref="articleListRef" :key="data.currentTab" :list-type="data.currentTab === 0 ? 'myPosts' : 'likes'"
 				:userId="data.userInfo.id" :show-manage-options="true" :show-edit-for-all-users="data.currentTab === 0"
 				:empty-text="data.currentTab === 0 ? '暂无发表内容' : '暂无点赞内容'" :height="'calc(100vh - 350rpx)'"
 				:use-global-scroll="false" @article-click="viewArticleDetail" @like="handleLike" @share="handleShare"
@@ -971,6 +971,7 @@
 			return;
 		}
 
+		// 先更新当前标签
 		data.currentTab = index;
 
 		// 显示加载提示
@@ -978,10 +979,25 @@
 			title: '加载中...'
 		});
 
-		// 由于添加了key属性，组件会重新创建，不需要手动调用重置和加载方法
+		// 延迟一段时间，等待DOM更新
 		setTimeout(() => {
+			// 检查文章列表组件引用是否存在
+			if (articleListRef.value) {
+				console.log(`切换到标签: ${data.tabs[index].name}, 类型: ${data.currentTab === 0 ? 'myPosts' : 'likes'}`);
+				
+				// 重置列表数据
+				articleListRef.value.resetList();
+				
+				// 强制刷新文章列表，传入true表示强制刷新
+				nextTick(() => {
+					articleListRef.value.loadArticles(true);
+				});
+			} else {
+				console.warn('文章列表组件引用不存在，无法重新加载');
+			}
+			
 			uni.hideLoading();
-		}, 500);
+		}, 100);
 	};
 
 	/**
