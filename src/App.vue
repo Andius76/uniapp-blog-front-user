@@ -1,6 +1,7 @@
 <script setup>
 import { onLaunch, onShow } from '@dcloudio/uni-app';
 import routeGuard from '@/utils/routeGuard.js';
+import { checkUserAccountStatus } from '@/utils/routeGuard.js';
 
 // 提供给全局访问
 uni.$routeGuard = routeGuard;
@@ -31,11 +32,20 @@ const checkInitialPage = () => {
 
 onLaunch(() => {
   console.log('App Launch');
+  // 应用启动时检查用户状态
+  if (uni.$checkUserStatus) {
+    uni.$checkUserStatus();
+  }
 });
 
 onShow(() => {
   // 每次切回应用时检查登录状态和当前页面
   checkInitialPage();
+  
+  // 同时检查用户状态
+  if (uni.$checkUserStatus) {
+    uni.$checkUserStatus();
+  }
 });
 </script>
 

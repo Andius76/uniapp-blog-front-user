@@ -286,13 +286,17 @@ function uploadArticleImages(imagePaths) {
 /**
  * 获取文章列表
  * @param {Object} params - 查询参数
- * @param {number} params.page - 页码，默认1
- * @param {number} params.pageSize - 每页条数，默认10
- * @param {string} params.tag - 标签筛选
- * @param {string} params.keyword - 关键词搜索
- * @return {Promise} - 返回包含文章列表的Promise
+ * @param {number} params.page - 页码
+ * @param {number} params.pageSize - 每页条数
+ * @param {string} params.sort - 排序字段
+ * @param {Array<number>} params.excludeStatus - 排除的文章状态，默认排除status=3（已下架）的文章
+ * @returns {Promise} - 返回文章列表的Promise
  */
 export function getArticleList(params) {
+  // 默认排除已下架文章
+  if (!params.excludeStatus) {
+    params.excludeStatus = [3]; // 默认排除已下架状态
+  }
   return http.get('/api/article', params);
 }
 
@@ -473,22 +477,19 @@ export function getUserLikedArticles(userId, params) {
 }
 
 /**
- * 搜索文章 - 根据关键词搜索文章（标题、作者、标签）
+ * 搜索文章
  * @param {string} keyword - 搜索关键词
- * @param {Object} params - 分页参数
- * @param {number} params.page - 页码，默认1
- * @param {number} params.pageSize - 每页数量，默认10
- * @returns {Promise} - 返回包含搜索结果的Promise
+ * @param {Object} params - 查询参数
+ * @param {number} params.page - 页码
+ * @param {number} params.pageSize - 每页条数
+ * @param {Array<number>} params.excludeStatus - 排除的文章状态，默认排除status=3（已下架）的文章
+ * @returns {Promise} - 返回搜索结果的Promise
  */
 export function searchArticles(keyword, params = {}) {
-  // 构建查询参数
-  const queryParams = {
-    keyword: keyword,
-    page: params.page || 1,
-    pageSize: params.pageSize || 10,
-    ...params
+  const searchParams = {
+    ...params,
+    keyword,
+    excludeStatus: params.excludeStatus || [3] // 默认排除已下架状态
   };
-  
-  // 发送搜索请求
-  return http.get('/api/article/search', queryParams);
+  return http.get('/api/article/search', searchParams);
 }

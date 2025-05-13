@@ -227,10 +227,26 @@ const handleSubmit = () => {
 			remember: data.formData.remember
 		}).then(res => {
 			if (res.code === 200) {
+				// 检查用户状态
+				if (res.data.user && res.data.user.status === 0) {
+					// 用户被封禁，显示提示信息
+					uni.showModal({
+						title: '账号已被封禁',
+						content: '您的账号已被管理员封禁，无法登录',
+						showCancel: false
+					});
+					
+					// 清除loading状态
+					data.loading = false;
+					return;
+				}
+				
 				// 登录成功，保存token到本地存储
 				uni.setStorageSync('token', res.data.token);
 				// 如果用户信息存在，也保存到本地
 				if (res.data.user) {
+					// 确保保存用户信息之前打印状态以便调试
+					console.log('登录用户状态:', res.data.user.status);
 					uni.setStorageSync('userInfo', res.data.user);
 				}
 				

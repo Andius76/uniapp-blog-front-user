@@ -146,4 +146,16 @@ export function checkUserFollow(userId) {
         reject(error);
       });
   });
+}
+
+/**
+ * 更新用户文章状态
+ * 将指定用户的文章状态更新为"已下架"（status=3）
+ * @param {Number} userId 用户ID
+ * @returns {Promise} 操作结果
+ */
+export function updateUserArticlesStatus(userId) {
+  return request.put(`/api/admin/user/${userId}/articles-status`, {
+    status: 3 // 已下架状态
+  });
 } 

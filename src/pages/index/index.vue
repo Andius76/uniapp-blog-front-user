@@ -262,6 +262,7 @@
 		followUser,
 		checkUserFollow
 	} from '@/api/user'; // 导入getUserInfo和followUser接口
+	import { checkUserStatus } from '@/api/auth'; // 导入checkUserStatus用于检查用户状态
 	import {
 		onLoad,
 		onShow
@@ -2382,6 +2383,9 @@
 		setTimeout(() => {
 			syncCollectionStatus();
 		}, 500);
+		
+		// 检查用户状态
+		checkLoginUserStatus();
 	});
 
 	/**
@@ -2522,6 +2526,9 @@
 
 	// 页面显示时同步收藏状态
 	onShow(() => {
+		// 检查用户状态
+		checkLoginUserStatus();
+		
 		// 如果已经有文章列表数据，同步收藏状态
 		if (articleList.value && articleList.value.length > 0) {
 			console.log('页面显示: 同步收藏状态');
@@ -2800,6 +2807,58 @@
 	 */
 	const handleSearchBlur = () => {
 		data.isSearchFocused = false;
+	};
+
+	/**
+	 * 检查当前登录用户状态
+	 * 如果用户被封禁(status=0)，则强制登出并提示
+	 */
+	const checkLoginUserStatus = () => {
+		// 检查是否已登录
+		const token = uni.getStorageSync('token');
+		if (!token) return;
+		
+		// 调用API检查用户状态
+		checkUserStatus().then(res => {
+			console.log('用户状态检查结果:', res);
+			
+			if (res.code === 200 && res.data) {
+				// 打印用户状态以便调试
+				console.log('当前用户状态值:', res.data.status);
+				
+				// 如果用户状态为0（被封禁）
+				if (res.data.status === 0) {
+					console.log('检测到用户状态为0，执行封禁逻辑');
+					// 清除登录信息
+					uni.removeStorageSync('token');
+					uni.removeStorageSync('userInfo');
+					
+					// 显示提示
+					uni.showModal({
+						title: '账号已被封禁',
+						content: '您的账号已被管理员封禁，无法继续使用',
+						showCancel: false,
+						success: () => {
+							// 刷新页面
+							uni.reLaunch({
+								url: '/pages/index/index'
+							});
+						}
+					});
+				} else if (res.data.status === 1) {
+					console.log('用户状态正常，可以继续使用');
+					// 用户状态正常，无需处理
+				} else {
+					console.warn('检测到未知的用户状态值:', res.data.status);
+				}
+			}
+		}).catch(err => {
+			// 输出更多详细信息以便调试
+			console.error('检查用户状态失败:', err);
+			if (err.response) {
+				console.error('错误响应数据:', err.response.data);
+			}
+		});
 	};
 </script>
 

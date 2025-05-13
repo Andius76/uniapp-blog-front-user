@@ -3,6 +3,8 @@
  * 文件位置: /src/utils/routeGuard.js
  */
 
+import { checkUserStatus } from '@/api/auth';
+
 // 定义无需登录即可访问的页面路径
 const whiteList = [
   '/pages/login/login', 
@@ -41,6 +43,63 @@ function getCurrentPagePath(options) {
 }
 
 /**
+ * 检查用户账号状态
+ * 如果用户被封禁(status=0)，则强制退出登录
+ * @returns {Promise<boolean>} 用户状态是否正常
+ */
+function checkUserAccountStatus() {
+  // 如果未登录，不需要检查状态
+  if (!isLoggedIn()) {
+    return Promise.resolve(true);
+  }
+  
+  return new Promise((resolve) => {
+    checkUserStatus()
+      .then(res => {
+        // 记录检查结果
+        console.log('检查用户状态结果:', res);
+        
+        if (res.code === 200 && res.data) {
+          // 如果状态为0（被封禁）
+          if (res.data.status === 0) {
+            console.warn('检测到用户账号已被封禁，执行强制登出');
+            
+            // 清除登录信息
+            uni.removeStorageSync('token');
+            uni.removeStorageSync('userInfo');
+            
+            // 显示提示
+            uni.showModal({
+              title: '账号已被封禁',
+              content: '您的账号已被管理员封禁，无法继续使用',
+              showCancel: false,
+              success: () => {
+                // 跳转到登录页
+                uni.reLaunch({
+                  url: '/pages/login/login'
+                });
+              }
+            });
+            
+            resolve(false);
+          } else {
+            // 用户状态正常
+            resolve(true);
+          }
+        } else {
+          // 无法获取用户状态，假设正常
+          resolve(true);
+        }
+      })
+      .catch(err => {
+        console.error('检查用户状态失败:', err);
+        // 出错时不进行强制登出
+        resolve(true);
+      });
+  });
+}
+
+/**
  * 路由守卫方法，在页面onLoad时调用
  * @param {Object} options - 页面参数
  */
@@ -71,7 +130,20 @@ function routeGuard(options) {
     return false;
   }
   
+  // 如果已登录且不在白名单中，检查用户状态
+  if (isLoggedIn() && !isWhitelisted) {
+    // 异步检查用户状态
+    checkUserAccountStatus();
+  }
+  
   return true;
 }
+
+// 导出所有有用的函数
+export {
+  isLoggedIn,
+  getCurrentPagePath,
+  checkUserAccountStatus
+};
 
 export default routeGuard;

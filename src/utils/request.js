@@ -141,6 +141,50 @@ function responseInterceptor(response) {
 		return Promise.reject(new Error('登录已过期，请重新登录'));
 	}
 
+	// 403: 禁止访问，账号被封禁
+	if (statusCode === 403) {
+		// 打印更多信息以便调试
+		console.error('收到403状态码:', data);
+		console.error('响应数据结构:', JSON.stringify(data));
+
+		// 检查是否确实是账号被封禁的情况
+		// 某些API可能返回403但不是因为账号被封禁
+		if (data && data.message && (
+			data.message.includes('封禁') || 
+			data.message.includes('禁用') || 
+			data.message.includes('banned') ||
+			data.message.includes('disabled')
+		)) {
+			// 清除本地token和用户信息
+			uni.removeStorageSync('token');
+			uni.removeStorageSync('userInfo');
+			
+			// 显示封禁提示
+			uni.showModal({
+				title: '账号已被封禁',
+				content: data.message || '您的账号已被封禁，无法继续使用',
+				showCancel: false,
+				success: () => {
+					// 跳转到登录页
+					uni.redirectTo({
+						url: '/pages/login/login'
+					});
+				}
+			});
+			
+			return Promise.reject(new Error('账号已被封禁'));
+		} else {
+			// 其他类型的403错误
+			uni.showToast({
+				title: data.message || '权限不足，无法访问',
+				icon: 'none',
+				duration: 2000
+			});
+			
+			return Promise.reject(data);
+		}
+	}
+
 	// 429: 请求频率限制
 	if (statusCode === 429) {
 		uni.showToast({
