@@ -44,9 +44,18 @@ export const register = (params) => {
  * @param {string} data.email - 邮箱
  * @param {string} data.password - 密码
  * @param {boolean} data.remember - 是否记住登录状态
+ * @param {boolean} data.isAdmin - 是否以管理员身份登录
  * @returns {Promise} - 返回Promise对象
  */
 export function login(data) {
+  // 判断是否是管理员登录
+  if (data.isAdmin) {
+    // 管理员登录使用username作为后端接收参数
+    return http.post('/api/admin/login', {
+      username: data.email, // 用户的email字段作为username传递
+      password: data.password
+    });
+  }
   return http.post('/api/auth/login', data);
 }
 

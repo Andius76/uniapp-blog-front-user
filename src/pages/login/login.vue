@@ -77,8 +77,19 @@
 						<text @click="goToForgotPassword" class="forgot-password">忘记密码</text>
 					</view>
 
+					<!-- 添加管理员登录选项 -->
+					<view class="admin-login-option">
+						<checkbox 
+							:checked="data.formData.isAdmin" 
+							@change="handleAdminChange"
+							style="transform: scale(0.8);"
+							color="#4361ee"
+						/>
+						<text>以管理员身份登录</text>
+					</view>
+
 					<button class="btn-login" :disabled="data.loading" @click="handleSubmit">
-						<text v-if="!data.loading">立即登录</text>
+						<text v-if="!data.loading">{{ data.formData.isAdmin ? '管理员登录' : '立即登录' }}</text>
 						<text v-else>登录中...</text>
 					</button>
 
@@ -109,7 +120,8 @@ const data = reactive({
 	formData: {
 		username: '',
 		password: '',
-		remember: false
+		remember: false,
+		isAdmin: false
 	},
 	// 错误信息
 	errors: {
@@ -219,12 +231,14 @@ const handleSubmit = () => {
 		
 		// 打印提交前的remember值
 		console.log('提交前remember值:', data.formData.remember);
+		console.log('是否以管理员身份登录:', data.formData.isAdmin);
 
 		// 调用登录API
 		login({
 			email: data.formData.username.trim(),
 			password: data.formData.password,
-			remember: data.formData.remember
+			remember: data.formData.remember,
+			isAdmin: data.formData.isAdmin
 		}).then(res => {
 			if (res.code === 200) {
 				// 检查用户状态
@@ -250,6 +264,12 @@ const handleSubmit = () => {
 					uni.setStorageSync('userInfo', res.data.user);
 				}
 				
+				// 保存角色信息（如果有）
+				if (res.data.roles) {
+					console.log('用户角色:', res.data.roles);
+					uni.setStorageSync('userRoles', res.data.roles);
+				}
+				
 				// 提示登录成功
 				uni.showToast({
 					title: '登录成功',
@@ -257,17 +277,23 @@ const handleSubmit = () => {
 					duration: 2000
 				});
 				
-				// 根据是否有重定向URL决定跳转位置
+				// 根据是否是管理员登录决定跳转位置
 				setTimeout(() => {
-					if (redirectUrl.value) {
+					if (data.formData.isAdmin) {
+						// 管理员界面跳转
+						uni.reLaunch({
+							url: '/pages/admin/index'
+						});
+					} else if (redirectUrl.value) {
+						// 有重定向URL
 						uni.redirectTo({
 							url: redirectUrl.value
 						});
 					} else {
-						// 默认跳转到首页或个人中心
-					uni.switchTab({
-						url: '/pages/index/index'
-					});
+						// 默认跳转到首页
+						uni.switchTab({
+							url: '/pages/index/index'
+						});
 					}
 				}, 1500);
 			}
@@ -279,7 +305,7 @@ const handleSubmit = () => {
 			if (err.code === 401) {
 				data.errors.password = '账号或密码错误';
 			} else if (err.code === 403) {
-				data.errors.username = '账号已被禁用';
+				data.errors.username = data.formData.isAdmin ? '无权访问管理系统' : '账号已被禁用';
 			}
 			
 			// 显示错误提示
@@ -316,6 +342,14 @@ const goToRegister = () => {
 	uni.navigateTo({
 		url: '/pages/register/register'
 	});
+};
+
+/**
+ * 处理管理员登录选项变化
+ */
+const handleAdminChange = (e) => {
+	data.formData.isAdmin = e.detail.value;
+	console.log('管理员登录选项变更为:', data.formData.isAdmin);
 };
 </script>
 
@@ -483,6 +517,15 @@ page {
 					transform: scale(0.95);
 					background: #324cb7;
 				}
+			}
+			
+			// 管理员登录选项
+			.admin-login-option {
+				display: flex;
+				align-items: center;
+				margin: 20rpx 0;
+				font-size: 28rpx;
+				color: #666;
 			}
 			
 			// 注册链接
