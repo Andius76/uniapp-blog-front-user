@@ -4,6 +4,8 @@ import {
 import App from "./App.vue";
 import routeGuard from './utils/routeGuard.js';
 import { checkUserAccountStatus } from './utils/routeGuard.js';
+// 导入全局ICP备案组件
+import GlobalIcpFooter from './components/global-icp-footer.vue';
 
 // 全局配置
 const appConfig = {
@@ -149,6 +151,10 @@ uni.addInterceptor('switchTab', {
 
 export function createApp() {
 	const app = createSSRApp(App);
+	
+	// 全局注册ICP备案组件
+	app.component('global-icp-footer', GlobalIcpFooter);
+	
 	return {
 		app,
 	};

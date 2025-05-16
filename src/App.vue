@@ -49,6 +49,18 @@ onShow(() => {
 });
 </script>
 
+<template>
+  <view>
+    <!-- 应用内容 -->
+    <slot></slot>
+    
+    <!-- 注册全局ICP备案信息组件 -->
+    <!-- #ifdef H5 -->
+    <global-icp-footer />
+    <!-- #endif -->
+  </view>
+</template>
+
 <style>
 @import "@/static/icon/iconfont.css";
 
@@ -101,6 +113,30 @@ uni-page-body {
 
 .uni-toast {
   z-index: 100000 !important;
+}
+/* #endif */
+
+/* 全局ICP备案样式 */
+.global-icp-footer {
+  width: 100%;
+  padding: 15px 0;
+  text-align: center;
+  background-color: #f7f7f7;
+  border-top: 1px solid #eee;
+  margin-top: 20px;
+}
+
+.global-icp-link {
+  color: #999;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+/* H5环境下的ICP链接悬停效果 */
+/* #ifdef H5 */
+.global-icp-link:hover {
+  color: #666;
+  text-decoration: underline;
 }
 /* #endif */
 </style>

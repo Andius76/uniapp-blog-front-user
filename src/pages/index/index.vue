@@ -235,6 +235,9 @@
 
 		<!-- 使用通用的回到顶部组件，明确配置点击后隐藏并立即滚动到顶部 -->
 		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
+		
+		<!-- 添加ICP备案底部组件 -->
+		<icp-footer/>
 	</view>
 </template>
 
@@ -281,6 +284,7 @@
 		searchArticles
 	} from '@/api/article';
 	import FollowButton from '@/components/follow-button/follow-button.vue';
+	import IcpFooter from '@/components/icp-footer/icp-footer.vue';
 
 	// 添加引用
 	const articleListRef = ref(null);
