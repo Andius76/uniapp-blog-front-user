@@ -22,7 +22,7 @@ function getBaseUrl() {
 	// 获取当前运行的平台
 	// #ifdef APP-PLUS
 	// APP端不能使用localhost/127.0.0.1，需要使用本机IP地址
-	return 'http://10.9.5.114:8080'; // 请替换为开发服务器的IP地址
+	return 'http://121.40.195.102:8080'; // 已更新为新的服务器IP地址
 	// #endif
 
 	// #ifdef H5 || MP-WEIXIN

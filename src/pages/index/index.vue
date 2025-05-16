@@ -689,7 +689,7 @@
 			// APP环境下特别处理localhost
 			// #ifdef APP-PLUS
 			if (url.includes('localhost') || url.includes('127.0.0.1')) {
-				const appBaseUrl = 'http://10.9.218.247:8080';
+				const appBaseUrl = 'http://121.40.195.102:8080';
 				const urlPath = url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
 				return appBaseUrl + urlPath;
 			}
@@ -1810,7 +1810,7 @@
 							// #ifdef APP-PLUS
 							// APP环境下特别处理localhost
 							if (coverImage.includes('localhost') || coverImage.includes('127.0.0.1')) {
-								const appBaseUrl = 'http://10.9.135.132:8080';
+								const appBaseUrl = 'http://121.40.195.102:8080';
 								const urlPath = coverImage.replace(
 									/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
 								coverImage = appBaseUrl + urlPath;
@@ -2089,7 +2089,7 @@
 		console.log('[封面处理] 检测到APP环境，应用特殊处理');
 
 		// 使用特定的APP环境基础URL - 直接使用与request.js相同的地址
-		const appBaseUrl = 'http://10.9.135.132:8080';
+		const appBaseUrl = 'http://121.40.195.102:8080';
 
 		// 完整URL处理：如果已经是完整URL，需要特别处理localhost情况
 		if (url.startsWith('http')) {
@@ -2402,7 +2402,7 @@
 			// APP中特殊处理localhost问题
 			if (originalUrl.includes('localhost') || originalUrl.includes('127.0.0.1')) {
 				// 使用特定的APP环境基础URL
-				const appBaseUrl = 'http://10.9.135.132:8080';
+				const appBaseUrl = 'http://121.40.195.102:8080';
 				// 提取路径部分，替换主机部分
 				const urlPath = originalUrl.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, '');
 				article.coverImage = appBaseUrl + urlPath;

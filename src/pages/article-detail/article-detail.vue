@@ -1837,7 +1837,7 @@
 				// 尝试修复头像URL
 				if (originalUrl) {
 					// 检查并替换可能的硬编码IP地址
-					if (originalUrl.includes('http://10.9.135.132:8080') ||
+					if (originalUrl.includes('http://121.40.195.102:8080') ||
 						originalUrl.includes('http://localhost:8080')) {
 						const fileName = originalUrl.split('/uploads/avatars/').pop();
 						if (fileName) {
@@ -1882,7 +1882,7 @@
 				// 尝试修复头像URL
 				if (originalUrl) {
 					// 检查并替换可能的硬编码IP地址
-					if (originalUrl.includes('http://10.9.135.132:8080') ||
+					if (originalUrl.includes('http://121.40.195.102:8080') ||
 						originalUrl.includes('http://localhost:8080')) {
 						const fileName = originalUrl.split('/uploads/avatars/').pop();
 						if (fileName) {

@@ -386,7 +386,7 @@
    */
   const getBaseUrl = () => {
     // #ifdef APP-PLUS
-    return 'http://10.9.99.181:8080'; // 安卓模拟器访问本机服务器的地址
+    return 'http://121.40.195.102:8080'; // 已更新为新的服务器IP地址
     // #endif
 
     // #ifdef H5
