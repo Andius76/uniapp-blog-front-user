@@ -78,7 +78,7 @@
 	import { getBaseUrl } from '@/utils/request'; // 引入统一的getBaseUrl函数
 
 	// 基础URL配置
-	const baseURL = 'http://localhost:8080';
+	const baseURL = 'http://121.40.195.102:8080';
 
 	// 存储定时器ID
 	let searchTimer = null; // 用于防抖处理

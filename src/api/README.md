@@ -4,7 +4,7 @@
 
 ## 基本信息
 
-- 基础URL: `http://localhost:8080`
+- 基础URL: `http://121.40.195.102:8080`
 - 所有接口都通过 `/src/utils/request.js` 中的HTTP客户端进行请求
 - 认证方式: Bearer Token (JWT)
 - 响应格式: JSON

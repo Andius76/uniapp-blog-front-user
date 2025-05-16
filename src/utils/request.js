@@ -19,19 +19,19 @@
  * @returns {string} 基础URL
  */
 function getBaseUrl() {
-	// 获取当前运行的平台
+	// 所有平台统一使用服务器IP地址
+	return 'http://121.40.195.102:8080';
+	
+	// 以下为原配置，现已全部修改为服务器地址
 	// #ifdef APP-PLUS
-	// APP端不能使用localhost/127.0.0.1，需要使用本机IP地址
-	return 'http://121.40.195.102:8080'; // 已更新为新的服务器IP地址
+	// return 'http://121.40.195.102:8080';
 	// #endif
 
 	// #ifdef H5 || MP-WEIXIN
-	// H5和微信小程序统一使用8080端口，不使用Vite的5173端口
-	return 'http://localhost:8080';
+	// return 'http://localhost:8080';
 	// #endif
 
-	// 其他平台默认配置
-	return 'http://localhost:8080';
+	// return 'http://localhost:8080';
 }
 
 /**

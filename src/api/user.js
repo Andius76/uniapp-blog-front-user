@@ -29,7 +29,7 @@ export function updateUserProfile(data) {
 export function uploadUserAvatar(filePath) {
   return new Promise((resolve, reject) => {
     // 获取基础URL，与request.js保持一致
-    const baseUrl = request.config ? request.config.baseUrl : 'http://localhost:8080';
+    const baseUrl = request.config ? request.config.baseUrl : 'http://121.40.195.102:8080';
     
     // 获取token
     const token = uni.getStorageSync('token');

@@ -1195,16 +1195,20 @@
 					if (articleData.coverImage && !articleData.coverImage.startsWith('http')) {
 						// 获取基础URL
 						const baseUrl = (() => {
+							// 所有平台统一使用服务器IP地址
+							return 'http://121.40.195.102:8080';
+							
+							// 以下为原配置，现已全部修改为服务器地址
 							// #ifdef APP-PLUS
-							return 'http://121.40.195.102:8080'; // 已更新为新的服务器IP地址
+							// return 'http://121.40.195.102:8080';
 							// #endif
 
 							// #ifdef H5
-							return 'http://localhost:8080';
+							// return 'http://localhost:8080';
 							// #endif
 
 							// #ifdef MP-WEIXIN
-							return 'http://localhost:8080';
+							// return 'http://localhost:8080';
 							// #endif
 						})();
 
