@@ -42,21 +42,22 @@
 						<view class="article-actions">
 							<!-- 分享按钮 -->
 							<view class="action-item" @click.stop="handleShare(index)">
-								<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
+								<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
+								<text>分享</text>
 							</view>
 
 							<!-- 评论按钮 -->
 							<view class="action-item" @click.stop="handleComment(index)">
-								<uni-icons type="chat" size="20" color="#000"></uni-icons>
-								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
+								<uni-icons type="chat" size="16" color="#666"></uni-icons>
+								<text>{{Number(article.commentCount) || 0}}</text>
 							</view>
 
 							<!-- 点赞按钮 -->
 							<view class="action-item" @click.stop="handleLike(index)">
-								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
-									:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
+								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
+									:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
 								<text
-									:class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+									:class="{'mp-liked': article.isLiked}">{{Number(article.likeCount) || 0}}</text>
 							</view>
 
 							<!-- 编辑按钮（根据权限条件显示） -->
@@ -130,21 +131,22 @@
 					<view class="article-actions">
 						<!-- 分享按钮 -->
 						<view class="action-item" @click.stop="handleShare(index)">
-							<uni-icons type="redo-filled" size="20" color="#000"></uni-icons>
+							<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
+							<text>分享</text>
 						</view>
 
 						<!-- 评论按钮 -->
 						<view class="action-item" @click.stop="handleComment(index)">
-							<uni-icons type="chat" size="20" color="#000"></uni-icons>
-							<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
+							<uni-icons type="chat" size="16" color="#666"></uni-icons>
+							<text>{{Number(article.commentCount) || 0}}</text>
 						</view>
 
 						<!-- 点赞按钮 -->
 						<view class="action-item" @click.stop="handleLike(index)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
-								:color="article.isLiked ? '#ff6b6b' : '#000'"></uni-icons>
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
+								:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
 							<text
-								:class="{'liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+								:class="{'mp-liked': article.isLiked}">{{Number(article.likeCount) || 0}}</text>
 						</view>
 
 						<!-- 编辑按钮（根据权限条件显示） -->
@@ -216,7 +218,7 @@
 							<!-- 评论按钮 -->
 							<view class="mp-action" @click.stop="handleComment(index)">
 								<uni-icons type="chat" size="16" color="#666"></uni-icons>
-								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
+								<text>{{Number(article.commentCount) || 0}}</text>
 							</view>
 
 							<!-- 点赞按钮 -->
@@ -224,7 +226,7 @@
 								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
 									:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
 								<text
-									:class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+									:class="{'mp-liked': article.isLiked}">{{Number(article.likeCount) || 0}}</text>
 							</view>
 
 							<!-- 编辑按钮（根据权限条件显示） -->
@@ -301,7 +303,7 @@
 							<!-- 评论按钮 -->
 							<view class="mp-action" @click.stop="handleComment(index)">
 								<uni-icons type="chat" size="16" color="#666"></uni-icons>
-								<text>{{article.commentCount !== undefined ? article.commentCount : 0}}</text>
+								<text>{{Number(article.commentCount) || 0}}</text>
 							</view>
 
 							<!-- 点赞按钮 -->
@@ -309,7 +311,7 @@
 								<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
 									:color="article.isLiked ? '#ff6b6b' : '#666'"></uni-icons>
 								<text
-									:class="{'mp-liked': article.isLiked}">{{article.likeCount !== undefined ? article.likeCount : 0}}</text>
+									:class="{'mp-liked': article.isLiked}">{{Number(article.likeCount) || 0}}</text>
 							</view>
 
 							<!-- 编辑按钮（根据权限条件显示） -->
@@ -2378,9 +2380,10 @@
 					// #endif
 
 					// #ifdef H5
-					height: 100rpx; // H5环境下增大高度，从80rpx增加到100rpx
-					border-top: 1px solid #eaeaea; // 添加顶部边框，与内容区分隔
-					padding-bottom: 10rpx; // 添加底部内边距
+					height: 80rpx; // 降低高度
+					border-top: 1px solid #f0f0f0; // 修改边框样式
+					padding: 15rpx 0; // 修改内边距
+					margin-top: 10rpx; // 添加顶部外边距
 					// #endif
 
 					.action-item {
@@ -2388,23 +2391,25 @@
 						align-items: center;
 						justify-content: center;
 						font-size: 24rpx;
-						color: #333;
+						color: #666;
+						gap: 6rpx; // 添加间距
 
 						// #ifdef H5
-						padding: 0 20rpx; // H5环境下增加内边距
-						font-size: 28rpx; // H5环境下增大字体
+						padding: 0 10rpx; // 减少内边距
+						font-size: 24rpx; // 减小字体
 						// #endif
 
 						text {
-							margin-left: 6rpx;
+							margin-left: 0rpx; // 移除左边距，使用gap代替
+							transition: color 0.3s; // 添加过渡效果
 
-							&.liked {
-								color: #ff6b6b;
+							&.mp-liked {
+								color: #ff6b6b !important;
 							}
 
-							// #ifdef H5
-							margin-left: 10rpx; // H5环境下增大间距
-							// #endif
+							&.mp-collected {
+								color: #ffc107 !important;
+							}
 						}
 
 						&.manage-btn {

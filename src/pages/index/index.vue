@@ -175,26 +175,26 @@
 					</view>
 
 					<!-- 文章操作按钮 -->
-					<view class="article-actions">
-						<view class="action-item" @click.stop="handleShare(article)">
-							<uni-icons type="redo-filled" size="20" color="#666"></uni-icons>
+					<view class="mp-actions">
+						<view class="mp-action" @click.stop="handleShare(article)">
+							<uni-icons type="redo-filled" size="16" color="#666"></uni-icons>
 							<text>分享</text>
 						</view>
-						<view class="action-item" @click.stop="handleComment(article)">
-							<uni-icons type="chatbubble" size="20" color="#666"></uni-icons>
-							<text>{{article.commentCount || 0}}</text>
+						<view class="mp-action" @click.stop="handleComment(article)">
+							<uni-icons type="chat" size="16" color="#666"></uni-icons>
+							<text>{{Number(article.commentCount) || 0}}</text>
 						</view>
-						<view class="action-item" @click.stop="handleCollection(article)">
-							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="20"
+						<view class="mp-action" @click.stop="handleCollection(article)">
+							<uni-icons :type="article.isCollected ? 'star-filled' : 'star'" size="16"
 								:color="article.isCollected ? '#ffc107' : '#666'"
 								:class="{'animate-icon': article.isAnimating && article.animationType === 'collect'}"></uni-icons>
-							<text :class="{'collected': article.isCollected}">{{article.collectCount || 0}}</text>
+							<text :class="{'mp-collected': article.isCollected}">{{Number(article.collectCount) || 0}}</text>
 						</view>
-						<view class="action-item" @click.stop="handleLike(article)">
-							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="20"
+						<view class="mp-action" @click.stop="handleLike(article)">
+							<uni-icons :type="article.isLiked ? 'heart-filled' : 'heart'" size="16"
 								:color="article.isLiked ? '#ff6b6b' : '#666'"
 								:class="{'animate-icon': article.isAnimating && article.animationType === 'like'}"></uni-icons>
-							<text :class="{'liked': article.isLiked}">{{article.likeCount || 0}}</text>
+							<text :class="{'mp-liked': article.isLiked}">{{Number(article.likeCount) || 0}}</text>
 						</view>
 					</view>
 				</view>
@@ -3541,13 +3541,13 @@
 			}
 
 			// 文章操作按钮
-			.article-actions {
+			.mp-actions {
 				display: flex;
 				justify-content: space-around;
 				border-top: 2rpx solid #f0f0f0;
 				padding-top: 20rpx;
 
-				.action-item {
+				.mp-action {
 					display: flex;
 					align-items: center;
 
@@ -3981,13 +3981,13 @@
 			}
 
 			// 文章操作按钮
-			.article-actions {
+			.mp-actions {
 				display: flex;
 				justify-content: space-around;
 				border-top: 2rpx solid #f0f0f0;
 				padding-top: 20rpx;
 
-				.action-item {
+				.mp-action {
 					display: flex;
 					align-items: center;
 
@@ -4397,29 +4397,30 @@
 	}
 
 	/* 文章操作样式增强 */
-	.article-actions {
+	.mp-actions {
 		display: flex;
 		justify-content: space-around;
 		align-items: center;
-		padding: 20rpx 0;
+		padding: 15rpx 0;
+		margin-top: 10rpx;
 		border-top: 1px solid #f0f0f0;
 	}
-	.action-item {
+	.mp-action {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 10rpx;
+		gap: 6rpx;
 	}
-	.action-item text {
-		font-size: 26rpx;
+	.mp-action text {
+		font-size: 24rpx;
 		color: #666;
 		transition: color 0.3s;
 	}
-	.action-item .liked {
-		color: #ff6b6b;
+	.mp-liked {
+		color: #ff6b6b !important;
 	}
-	.action-item .collected {
-		color: #ffc107;
+	.mp-collected {
+		color: #ffc107 !important;
 	}
 
 	/* 点赞和收藏图标动画 */
