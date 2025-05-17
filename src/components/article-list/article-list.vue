@@ -1623,8 +1623,8 @@
 			// #ifdef H5
 			// H5环境下，在新窗口打开文章评论页面
 			const currentUrl = window.location.href;
-			const baseUrl = currentUrl.split('#')[0];
-			const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`;
+			// 不需要分割，直接使用hash模式
+			const detailUrl = `${currentUrl.split('#')[0]}#/pages/article-detail/article-detail?id=${article.id}&scrollToComments=true`;
 			window.open(detailUrl, '_blank');
 			// #endif
 

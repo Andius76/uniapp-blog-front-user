@@ -841,9 +841,8 @@
 		// H5环境下，新窗口打开文章详情页
 		// 获取正确的基础路径
 		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		const detailUrl =
-			`${baseUrl}#/pages/article-detail/article-detail?id=${articleId}${scrollToComments ? '&scrollToComments=true' : ''}`;
+		// 不需要分割，直接使用hash模式
+		const detailUrl = `${currentUrl.split('#')[0]}#/pages/article-detail/article-detail?id=${articleId}${scrollToComments ? '&scrollToComments=true' : ''}`;
 		window.open(detailUrl, '_blank');
 		// #endif
 
@@ -1391,8 +1390,8 @@
 		// #ifdef H5
 		// H5环境下新开窗口跳转到收藏列表
 		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		const collectionUrl = `${baseUrl}#/pages/collection/collection`;
+		// 不需要分割，直接使用hash模式
+		const collectionUrl = `${currentUrl.split('#')[0]}#/pages/collection/collection`;
 		window.open(collectionUrl, '_blank');
 		// #endif
 		// #ifndef H5
@@ -1422,8 +1421,8 @@
 		// #ifdef H5
 		// H5环境下，在新窗口打开关注列表页面
 		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		window.open(`${baseUrl}#/pages/follows/follows`, '_blank');
+		// 不需要分割，直接使用hash模式
+		window.open(`${currentUrl.split('#')[0]}#/pages/follows/follows`, '_blank');
 		// #endif
 
 		// #ifndef H5
@@ -1453,8 +1452,8 @@
 		// #ifdef H5
 		// H5环境下，在新窗口打开粉丝列表页面
 		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		window.open(`${baseUrl}#/pages/fans/fans`, '_blank');
+		// 不需要分割，直接使用hash模式
+		window.open(`${currentUrl.split('#')[0]}#/pages/fans/fans`, '_blank');
 		// #endif
 
 		// #ifndef H5
@@ -1613,8 +1612,8 @@
 		// #ifdef H5
 		// H5环境下，在新窗口打开个人中心页面
 		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		const myPageUrl = `${baseUrl}#/pages/my/my`;
+		// 不需要分割，直接使用hash模式
+		const myPageUrl = `${currentUrl.split('#')[0]}#/pages/my/my`;
 		window.open(myPageUrl, '_blank');
 		// #endif
 

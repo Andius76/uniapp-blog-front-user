@@ -922,8 +922,8 @@
 			// #ifdef H5
 			// H5环境下新开窗口跳转到收藏列表
 			const currentUrl = window.location.href;
-			const baseUrl = currentUrl.split('#')[0];
-			const collectionUrl = `${baseUrl}#/pages/collection/collection`;
+			// 不需要分割，直接使用hash模式
+			const collectionUrl = `${currentUrl.split('#')[0]}#/pages/collection/collection`;
 			window.open(collectionUrl, '_blank');
 			return;
 			// #endif

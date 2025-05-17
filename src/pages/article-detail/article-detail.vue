@@ -1935,8 +1935,8 @@
 		// #ifdef H5
 		// H5环境下，新窗口打开用户资料页
 		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
-		const profileUrl = `${baseUrl}#/pages/user-profile/user-profile?id=${userId}`;
+		// 不需要分割，直接使用hash模式
+		const profileUrl = `${currentUrl.split('#')[0]}#/pages/user-profile/user-profile?id=${userId}`;
 		window.open(profileUrl, '_blank');
 		// #endif
 
@@ -1963,9 +1963,9 @@
 		// #ifdef H5
 		// 获取当前URL的基础部分，构建新的首页URL
 		const currentUrl = window.location.href;
-		const baseUrl = currentUrl.split('#')[0];
+		// 不需要分割，直接使用hash模式
 		// 使用替换方式导航，避免历史堆栈问题
-		window.location.replace(`${baseUrl}#/pages/index/index`);
+		window.location.replace(`${currentUrl.split('#')[0]}#/pages/index/index`);
 		// #endif
 		
 		// 非H5环境下使用常规Tab跳转

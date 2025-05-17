@@ -535,8 +535,8 @@ const viewArticleDetail = (articleId) => {
 	// #ifdef H5
 	// H5环境下，在新窗口打开文章详情页
 	const currentUrl = window.location.href;
-	const baseUrl = currentUrl.split('#')[0];
-	const detailUrl = `${baseUrl}#/pages/article-detail/article-detail?id=${articleId}`;
+	// 不需要分割，直接使用hash模式
+	const detailUrl = `${currentUrl.split('#')[0]}#/pages/article-detail/article-detail?id=${articleId}`;
 	window.open(detailUrl, '_blank');
 	// #endif
 	
