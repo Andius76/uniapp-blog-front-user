@@ -19,10 +19,10 @@
  * @returns {string} 基础URL
  */
 function getBaseUrl() {
-	// 所有平台统一使用服务器IP地址
-	return 'http://121.40.195.102:8080';
+	// 所有平台统一使用域名和HTTPS
+	return 'https://andiusblog.xyz';
 	
-	// 以下为原配置，现已全部修改为服务器地址
+	// 以下为原配置，现已全部修改为域名并使用HTTPS
 	// #ifdef APP-PLUS
 	// return 'http://121.40.195.102:8080';
 	// #endif
