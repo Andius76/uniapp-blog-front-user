@@ -186,7 +186,7 @@
 		<template v-if="!props.useGlobalScroll">
 			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp" @scrolltolower="handleLoadMore"
 				:refresher-enabled="true" :refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh"
-				:refresher-threshold="100" refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}"
+				:refresher-threshold="150" refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}"
 				@scroll="handleScroll" :scroll-top="scrollTop" :show-scrollbar="false" :bounce="true" :enhanced="true"
 				:scroll-with-animation="true" @touchstart="handleTouchStart" @touchmove="handleTouchMove"
 				@touchend="handleTouchEnd">
@@ -272,7 +272,7 @@
 			<!-- 修改全局滚动模式实现，添加scroll-view -->
 			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp-global"
 				@scrolltolower="handleLoadMore" :refresher-enabled="true" :refresher-triggered="isRefreshing"
-				@refresherrefresh="handleRefresh" :refresher-threshold="100" refresher-background="#f5f5f5"
+				@refresherrefresh="handleRefresh" :refresher-threshold="150" refresher-background="#f5f5f5"
 				:style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
 				:show-scrollbar="false" :bounce="true" :enhanced="true" :scroll-with-animation="true"
 				@touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
@@ -1433,6 +1433,30 @@
 	const handleRefresh = () => {
 		if (isRefreshing.value) return; // 避免重复触发
 
+		// #ifdef MP-WEIXIN
+		// 微信小程序环境下添加判断，只有当scrollTop真的为0才执行刷新
+		// 这样可以防止在滑动过程中误触发刷新
+		if (scrollTop.value > 5) {
+			console.log('拦截了一次可能的误触发刷新', scrollTop.value);
+			isRefreshing.value = false;
+			return;
+		}
+		
+		// 记录触发时间，用于防抖
+		const now = Date.now();
+		const lastRefreshTime = articleList.value._lastRefreshTime || 0;
+		
+		// 如果距离上次刷新不足1.5秒，则跳过本次刷新
+		if (now - lastRefreshTime < 1500) {
+			console.log('刷新过于频繁，跳过本次刷新');
+			isRefreshing.value = false;
+			return;
+		}
+		
+		// 更新最后刷新时间
+		articleList.value._lastRefreshTime = now;
+		// #endif
+
 		console.log('开始完全重置刷新...');
 		isRefreshing.value = true;
 
@@ -1931,6 +1955,20 @@
 		const currentY = e.touches[0].clientY;
 		const deltaY = currentY - lastTouchY.value;
 
+		// #ifdef MP-WEIXIN
+		// 微信小程序环境下，添加更严格的刷新触发条件
+		// 只有在滚动到顶部、且手指明显下拉超过一定距离时，才允许触发刷新
+		if (scrollTop.value <= 0 && deltaY > 15) {
+			// 仅当手指持续下拉超过阈值时才允许刷新
+			isScrolling.value = true;
+		} else if (noMoreData.value && deltaY < 0) {
+			// 标记为正在滚动中，但不触发刷新
+			isScrolling.value = true;
+		}
+		// #endif
+		
+		// #ifndef MP-WEIXIN
+		// 原来的逻辑保持不变
 		// 当滚动到顶部且继续下拉时，阻止外部容器滚动
 		if (scrollTop.value <= 0 && deltaY > 0) {
 			// 允许组件自己的下拉刷新行为
@@ -1941,6 +1979,7 @@
 			// 标记为正在滚动中
 			isScrolling.value = true;
 		}
+		// #endif
 
 		lastTouchY.value = currentY;
 	};
