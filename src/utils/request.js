@@ -55,7 +55,40 @@ const config = {
  * @returns {string} token值
  */
 function getToken() {
-	return uni.getStorageSync('token') || '';
+	const token = uni.getStorageSync('token') || '';
+	
+	// 如果没有token，直接返回空字符串
+	if (!token) return '';
+	
+	// 检查是否设置了remember模式和过期时间
+	const remember = uni.getStorageSync('loginRemember');
+	const expireTime = uni.getStorageSync('tokenExpireTime');
+	
+	// 只有在remember模式下才检查过期时间
+	if (remember && expireTime) {
+		// 检查token是否过期
+		const now = Date.now();
+		if (now > expireTime) {
+			// token已过期，清除所有相关存储
+			console.log('检测到token已过期，清除登录信息');
+			uni.removeStorageSync('token');
+			uni.removeStorageSync('tokenExpireTime');
+			uni.removeStorageSync('loginRemember');
+			uni.removeStorageSync('userInfo');
+			return '';
+		}
+		
+		// token未过期，如果还有不到3天过期，自动延长有效期
+		const threeDays = 3 * 24 * 60 * 60 * 1000;
+		if (expireTime - now < threeDays) {
+			// 自动延长7天
+			const newExpireTime = Date.now() + 7 * 24 * 60 * 60 * 1000;
+			uni.setStorageSync('tokenExpireTime', newExpireTime);
+			console.log('token即将过期，已自动延长有效期至7天后');
+		}
+	}
+	
+	return token;
 }
 
 /**

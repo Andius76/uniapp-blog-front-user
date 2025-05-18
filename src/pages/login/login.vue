@@ -131,6 +131,17 @@ onLoad((options) => {
 		redirectUrl.value = decodeURIComponent(options.redirect);
 		console.log('重定向URL:', redirectUrl.value);
 	}
+	
+	// 检查是否之前启用了"记住登录"
+	try {
+		const remember = uni.getStorageSync('loginRemember');
+		if (remember) {
+			data.formData.remember = true;
+			console.log('检测到之前启用了保持登录状态，已恢复选择');
+		}
+	} catch (e) {
+		console.error('读取登录记忆状态失败:', e);
+	}
 });
 
 /**
@@ -241,8 +252,32 @@ const handleSubmit = () => {
 					return;
 				}
 				
-				// 登录成功，保存token到本地存储
-				uni.setStorageSync('token', res.data.token);
+				// 登录成功，根据"保持登录"选项处理token存储
+				if (data.formData.remember) {
+					// 设置长期存储模式
+					try {
+						// 在本地存储中保存token
+						uni.setStorageSync('token', res.data.token);
+						// 同时保存token过期时间（设置为7天后）
+						const expireTime = Date.now() + 7 * 24 * 60 * 60 * 1000;
+						uni.setStorageSync('tokenExpireTime', expireTime);
+						// 保存remember状态
+						uni.setStorageSync('loginRemember', true);
+						
+						console.log('已启用长期登录模式，token将在7天后过期');
+					} catch (e) {
+						console.error('保存长期登录信息失败:', e);
+					}
+				} else {
+					// 普通模式，仅使用会话存储
+					uni.setStorageSync('token', res.data.token);
+					// 不设置过期时间，浏览器关闭后需要重新登录
+					uni.removeStorageSync('tokenExpireTime');
+					uni.removeStorageSync('loginRemember');
+					
+					console.log('使用普通登录模式，浏览器关闭后需重新登录');
+				}
+				
 				// 如果用户信息存在，也保存到本地
 				if (res.data.user) {
 					// 确保保存用户信息之前打印状态以便调试
