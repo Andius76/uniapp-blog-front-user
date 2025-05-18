@@ -236,8 +236,10 @@
 		<!-- 使用通用的回到顶部组件，明确配置点击后隐藏并立即滚动到顶部 -->
 		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
 		
-		<!-- 添加ICP备案底部组件 -->
+		<!-- 添加ICP备案底部组件 - 仅在H5环境显示 -->
+		<!-- #ifdef H5 -->
 		<icp-footer/>
+		<!-- #endif -->
 	</view>
 </template>
 
