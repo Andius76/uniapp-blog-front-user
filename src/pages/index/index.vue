@@ -424,6 +424,9 @@
 					console.log('H5环境: 已触发文章列表加载');
 				}, 100);
 			});
+			
+			// 为H5环境添加滚动监听，检测滚动到底部时加载更多文章
+			window.addEventListener('scroll', handleH5Scroll);
 		}
 		// #endif
 
@@ -468,6 +471,8 @@
 		if (cleanupRouteListener) {
 			cleanupRouteListener();
 		}
+		// 删除滚动监听
+		window.removeEventListener('scroll', handleH5Scroll);
 		// #endif
 
 		// #ifndef H5
@@ -475,6 +480,32 @@
 		uni.$off('search-status-height-changed');
 		// #endif
 	});
+	
+	// H5环境下的滚动监听函数
+	// #ifdef H5
+	const handleH5Scroll = () => {
+		// 如果已经在加载中或没有更多数据，则不处理
+		if (isLoading.value || noMoreData.value) return;
+		
+		// 检查是否滚动到页面底部
+		const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+		const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+		const clientHeight = document.documentElement.clientHeight || window.innerHeight;
+		
+		// 当距离底部100px时触发加载
+		if (scrollHeight - scrollTop - clientHeight < 100) {
+			console.log('H5环境: 检测到滚动到底部，加载更多文章');
+			
+			if (articleListRef.value) {
+				// 使用ArticleList组件的加载文章方法
+				articleListRef.value.loadArticles();
+			} else {
+				// 备用方案：直接调用页面的加载函数
+				handleLoadMore();
+			}
+		}
+	};
+	// #endif
 
 	// 声明全局变量，用于在模板中使用，避免报错
 	const mpContentPaddingTop = ref('');
