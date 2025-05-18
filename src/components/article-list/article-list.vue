@@ -185,7 +185,7 @@
 		<!-- #ifndef H5 -->
 		<template v-if="!props.useGlobalScroll">
 			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp" @scrolltolower="handleLoadMore"
-				:refresher-enabled="true" :refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh"
+				:refresher-enabled="false" :refresher-triggered="isRefreshing" @refresherrefresh="handleRefresh"
 				:refresher-threshold="150" refresher-background="#f5f5f5" :style="{height: props.height || '100vh'}"
 				@scroll="handleScroll" :scroll-top="scrollTop" :show-scrollbar="false" :bounce="true" :enhanced="true"
 				:scroll-with-animation="true" @touchstart="handleTouchStart" @touchmove="handleTouchMove"
@@ -251,8 +251,7 @@
 					<view class="mp-loading">
 						<text v-if="isLoading && !isRefreshing">加载中...</text>
 						<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-						<!-- 删除底部向下滑动提示，避免固定显示在底部导航栏上方 -->
-						<!--<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>-->
+						<text v-else-if="articleList.length > 0">↓下滑加载更多↓</text>
 
 						<!-- 无内容提示 -->
 						<view v-if="articleList.length === 0 && !isLoading" class="mp-no-content">
@@ -261,17 +260,12 @@
 						</view>
 					</view>
 				</view>
-
-				<!-- 回到顶部按钮 -->
-				<view v-if="showBackTop" class="mp-back-top" @click="scrollToTop">
-					<uni-icons type="top" size="18" color="#fff"></uni-icons>
-				</view>
 			</scroll-view>
 		</template>
 		<template v-else>
 			<!-- 修改全局滚动模式实现，添加scroll-view -->
 			<scroll-view scroll-y class="mp-scroll-view" id="article-list-scroll-mp-global"
-				@scrolltolower="handleLoadMore" :refresher-enabled="true" :refresher-triggered="isRefreshing"
+				@scrolltolower="handleLoadMore" :refresher-enabled="false" :refresher-triggered="isRefreshing"
 				@refresherrefresh="handleRefresh" :refresher-threshold="150" refresher-background="#f5f5f5"
 				:style="{height: props.height || '100vh'}" @scroll="handleScroll" :scroll-top="scrollTop"
 				:show-scrollbar="false" :bounce="true" :enhanced="true" :scroll-with-animation="true"
@@ -336,8 +330,7 @@
 					<view class="mp-loading">
 						<text v-if="isLoading && !isRefreshing">加载中...</text>
 						<text v-else-if="noMoreData && articleList.length > 0">没有更多文章了</text>
-						<!-- 删除底部向下滑动提示，避免固定显示在底部导航栏上方 -->
-						<!--<text v-else-if="articleList.length > 0">↓向下滑动加载更多文章↓</text>-->
+						<text v-else-if="articleList.length > 0">↓下滑加载更多↓</text>
 
 						<!-- 无内容提示 -->
 						<view v-if="articleList.length === 0 && !isLoading" class="mp-no-content">
@@ -345,11 +338,6 @@
 							<text>{{ emptyText }}</text>
 						</view>
 					</view>
-				</view>
-
-				<!-- 回到顶部按钮 -->
-				<view v-if="showBackTop" class="mp-back-top" @click="scrollToTop">
-					<uni-icons type="top" size="18" color="#fff"></uni-icons>
 				</view>
 			</scroll-view>
 		</template>
@@ -468,8 +456,16 @@
 		// 获取滚动条位置
 		const scrollTop = e.detail.scrollTop;
 
+		// 只在H5环境下显示回到顶部按钮
+		// #ifdef H5
 		// 当滚动超过500rpx时显示回到顶部按钮
 		showBackTop.value = scrollTop > 500;
+		// #endif
+		
+		// 在非H5环境下，强制不显示回到顶部按钮
+		// #ifndef H5
+		showBackTop.value = false;
+		// #endif
 
 		// 保存旧的滚动位置用于后续比较
 		oldScrollTop.value = scrollTop;

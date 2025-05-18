@@ -194,9 +194,6 @@
 				@comment="handleComment" @edit="handleEditArticle" @delete="handleDeleteArticle" />
 		</view>
 
-		<!-- 使用通用的回到顶部组件 -->
-		<back-to-top ref="backToTopRef" :threshold="300" :hide-after-click="true" :duration="0" @click="scrollToTop" />
-
 		<!-- 用户设置组件 -->
 		<view v-if="data.showUserSettings" class="settings-overlay">
 			<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo"
