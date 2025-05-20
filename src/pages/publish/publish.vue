@@ -93,6 +93,7 @@
 				</view>
 				<text class="toolbar-text">{{ isPreviewMode ? '编辑模式' : '预览模式' }}</text>
 			</view>
+			<!--
 			<view class="toolbar-item" @click="showFormattingToolbar" :class="{'disabled': isPreviewMode}">
 				<view class="toolbar-icon">
 					<text class="icon-text">A</text>
@@ -104,7 +105,7 @@
 					<uni-icons type="image" size="24" color="#333"></uni-icons>
 				</view>
 				<text class="toolbar-text">上传图片</text>
-			</view>
+			</view> -->
 			<view class="toolbar-item" @click="showTagSelector" :class="{'disabled': isPreviewMode}">
 				<view class="toolbar-icon">
 					<uni-icons type="paperclip" size="24" color="#333"></uni-icons>
