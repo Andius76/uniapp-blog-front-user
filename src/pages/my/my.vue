@@ -14,7 +14,6 @@
 								@click="uploadAvatar"></image>
 							<view class="user-detail">
 								<text class="nickname">{{ data.userInfo.nickname }}</text>
-								<text class="email">{{ data.userInfo.email }}</text>
 							</view>
 						</view>
 						<view class="user-actions">
@@ -84,40 +83,40 @@
 				@click="scrollToTop" />
 		</view>
 
-		<!-- 用户设置组件 -->
-		<view v-if="data.showUserSettings" class="settings-overlay">
-			<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo"
-				:initialView="data.settingsInitialView" @update:visible="onSettingsVisibleChange"
-				@avatar-change="handleAvatarChange" @nickname-change="handleNicknameChange"
-				@bio-change="handleBioChange" @logout="handleLogout" />
-		</view>
+			<!-- 用户设置组件 -->
+			<view v-if="data.showUserSettings" class="settings-overlay">
+				<UserSettings :visible="data.showUserSettings" :userInfo="data.userInfo"
+					:initialView="data.settingsInitialView" @update:visible="onSettingsVisibleChange"
+					@avatar-change="handleAvatarChange" @nickname-change="handleNicknameChange"
+					@bio-change="handleBioChange" @logout="handleLogout" />
+			</view>
 
-		<!-- 使用原生方法实现的弹窗 -->
-		<view v-if="data.showBioPopup" class="native-popup-container" @click.self="closeBioPopup">
-			<view class="native-popup-mask" @click.stop></view>
-			<view class="native-popup-body" @click.stop>
-				<view class="bio-edit-popup">
-					<view class="popup-header">
-						<text class="popup-title">编辑个人简介</text>
-						<view class="popup-close" @click="closeBioPopup">
-							<uni-icons type="close" size="22" color="#666"></uni-icons>
+			<!-- 使用原生方法实现的弹窗 -->
+			<view v-if="data.showBioPopup" class="native-popup-container" @click.self="closeBioPopup">
+				<view class="native-popup-mask" @click.stop></view>
+				<view class="native-popup-body" @click.stop>
+					<view class="bio-edit-popup">
+						<view class="popup-header">
+							<text class="popup-title">编辑个人简介</text>
+							<view class="popup-close" @click="closeBioPopup">
+								<uni-icons type="close" size="22" color="#666"></uni-icons>
+							</view>
 						</view>
-					</view>
-					<view class="popup-content">
-						<textarea class="bio-textarea" v-model="data.editingBio" placeholder="请输入您的个人简介..."
-							maxlength="200"></textarea>
-						<view class="char-counter">
-							<text>{{ data.editingBio.length }}/200</text>
+						<view class="popup-content">
+							<textarea class="bio-textarea" v-model="data.editingBio" placeholder="请输入您的个人简介..."
+								maxlength="200"></textarea>
+							<view class="char-counter">
+								<text>{{ data.editingBio.length }}/200</text>
+							</view>
 						</view>
-					</view>
-					<view class="popup-footer">
-						<button class="btn-cancel" @click="closeBioPopup">取消</button>
-						<button class="btn-save" @click="saveUserBio">保存</button>
+						<view class="popup-footer">
+							<button class="btn-cancel" @click="closeBioPopup">取消</button>
+							<button class="btn-save" @click="saveUserBio">保存</button>
+						</view>
 					</view>
 				</view>
 			</view>
 		</view>
-	</view>
 	<!-- #endif -->
 
 	<!-- #ifndef H5 -->
@@ -132,7 +131,6 @@
 						@click="uploadAvatar"></image>
 					<view class="user-detail">
 						<text class="nickname">{{ data.userInfo.nickname }}</text>
-						<text class="email">{{ data.userInfo.email }}</text>
 					</view>
 				</view>
 				<view class="user-actions">
